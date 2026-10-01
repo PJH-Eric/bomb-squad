@@ -424,6 +424,85 @@
     }
   }
 
+
+  /* ---------- 日月光廠房：貼近真實的機台與無塵室地面 ---------- */
+  /** 半導體機台：同一排相連的格子畫成一台連續的機台（控制面板、散熱孔、三色警示燈）；直向相連的是晶圓盒自動倉儲 */
+  function drawFabHard(ctx, T, n) {
+    const l = n.l, r = n.r, u = n.u, d = n.d;
+    const x0 = l ? 0 : T * 0.07, x1 = r ? T : T * 0.93, y0 = u ? 0 : T * 0.08, y1 = d ? T : T * 0.92;
+    const depth = d ? 0 : T * 0.14;
+    ctx.save();
+    /* 側面（立體感） */
+    ctx.fillStyle = '#0d1636'; ctx.fillRect(x0, y0 + T * 0.1, x1 - x0, y1 - y0 - T * 0.1);
+    /* 機身 */
+    const g = ctx.createLinearGradient(0, y0, 0, y1); g.addColorStop(0, '#3a4f8f'); g.addColorStop(1, '#1d2b5c');
+    ctx.fillStyle = g; ctx.fillRect(x0, y0, x1 - x0, y1 - y0 - depth);
+    ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(x0, y0, x1 - x0, T * 0.07);
+    ctx.strokeStyle = 'rgba(8,14,40,0.8)'; ctx.lineWidth = Math.max(1.5, T * 0.04);
+    ctx.beginPath();
+    if (!u) { ctx.moveTo(x0, y0); ctx.lineTo(x1, y0); }
+    if (!d) { ctx.moveTo(x0, y1 - depth); ctx.lineTo(x1, y1 - depth); }
+    if (!l) { ctx.moveTo(x0, y0); ctx.lineTo(x0, y1 - depth); }
+    if (!r) { ctx.moveTo(x1, y0); ctx.lineTo(x1, y1 - depth); }
+    ctx.stroke();
+    const bh = y1 - y0 - depth, w = x1 - x0;
+    const horiz = l || r, vert = (u || d) && !horiz;
+    if (vert) {
+      /* 晶圓盒倉儲：一格格的 FOUP 插槽 */
+      ctx.fillStyle = 'rgba(8,14,40,0.55)';
+      for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) ctx.fillRect(x0 + w * (0.14 + j * 0.4), y0 + bh * (0.1 + i * 0.29), w * 0.34, bh * 0.22);
+      ctx.fillStyle = '#7fe0a8'; ctx.fillRect(x0 + w * 0.44, y0 + bh * 0.03, w * 0.12, bh * 0.04);
+    } else if (n.alt) {
+      /* 散熱／維修面板 */
+      ctx.fillStyle = 'rgba(255,255,255,0.16)'; ctx.fillRect(x0 + w * 0.12, y0 + bh * 0.2, w * 0.76, bh * 0.58);
+      ctx.strokeStyle = 'rgba(8,14,40,0.55)'; ctx.lineWidth = Math.max(1, T * 0.03);
+      for (let i = 0; i < 4; i++) { const yy = y0 + bh * (0.3 + i * 0.12); ctx.beginPath(); ctx.moveTo(x0 + w * 0.2, yy); ctx.lineTo(x0 + w * 0.8, yy); ctx.stroke(); }
+      ctx.fillStyle = '#ffd84d'; ctx.fillRect(x0 + w * 0.12, y0 + bh * 0.84, w * 0.76, bh * 0.05);
+    } else {
+      /* 控制螢幕 */
+      ctx.fillStyle = '#0b1530'; ctx.fillRect(x0 + w * 0.14, y0 + bh * 0.2, w * 0.72, bh * 0.4);
+      ctx.strokeStyle = '#7ff0b0'; ctx.lineWidth = Math.max(1.2, T * 0.035); ctx.beginPath();
+      ctx.moveTo(x0 + w * 0.2, y0 + bh * 0.5); ctx.lineTo(x0 + w * 0.36, y0 + bh * 0.34); ctx.lineTo(x0 + w * 0.52, y0 + bh * 0.46); ctx.lineTo(x0 + w * 0.7, y0 + bh * 0.28); ctx.lineTo(x0 + w * 0.8, y0 + bh * 0.36); ctx.stroke();
+      ctx.fillStyle = '#17a35a'; ctx.beginPath(); ctx.arc(x0 + w * 0.3, y0 + bh * 0.76, T * 0.045, 0, 7); ctx.fill();
+      ctx.fillStyle = '#ffd84d'; ctx.beginPath(); ctx.arc(x0 + w * 0.5, y0 + bh * 0.76, T * 0.045, 0, 7); ctx.fill();
+      ctx.fillStyle = '#ef6a47'; ctx.beginPath(); ctx.arc(x0 + w * 0.7, y0 + bh * 0.76, T * 0.045, 0, 7); ctx.fill();
+    }
+    /* 三色警示燈塔：每台機台最左端一座 */
+    if (horiz && !l || (!horiz && !vert)) {
+      const tx = x0 + (horiz ? w * 0.09 : w * 0.5), ty = y0 + T * 0.27;
+      ctx.fillStyle = '#c8cedd'; ctx.fillRect(tx - T * 0.02, ty - T * 0.02, T * 0.04, T * 0.05);
+      [['#ef6a47', 0], ['#ffd84d', 1], ['#17c46a', 2]].forEach(([c, i]) => { ctx.fillStyle = c; rr(ctx, tx - T * 0.05, ty - T * 0.02 - (i + 1) * T * 0.06, T * 0.1, T * 0.055, T * 0.02); ctx.fill(); });
+    }
+    ctx.restore();
+  }
+
+  /** 無塵室地面細節：透氣地板孔洞、機台周圍黃色安全線、主走道綠色導引線與天車軌道 */
+  function drawFabFloor(g, T, view, at, isEdge) {
+    const W = view.w, H = view.h, cx = (W - 1) / 2, cy = (H - 1) / 2;
+    g.save();
+    for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+      if (at(x, y) === 1) continue;
+      const px = x * T, py = y * T;
+      /* 透氣孔洞地板 */
+      g.fillStyle = 'rgba(30,45,87,0.1)';
+      for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) { g.beginPath(); g.arc(px + T * (0.25 + i * 0.25), py + T * (0.25 + j * 0.25), T * 0.025, 0, 7); g.fill(); }
+      /* 機台周圍的黃色安全線 */
+      g.fillStyle = 'rgba(255,200,40,0.9)';
+      const hw = Math.max(2, T * 0.06);
+      if (at(x, y - 1) === 1 && !isEdge(x, y - 1)) g.fillRect(px, py + T * 0.04, T, hw);
+      if (at(x, y + 1) === 1 && !isEdge(x, y + 1)) g.fillRect(px, py + T - hw - T * 0.04, T, hw);
+      if (at(x - 1, y) === 1 && !isEdge(x - 1, y)) g.fillRect(px + T * 0.04, py, hw, T);
+      if (at(x + 1, y) === 1 && !isEdge(x + 1, y)) g.fillRect(px + T - hw - T * 0.04, py, hw, T);
+    }
+    /* 主走道：綠色導引線＋天車（OHT）軌道 */
+    g.strokeStyle = 'rgba(23,163,90,0.55)'; g.lineWidth = Math.max(2, T * 0.06); g.setLineDash([T * 0.22, T * 0.14]);
+    g.beginPath(); g.moveTo(T * 1.2, (cy + 0.5) * T); g.lineTo((W - 1.2) * T, (cy + 0.5) * T); g.moveTo((cx + 0.5) * T, T * 1.2); g.lineTo((cx + 0.5) * T, (H - 1.2) * T); g.stroke();
+    g.setLineDash([]);
+    g.strokeStyle = 'rgba(120,130,160,0.35)'; g.lineWidth = Math.max(1.5, T * 0.035);
+    for (const o of [-0.12, 0.12]) { g.beginPath(); g.moveTo(T, (cy + 0.5 + o) * T); g.lineTo((W - 1) * T, (cy + 0.5 + o) * T); g.stroke(); }
+    g.restore();
+  }
+
   function buildTileset(T, themeId) {
     const th = THEMES[themeId] || THEMES[0];
     const make = fn => { const c = mkCanvas(T, T); const x = c.getContext('2d'); fn(x); return c; };
@@ -448,6 +527,6 @@
 
   root.Art = {
     ANIMALS, ANIMAL_IDS, THEMES, ITEM_NAMES, ITEM_DESC,
-    animalSVG, itemSVG, bombSVG, icon, buildTileset, svgImage, svgUrl, rr
+    animalSVG, itemSVG, bombSVG, icon, buildTileset, drawFabHard, drawFabFloor, svgImage, svgUrl, rr
   };
 })(typeof self !== 'undefined' ? self : this);

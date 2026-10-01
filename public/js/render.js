@@ -104,6 +104,22 @@
           if (isEdge(x, y)) g.drawImage(this.tiles.border, x * T, y * T);
           else g.drawImage((x + y) % 2 ? this.tiles.floorB : this.tiles.floorA, x * T, y * T);
         }
+        const fab = this.tiles.theme && this.tiles.theme.id === 7;
+        if (fab) {
+          Art.drawFabFloor(g, T, view, at, isEdge);
+          /* 外牆標誌：日月光標誌嵌在白色圓牌上，沿四邊每隔一格一枚 */
+          if (!this.logoImg && root.ASE_LOGO) { this.logoImg = new Image(); this.logoImg.onload = () => { this.logoReady = true; this.staticVer = -1; }; this.logoImg.src = root.ASE_LOGO; }
+          if (this.logoReady) {
+            const put = (x, y) => {
+              const cx = (x + 0.5) * T, cy = (y + 0.5) * T, r = T * 0.4;
+              g.fillStyle = '#fffdf2'; g.beginPath(); g.arc(cx, cy, r, 0, 7); g.fill();
+              g.lineWidth = Math.max(1.5, T * 0.04); g.strokeStyle = '#ffd84d'; g.stroke();
+              g.drawImage(this.logoImg, cx - r * 0.78, cy - r * 0.78, r * 1.56, r * 1.56);
+            };
+            for (let x = 1; x < view.w - 1; x += 2) { put(x, 0); put(x, view.h - 1); }
+            for (let y = 1; y < view.h - 1; y += 2) { put(0, y); put(view.w - 1, y); }
+          }
+        }
         /* 第二層：牆體在地板上的投影（右下方光源）與外框內側陰影 */
         for (let y = 1; y < view.h - 1; y++) for (let x = 1; x < view.w - 1; x++) {
           if (at(x, y) !== 0) continue;
@@ -115,7 +131,11 @@
         /* 第三層：硬牆與軟磚 */
         for (let y = 1; y < view.h - 1; y++) for (let x = 1; x < view.w - 1; x++) {
           const v = at(x, y);
-          if (v === 1) g.drawImage(this.tiles.hard, x * T, y * T);
+          if (v === 1 && fab) {
+            const fc = document.createElement('canvas'); fc.width = T; fc.height = T;
+            Art.drawFabHard(fc.getContext('2d'), T, { l: at(x - 1, y) === 1 && x - 1 > 0, r: at(x + 1, y) === 1 && x + 1 < view.w - 1, u: at(x, y - 1) === 1 && y - 1 > 0, d: at(x, y + 1) === 1 && y + 1 < view.h - 1, alt: (x + y) % 2 === 1 });
+            g.drawImage(fc, x * T, y * T);
+          } else if (v === 1) g.drawImage(this.tiles.hard, x * T, y * T);
           else if (v === 2) g.drawImage(this.tiles.soft, x * T, y * T);
         }
         this.statics = c; this.staticVer = view.gridVer;
