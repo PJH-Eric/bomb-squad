@@ -1,0 +1,15 @@
+{
+  "name": "bomb-squad",
+  "version": "1.0.0",
+  "description": "炸彈小隊：可愛風炸彈人（單機＋AI＋線上房間／觀戰／邀請連結）",
+  "private": true,
+  "license": "UNLICENSED",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node tests/verify.js && node tests/rooms.js && node scripts/online-check.js",
+    "verify": "node tests/verify.js",
+    "inject": "node scripts/inject-server-url.js"
+  },
+  "dependencies": {}
+}

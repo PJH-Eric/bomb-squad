@@ -1,0 +1,12 @@
+{
+  "name": "炸彈小隊",
+  "short_name": "炸彈小隊",
+  "description": "可愛的炸彈對戰小遊戲：單機練習、電腦對手、線上房間與觀戰",
+  "start_url": ".",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1d1640",
+  "theme_color": "#1d1640",
+  "lang": "zh-Hant",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
