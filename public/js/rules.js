@@ -15,6 +15,7 @@
   const DT = 1 / 60;
   const DIRS = { U: [0, -1], D: [0, 1], L: [-1, 0], R: [1, 0] };
   const FUSE = 3;              /* 炸彈引爆秒數 */
+  const FLAME_COOL_T = 0.3;    /* 磚塊格的無殺傷火花停留秒數 */
   const FLAME_T = 0.5;         /* 火焰停留秒數 */
   const HIT_INSET = 0.1;       /* 火焰判定：人物中心要深入格子才算被炸（離格線 0.1 內算擦邊，安全） */
   const HALF = 0.36;           /* 玩家碰撞半寬（比格子小，轉角才好過） */
@@ -335,7 +336,10 @@
       const r = blast(s, b);
       for (const c of r.cells) {
         const f = flameAt(s, c.x, c.y);
-        if (f) { f.t = FLAME_T; f.owner = b.owner; } else s.flames.push({ cx: c.x, cy: c.y, t: FLAME_T, owner: b.owner });
+        /* 磚塊被炸掉的那一格只有視覺火花（無殺傷）：磚塊一消失就走進去不該被燒到 */
+        const cool = r.softs.some(q => q.x === c.x && q.y === c.y);
+        if (f) { if (!cool) { f.t = FLAME_T; f.cool = false; } f.owner = b.owner; }
+        else s.flames.push({ cx: c.x, cy: c.y, t: cool ? FLAME_COOL_T : FLAME_T, owner: b.owner, cool });
         const it = itemAt(s, c.x, c.y);
         if (it && !it.fresh) { s.itemsOn.splice(s.itemsOn.indexOf(it), 1); s.events.push({ t: 'itemgone', x: c.x, y: c.y }); }
       }
@@ -527,7 +531,7 @@
         const c = cellOf(p);
         if (Math.abs(p.x - (c.x + 0.5)) > 0.5 - HIT_INSET || Math.abs(p.y - (c.y + 0.5)) > 0.5 - HIT_INSET) continue;
         const f = flameAt(s, c.x, c.y);
-        if (f) hurt(s, p, f.owner);
+        if (f && !f.cool) hurt(s, p, f.owner);
       }
     }
 

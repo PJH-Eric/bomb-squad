@@ -49,7 +49,7 @@
       const i = c.y * s.w + c.x;
       if (e.t < danger[i]) danger[i] = e.t;
     }
-    for (const f of s.flames) burn[f.cy * s.w + f.cx] = Math.max(burn[f.cy * s.w + f.cx], f.t);
+    for (const f of s.flames) if (!f.cool) burn[f.cy * s.w + f.cx] = Math.max(burn[f.cy * s.w + f.cx], f.t);
     return { danger, burn };
   }
 

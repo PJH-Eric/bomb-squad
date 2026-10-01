@@ -174,6 +174,25 @@ test('判定寬鬆：中心離格線很近（擦邊）不算被炸，進到格�
   assert(!mid.players[1].alive, '站在火焰格正中間應該被炸');
 });
 
+test('磚塊被炸掉後，那一格的火花不傷人（走進去不會被燒到），火線上的空格仍會', () => {
+  const s = mk(3); arena(s);
+  s.grid[3 * s.w + 5] = 2;                                       /* 炸彈 (3,3) 射程 3：4 空格、5 軟磚 */
+  put(s.players[0], 1, 1); put(s.players[1], 9, 9); put(s.players[2], 1, 11);
+  s.bombs.push({ id: 1, owner: 0, cx: 3, cy: 3, t: 0, range: 3, pass: [], sl: null });
+  R.step(s, {}, R.DT);
+  assert.strictEqual(s.grid[3 * s.w + 5], 0, '磚塊應消失');
+  const brick = R.flameAt(s, 5, 3); assert(brick && brick.cool, '磚塊格是無殺傷火花');
+  const open = R.flameAt(s, 4, 3); assert(open && !open.cool, '一般火線格有殺傷');
+  s.players[1].x = 5.5; s.players[1].y = 3.5;                    /* 走進剛清掉的磚塊格 */
+  R.step(s, {}, R.DT);
+  assert(s.players[1].alive, '站在磚塊格的火花上不該被炸');
+  s.players[2].x = 4.5; s.players[2].y = 3.5;
+  R.step(s, {}, R.DT);
+  assert(!s.players[2].alive, '站在一般火線格仍會被炸');
+  for (let i = 0; i < 40; i++) R.step(s, {}, R.DT);
+  assert(!R.flameAt(s, 5, 3), '火花很快消失');
+});
+
 test('護盾擋一次爆炸，之後有短暫無敵', () => {
   const s = mk(3); arena(s);
   put(s.players[0], 1, 1); put(s.players[1], 3, 3); put(s.players[2], 9, 9);
