@@ -29,7 +29,7 @@ node scripts/online-check.js
 
 瀏覽器煙霧測試（選用，需自行安裝 playwright）：先啟動 server，再 `node scripts/browser-check.js`，會檢查各尺寸直橫向無水平溢出、單機開局、線上邀請／觀戰／自動關閉，並輸出截圖到 `shots/`。
 
-## 部署（GitHub Pages ＋ Render／Cloudflare Workers／Cloud Run）
+## 部署（GitHub Pages ＋ Render／Oracle Cloud／Cloudflare Workers／Cloud Run）
 
 1. **後端（Render）**：用 `render.yaml` 建立 Web Service（免費方案，區域選 Singapore，台灣連線延遲最低；建立後無法改區域），啟動指令 `node server.js`，健康檢查 `/health`。環境變數 `GAME_ALLOWED_ORIGIN` 填前端網址，例如 `https://帳號.github.io`。
 2. **前端（GitHub Pages）**：Settings → Pages 選 GitHub Actions；Settings → Variables 新增 `GAME_SERVER_URL`＝Render 的 https 網址。推到 `main` 後 `.github/workflows/pages.yml` 會跑測試、注入網址並部署 `public/`。
@@ -58,6 +58,22 @@ npm run cf:deploy        # 部署（之後每次更新也是這行）
 - 本機試跑：`npm run cf:dev` 會在 `http://127.0.0.1:8787` 啟動；用 `SERVER=http://127.0.0.1:8787 node scripts/online-check.js` 跑完整線上流程檢查（也可以把 `SERVER` 換成已部署的網址）。
 - 免費方案只能用 SQLite 版 Durable Object（`wrangler.toml` 已設定）；每天有請求數與執行時間額度，朋友間遊玩通常用不完，以 Cloudflare 公告為準。
 - 房間只存在記憶體：重新部署或 Cloudflare 回收 Durable Object 時房間會消失（跟 Render 重啟一樣）。
+
+## 部署後端到 Oracle Cloud 永久免費 VM（東京／大阪，不休眠）
+
+1. 建立 VM：映像選 **Ubuntu 22.04 或 24.04**；規格選 Always Free（`VM.Standard.A1.Flex` 1 OCPU／6 GB，或 `VM.Standard.E2.1.Micro`）；下載 SSH 私鑰；記下公用 IP。
+2. 開雲端防火牆：VM 的子網路 → Security List → Add Ingress Rules，來源 `0.0.0.0/0`、TCP 目的埠 `80,443`。
+3. 申請免費網域：到 [DuckDNS](https://www.duckdns.org/) 建一個子網域（例如 `bomb-squad-tw.duckdns.org`），IP 填 VM 的公用 IP。
+4. SSH 進 VM 執行（會裝 Node.js 22、Caddy 自動 HTTPS、systemd 常駐、打開 VM 內的 80／443）：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/PJH-Eric/bomb-squad/main/deploy/oracle/setup.sh -o setup.sh
+sudo bash setup.sh bomb-squad-tw.duckdns.org
+```
+
+5. 打開 `https://你的網域/health` 確認後，把 GitHub 的 `GAME_SERVER_URL` 改成 `https://你的網域`，重新跑 Pages 部署。
+
+更新程式：SSH 進去再跑一次 `sudo bash setup.sh 你的網域`。看紀錄：`sudo journalctl -u bomb-squad -f`。
 
 ## 部署後端到 Cloud Run（台灣機房，延遲最低）
 
