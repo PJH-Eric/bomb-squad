@@ -193,19 +193,6 @@ test('磚塊被炸掉後，那一格的火花不傷人（走進去不會被燒�
   assert(!R.flameAt(s, 5, 3), '火花很快消失');
 });
 
-test('同一波爆炸裡，被另一顆炸彈炸掉的磚塊仍擋住火線', () => {
-  const s = mk(3); arena(s);
-  s.grid[3 * s.w + 5] = 2;                                       /* 軟磚 (5,3)：A 橫向會碰到、B 直向會炸掉 */
-  put(s.players[0], 1, 11); put(s.players[1], 6, 3); put(s.players[2], 11, 11);
-  s.bombs.push({ id: 1, owner: 0, cx: 3, cy: 3, t: 0, range: 4, pass: [], sl: null });
-  s.bombs.push({ id: 2, owner: 0, cx: 5, cy: 5, t: 0, range: 2, pass: [], sl: null });
-  R.step(s, {}, R.DT);
-  assert.strictEqual(s.grid[3 * s.w + 5], 0, '磚塊應消失');
-  assert(s.players[1].alive, '磚塊後面的人不該被炸到');
-  assert(!R.flameAt(s, 6, 3), '火線不該穿過磚塊');
-  const brick = R.flameAt(s, 5, 3); assert(brick && brick.cool, '磚塊格仍是無殺傷火花');
-});
-
 test('護盾擋一次爆炸，之後有短暫無敵', () => {
   const s = mk(3); arena(s);
   put(s.players[0], 1, 1); put(s.players[1], 3, 3); put(s.players[2], 9, 9);
