@@ -400,8 +400,8 @@
       if (this.pingEl) {
         const ms = root.Net && root.Net.connected && root.Net.rtt ? Math.round(root.Net.rtt * 1000) : null;
         const txt = ms == null ? '-- ms' : ms + ' ms';
-        /* 燈號：<30 綠、30～99 橙、≥100 紅 */
-        const cls = 'ping' + (ms == null ? '' : ms < 30 ? ' good' : ms < 100 ? ' mid' : ' bad');
+        /* 燈號：≤30 綠、31～99 橙、≥100 紅 */
+        const cls = 'ping' + (ms == null ? '' : ms <= 30 ? ' good' : ms < 100 ? ' mid' : ' bad');
         if (this.pingEl.textContent !== txt) this.pingEl.textContent = txt;
         if (this.pingEl.className !== cls) this.pingEl.className = cls;
       }
