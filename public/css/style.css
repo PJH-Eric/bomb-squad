@@ -518,7 +518,9 @@ body {
 .game:not(.side-closed) .exit-btn { display: none; }
 .exit-in { margin-left: auto; margin-right: 6px; }
 /* 線上延遲：設定鈕正下方，跟左邊的暫停鈕對稱；不擋點擊 */
-.ping { position: absolute; z-index: 30; top: calc(64px + var(--safe-t)); right: calc(12px + var(--safe-r)); width: 48px; text-align: center; font-size: .78rem; font-weight: 900; font-variant-numeric: tabular-nums; white-space: nowrap; color: #fff; text-shadow: 0 1px 2px #17122b, 0 0 3px #17122b; pointer-events: none; }
+.ping { position: absolute; z-index: 30; top: calc(64px + var(--safe-t)); right: calc(12px + var(--safe-r)); text-align: right; font-size: .78rem; font-weight: 900; font-variant-numeric: tabular-nums; white-space: nowrap; color: #fff; text-shadow: 0 1px 2px #17122b, 0 0 3px #17122b; pointer-events: none; }
+.ping::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 4px; border-radius: 50%; background: #9a93b5; box-shadow: 0 0 0 1.5px #17122b; vertical-align: 1px; }
+.ping.good::before { background: #4cd08a; } .ping.mid::before { background: #ff9a3c; } .ping.bad::before { background: #ff4d4d; }
 @media (min-width: 861px) and (min-aspect-ratio: 1/1) { .game.side-closed .exit-btn { top: calc(66px + var(--safe-t)); } }
 @media (max-width: 560px) and (orientation: landscape) { .exit-btn { top: calc(62px + var(--safe-t)); } }
 
