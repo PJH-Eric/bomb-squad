@@ -13,10 +13,12 @@
 
   const LEVEL_ORDER = ['toddler', 'easy', 'normal', 'hard'];
   const LEVELS = {
-    toddler: { name: '幼幼班', interval: 0.55, bombProb: 0.3, hunt: 0, chain: false, react: 0.5, itemRange: 3, itemProb: 0.4, wander: 0.5, sloppy: 0.4, curseOk: true },
-    easy:    { name: '簡單',   interval: 0.3,  bombProb: 0.6, hunt: 0.3, chain: false, react: 0.9, itemRange: 5, itemProb: 0.75, wander: 0.15, sloppy: 0.1, curseOk: true },
-    normal:  { name: '普通',   interval: 0.16, bombProb: 0.9, hunt: 0.8, chain: true, react: 1, itemRange: 9, itemProb: 1, wander: 0.03, sloppy: 0, curseOk: false },
-    hard:    { name: '困難',   interval: 0.07, bombProb: 1, hunt: 1, chain: true, react: 1, itemRange: 16, itemProb: 1, wander: 0, sloppy: 0, curseOk: false, trap: true }
+    /* interval 決策間隔（秒，越大反應越慢）、hunt 追人機率、chase 追人最遠格數、react 發現危險時會逃的機率、
+       wander 發呆亂走機率、sloppy 放了炸彈卻沒先確認退路的機率 */
+    toddler: { name: '幼幼班', interval: 0.65, bombProb: 0.3, hunt: 0, chase: 0, chain: false, react: 0.4, itemRange: 3, itemProb: 0.4, wander: 0.55, sloppy: 0.5, curseOk: true },
+    easy:    { name: '簡單',   interval: 0.4,  bombProb: 0.55, hunt: 0.2, chase: 3, chain: false, react: 0.8, itemRange: 4, itemProb: 0.6, wander: 0.2, sloppy: 0.15, curseOk: true },
+    normal:  { name: '普通',   interval: 0.28, bombProb: 0.75, hunt: 0.4, chase: 5, chain: true, react: 0.92, itemRange: 6, itemProb: 0.85, wander: 0.1, sloppy: 0.06, curseOk: false },
+    hard:    { name: '困難',   interval: 0.12, bombProb: 0.95, hunt: 0.8, chase: 10, chain: true, react: 1, itemRange: 12, itemProb: 1, wander: 0.02, sloppy: 0, curseOk: false, trap: true }
   };
   const FOUR = [[1, 0], [-1, 0], [0, 1], [0, -1]];
   const DIR_OF = { '1,0': 'R', '-1,0': 'L', '0,1': 'D', '0,-1': 'U' };
@@ -200,7 +202,7 @@
         const qc = R.cellOf(q), j = qc.y * s.w + qc.x, d = reach.dist[j];
         if (d >= 0 && d < td) { td = d; tgt = j; }
       }
-      const limit = brain.level === 'hard' ? 14 : brain.level === 'normal' ? 7 : 4;
+      const limit = cfg.chase;
       if (tgt >= 0 && td <= limit) {
         const path = pathTo(reach.prev, me, tgt);
         if (path.length > 1) path.pop();          /* 停在對手前一格，不要貼臉 */
