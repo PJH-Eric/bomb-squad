@@ -204,7 +204,7 @@
     App.onlineGame = false;
     const ui = App.roomUI = {};
     ui.titleEl = h('h2', null, '房間');
-    ui.codeEl = h('span');
+    ui.codeEl = h('span', { class: 'room-meta' });
     ui.seatsBox = h('div', { class: 'seats' });
     ui.specBox = h('div');
     ui.actBox = h('div');
@@ -233,7 +233,8 @@
     };
 
     const el = U.screenBox('', h('div', { class: 'wrap' },
-      h('div', { class: 'topbar' }, root.UI.iconBtn('back', '離開房間', () => App.confirmLeave()), ui.titleEl, ui.codeEl),
+      h('div', { class: 'topbar' }, root.UI.iconBtn('back', '離開房間', () => App.confirmLeave()),
+        h('div', { class: 'room-head' }, ui.titleEl, ui.codeEl)),
       h('div', { class: 'room-grid' },
         h('div', { style: { display: 'grid', gap: '14px' } },
           h('section', { class: 'card' }, h('h3', null, '玩家席位'), ui.seatsBox),

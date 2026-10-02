@@ -420,7 +420,9 @@
         const shape = o.colorAssist ? R.SHAPES[p.slot % 8] : null;
         const padX = T * 0.12, extra = shape ? fs * 1.1 : fs * 0.7;
         const bw = tw + padX * 2 + extra, bh = fs * 1.35;
-        const bx = cx - bw / 2, by = cy - T * 0.62 - bh;
+        /* 貼邊的玩家：名牌往內推，不要超出地圖被裁掉 */
+        const edge = T * 0.08;
+        const bx = Math.max(edge, Math.min(view.w * T - bw - edge, cx - bw / 2)), by = cy - T * 0.62 - bh;
         ctx.fillStyle = 'rgba(40,24,70,0.72)'; Art.rr(ctx, bx, by, bw, bh, bh / 2); ctx.fill();
         ctx.fillStyle = color;
         const dotX = bx + padX + fs * 0.35, dotY = by + bh / 2;

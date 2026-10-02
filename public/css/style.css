@@ -471,6 +471,14 @@ body {
 }
 @media (max-width: 560px) and (orientation: landscape) { .game-main { padding-top: calc(60px + var(--safe-t)); } .hud { flex-direction: row; width: auto; } }
 @media (max-width: 400px) { .topbar h2 { font-size: 1.15rem; } .hero-sub { font-size: .92rem; } }
+/* 房間標題：寬螢幕和代號同一行；窄螢幕代號換到下一行，房名才不會被擠成一個字 */
+.room-head { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+.room-meta { display: flex; gap: 6px; flex: 0 0 auto; white-space: nowrap; }
+@media (max-width: 600px) {
+  .room-head { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .room-head h2 { width: 100%; }
+  .room-meta .pill { font-size: .8rem; padding: 2px 10px; }
+}
 
 /* ===== 精簡設定面板 ===== */
 .more-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 8px; padding: 8px 12px; min-height: 40px; font: inherit; font-weight: 800; font-size: .92rem; color: #17122b; background: transparent; border: 3px dashed #17122b; border-radius: 12px; cursor: pointer; white-space: nowrap; }
