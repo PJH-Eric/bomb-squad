@@ -107,9 +107,13 @@ function rawGet(port, p) {
   h.handle('host-key-01', { type: 'start' });
   const g = h._rooms.get(room.id).game;
   const slot = g.slotOf.get('guest-key-1');
-  h.handle('guest-key-1', { type: 'input', dir: 'L' });
+  h.handle('guest-key-1', { type: 'input', dir: 'L', dir2: 'U' });
+  ok(g.inputs[slot].dir === 'L' && g.inputs[slot].dir2 === 'U', '線上輸入會帶第二方向（提早轉彎）');
+  h.handle('guest-key-1', { type: 'input', dir: 'L', dir2: 'X' });
+  ok(g.inputs[slot].dir2 === null, '不合法的第二方向會被忽略');
+  h.handle('guest-key-1', { type: 'input', dir: 'L', dir2: 'U' });
   h.disconnect('guest-key-1');
-  ok(g && g.inputs[slot].dir === null, '斷線後放開方向鍵，角色不會自己一直走');
+  ok(g && g.inputs[slot].dir === null && g.inputs[slot].dir2 === null, '斷線後放開方向鍵，角色不會自己一直走');
 
   server.close();
   console.log(fails ? '\n' + fails + ' 項失敗' : '\n全部通過');

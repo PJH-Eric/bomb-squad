@@ -50,7 +50,7 @@
       this.settings = cfg.settings;
       this.alive = true;
       this.keys = [];
-      this.dir = null; this.sentDir = null;
+      this.dir = null; this.dir2 = null; this.sentDir = null;
       this.acc = 0; this.last = 0; this.ff = false;
       this.hudSig = ''; this.sumSig = ''; this.hudAt = 0;
       this.unread = 0; this.resultAt = 0; this.resultDone = false;
@@ -143,19 +143,22 @@
         const lim = rad * 0.55;
         const k = dist > lim ? lim / dist : 1;
         this.knob.style.transform = 'translate(' + dx * k + 'px,' + dy * k + 'px)';
-        let d = null;
+        let d = null, d2 = null;
         if (dist > rad * 0.24) {
           const ax = Math.abs(dx), ay = Math.abs(dy);
           const cur = this.stickDir;
           if (cur === 'L' || cur === 'R') d = ay > ax * 1.3 ? (dy > 0 ? 'D' : 'U') : (dx > 0 ? 'R' : 'L');
           else if (cur === 'U' || cur === 'D') d = ax > ay * 1.3 ? (dx > 0 ? 'R' : 'L') : (dy > 0 ? 'D' : 'U');
           else d = ax > ay ? (dx > 0 ? 'R' : 'L') : (dy > 0 ? 'D' : 'U');
+          /* 斜推（次要軸至少主軸的 45%）：被擋住時沿次要軸走，貼著牆推也能滑到路口 */
+          if (d === 'L' || d === 'R') { if (ay > ax * 0.45) d2 = dy > 0 ? 'D' : 'U'; }
+          else if (ax > ay * 0.45) d2 = dx > 0 ? 'R' : 'L';
         }
-        this.stickDir = d; this.refreshDir();
+        this.stickDir = d; this.stickDir2 = d2; this.refreshDir();
       };
       this.stick.addEventListener('pointerdown', e => { activeId = e.pointerId; this.stick.setPointerCapture(e.pointerId); update(e); e.preventDefault(); });
       this.stick.addEventListener('pointermove', e => { if (e.pointerId === activeId) update(e); });
-      const end = e => { if (e.pointerId !== activeId) return; activeId = null; this.stickDir = null; this.knob.style.transform = ''; this.refreshDir(); };
+      const end = e => { if (e.pointerId !== activeId) return; activeId = null; this.stickDir = null; this.stickDir2 = null; this.knob.style.transform = ''; this.refreshDir(); };
       this.stick.addEventListener('pointerup', end); this.stick.addEventListener('pointercancel', end);
       this.bombBtn.addEventListener('pointerdown', e => { e.preventDefault(); this.bombBtn.classList.add('down'); this.pressBomb(); });
       const up = () => this.bombBtn.classList.remove('down');
@@ -198,7 +201,7 @@
         const i = this.keys.indexOf(d); if (i >= 0) this.keys.splice(i, 1);
         this.refreshDir();
       };
-      this.onBlur = () => { this.keys = []; this.stickDir = null; this.refreshDir(); };
+      this.onBlur = () => { this.keys = []; this.stickDir = null; this.stickDir2 = null; this.refreshDir(); };
       this.onResize = () => this.layout();
       document.addEventListener('keydown', this.onKeyDown);
       document.addEventListener('keyup', this.onKeyUp);
@@ -210,10 +213,18 @@
 
     refreshDir() {
       const d = this.keys.length ? this.keys[this.keys.length - 1] : (this.stickDir || null);
-      if (d === this.dir) return;
-      this.dir = d;
-      if (this.kind === 'solo' && this.slot != null) this.inputs[this.slot].dir = d;
-      else if (this.kind === 'online' && this.slot != null && this.dir !== this.sentDir) { this.sentDir = d; this.cfg.send({ type: 'input', dir: d }); }
+      /* 第二方向：鍵盤取「還按著、跟目前方向垂直」的最近一個鍵；搖桿取斜推時的次要軸 */
+      const horiz = k => k === 'L' || k === 'R';
+      let d2 = null;
+      if (this.keys.length) { for (let i = this.keys.length - 2; i >= 0; i--) if (horiz(this.keys[i]) !== horiz(d)) { d2 = this.keys[i]; break; } }
+      else d2 = this.stickDir2 || null;
+      if (d === this.dir && d2 === this.dir2) return;
+      this.dir = d; this.dir2 = d2;
+      if (this.kind === 'solo' && this.slot != null) { this.inputs[this.slot].dir = d; this.inputs[this.slot].dir2 = d2; }
+      else if (this.kind === 'online' && this.slot != null) {
+        const sig = d + '/' + d2;
+        if (sig !== this.sentDir) { this.sentDir = sig; this.cfg.send({ type: 'input', dir: d, dir2: d2 }); }
+      }
     }
     pressBomb() {
       if (this.slot == null || this.view.phase !== 'play') return;

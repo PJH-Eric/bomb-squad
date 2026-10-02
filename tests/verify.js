@@ -193,6 +193,21 @@ test('磚塊被炸掉後，那一格的火花不傷人（走進去不會被燒�
   assert(!R.flameAt(s, 5, 3), '火花很快消失');
 });
 
+test('提早按轉彎：被擋住時沿還按著的方向走到路口再轉', () => {
+  const mkCol = () => {
+    const s = mk(2); arena(s);
+    for (let y = 1; y < s.h - 1; y++) for (let x = 1; x < s.w - 1; x++) if (x % 2 === 0 && y % 2 === 0) s.grid[y * s.w + x] = 1;
+    s.players[0].x = 2.2; s.players[0].y = 3.5; put(s.players[1], 11, 11);   /* 正上方 (2,2) 是柱子，(3,2) 是路口 */
+    return s;
+  };
+  const a = mkCol();
+  run(a, { 0: { dir: 'U', bomb: false } }, 1);
+  assert(a.players[0].y > 3, '只按上：維持原本行為，停在柱子前');
+  const b = mkCol();
+  run(b, { 0: { dir: 'U', dir2: 'R', bomb: false } }, 1);
+  assert(b.players[0].y < 2.5, '按著右再按上：走到 x=3 的路口轉上去');
+});
+
 test('護盾擋一次爆炸，之後有短暫無敵', () => {
   const s = mk(3); arena(s);
   put(s.players[0], 1, 1); put(s.players[1], 3, 3); put(s.players[2], 9, 9);

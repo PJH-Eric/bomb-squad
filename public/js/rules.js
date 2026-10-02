@@ -469,7 +469,8 @@
 
   /* ---------- 主迴圈 ---------- */
   /**
-   * inputs：{ [slot]: { dir: 'U'|'D'|'L'|'R'|null, bomb: boolean } }；bomb 是「按下」的邊緣訊號，步進時會被消耗。
+   * inputs：{ [slot]: { dir: 'U'|'D'|'L'|'R'|null, dir2?: 同上, bomb: boolean } }；bomb 是「按下」的邊緣訊號，步進時會被消耗。
+   * dir2 是「還按著的另一個方向」：dir 被擋住走不動時改走 dir2，提早按轉彎也會沿原方向走到路口再轉。
    */
   function step(s, inputs, dt) {
     dt = dt || DT;
@@ -498,6 +499,7 @@
       if (p.invuln > 0) p.invuln = Math.max(0, p.invuln - dt);
       if (p.curse) { p.curse.t -= dt; if (p.curse.t <= 0) p.curse = null; }
       movePlayer(s, p, inp ? inp.dir : null, dt);
+      if (inp && inp.dir2 && inp.dir2 !== inp.dir && !p.moving) movePlayer(s, p, inp.dir2, dt);
       if (inp && inp.bomb) { placeBomb(s, p); }
       if (inp) inp.bomb = false;
       if (playing && p.curse && p.curse.type === 'c_auto') {
