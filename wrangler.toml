@@ -1,0 +1,19 @@
+# Cloudflare Workers 版伺服器（cloudflare/worker.js）
+# 部署：npx wrangler deploy（第一次先 npx wrangler login）
+name = "long-truth-0c64"
+main = "cloudflare/worker.js"
+compatibility_date = "2026-09-01"
+workers_dev = true
+
+[vars]
+# 允許連進來的前端網址，逗號分隔；"*" 代表不限制
+GAME_ALLOWED_ORIGIN = "https://pjh-eric.github.io"
+
+[[durable_objects.bindings]]
+name = "HUB"
+class_name = "GameHub"
+
+# 免費方案只能用 SQLite 版的 Durable Object
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["GameHub"]

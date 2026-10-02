@@ -9,7 +9,9 @@
     "start": "node server.js",
     "test": "node tests/verify.js && node tests/rooms.js && node tests/server.js && node scripts/online-check.js",
     "verify": "node tests/verify.js",
-    "inject": "node scripts/inject-server-url.js"
+    "inject": "node scripts/inject-server-url.js",
+    "cf:dev": "npx wrangler@4 dev",
+    "cf:deploy": "npx wrangler@4 deploy"
   },
   "dependencies": {}
 }

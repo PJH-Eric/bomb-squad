@@ -1,12 +1,13 @@
-/* 線上端對端檢查：真的啟動 server.js，用 Node 內建 WebSocket 連線，驗證房間、邀請、觀戰、對局與零真人自動關閉。 */
+/* 線上端對端檢查：真的啟動 server.js，用 Node 內建 WebSocket 連線，驗證房間、邀請、觀戰、對局與零真人自動關閉。
+ * 指定 SERVER 就改測那台（例如 Cloudflare 版或已部署的網址）：SERVER=http://127.0.0.1:8787 node scripts/online-check.js */
 'use strict';
 const { createServer } = require('../server.js');
 let fails = 0;
 const ok = (c, m) => { console.log((c ? '  ✓ ' : '  ✗ ') + m); if (!c) fails++; };
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
-function client(port, key, name) {
-  const ws = new WebSocket('ws://127.0.0.1:' + port + '/ws');
+function client(base, key, name) {
+  const ws = new WebSocket(base.replace(/^http/, 'ws') + '/ws');
   const c = { ws, msgs: [], room: null };
   ws.onmessage = e => { const m = JSON.parse(e.data); c.msgs.push(m); if (m.type === 'room') c.room = m.room; if (m.type === 'welcome') c.room = m.room; };
   c.open = new Promise(res => { ws.onopen = () => { ws.send(JSON.stringify({ type: 'hello', key, name, animal: 'cat' })); res(); }; });
@@ -17,13 +18,18 @@ function client(port, key, name) {
 }
 
 (async () => {
-  const { server } = createServer({ allowOrigin: '*' });
-  await new Promise(r => server.listen(0, '127.0.0.1', r));
-  const port = server.address().port;
-  const res = await fetch('http://127.0.0.1:' + port + '/health');
+  let server = null, base = (process.env.SERVER || '').replace(/\/+$/, '');
+  if (!base) {
+    server = createServer({ allowOrigin: '*' }).server;
+    await new Promise(r => server.listen(0, '127.0.0.1', r));
+    base = 'http://127.0.0.1:' + server.address().port;
+  }
+  /* 每次用不同的 key，重複測同一台遠端伺服器也不會撞到上次的身分 */
+  const tag = Date.now().toString(36);
+  const res = await fetch(base + '/health');
   ok(res.ok && (await res.json()).ok, '/health 正常');
 
-  const A = client(port, 'key-a-0001', '甲'), B = client(port, 'key-b-0001', '乙'), S = client(port, 'key-s-0001', '觀');
+  const A = client(base, tag + '-key-a-0001', '甲'), B = client(base, tag + '-key-b-0001', '乙'), S = client(base, tag + '-key-s-0001', '觀');
   await Promise.all([A.open, B.open, S.open]); await wait(200);
   ok(A.last('welcome') && A.last('rooms'), '連線後收到 welcome 與房間列表');
   A.send({ type: 'create', roomName: '測試房', max: 4, name: '甲', animal: 'cat' }); await wait(200);
@@ -44,7 +50,7 @@ function client(port, key, name) {
   ok(A.last('start').slot != null && S.last('start').slot == null, '觀戰者沒有操作席位');
   A.send({ type: 'input', dir: 'R' }); A.send({ type: 'bomb' }); await wait(300);
   A.send({ type: 'revoke' }); await wait(150);
-  const C = client(port, 'key-c-0001', '丙'); await C.open; await wait(100);
+  const C = client(base, tag + '-key-c-0001', '丙'); await C.open; await wait(100);
   C.send({ type: 'join', room: id, token: pTok, name: '丙' }); await wait(150);
   ok(C.last('joinFailed') && C.last('joinFailed').reason === 'revoked', '撤銷後的邀請不能用');
   A.send({ type: 'leave' }); await wait(150);
@@ -53,7 +59,7 @@ function client(port, key, name) {
   C.send({ type: 'join', room: id, as: 'spectator' }); await wait(150);
   ok(C.last('joinFailed') && C.last('joinFailed').reason === 'closed', '已關閉的房間無法重新進入');
   for (const x of [A, B, S, C]) x.ws.close();
-  server.close(); await wait(100);
+  if (server) server.close(); await wait(100);
   console.log(fails ? '\n失敗 ' + fails + ' 項' : '\n全部通過');
   process.exit(fails ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(1); });

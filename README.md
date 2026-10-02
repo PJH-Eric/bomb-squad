@@ -29,7 +29,7 @@ node scripts/online-check.js
 
 瀏覽器煙霧測試（選用，需自行安裝 playwright）：先啟動 server，再 `node scripts/browser-check.js`，會檢查各尺寸直橫向無水平溢出、單機開局、線上邀請／觀戰／自動關閉，並輸出截圖到 `shots/`。
 
-## 部署（GitHub Pages ＋ Render 或 Cloud Run）
+## 部署（GitHub Pages ＋ Render／Cloudflare Workers／Cloud Run）
 
 1. **後端（Render）**：用 `render.yaml` 建立 Web Service（免費方案，區域選 Singapore，台灣連線延遲最低；建立後無法改區域），啟動指令 `node server.js`，健康檢查 `/health`。環境變數 `GAME_ALLOWED_ORIGIN` 填前端網址，例如 `https://帳號.github.io`。
 2. **前端（GitHub Pages）**：Settings → Pages 選 GitHub Actions；Settings → Variables 新增 `GAME_SERVER_URL`＝Render 的 https 網址。推到 `main` 後 `.github/workflows/pages.yml` 會跑測試、注入網址並部署 `public/`。
@@ -42,6 +42,22 @@ node scripts/online-check.js
 | `GAME_SERVER_URL` | Pages Variable | 前端連線位置，唯一入口是 `public/js/config.js` |
 
 Render 免費方案閒置會休眠，首次連線約 30～60 秒，畫面會顯示喚醒提示；房間只存在記憶體，重啟即消失。
+
+## 部署後端到 Cloudflare Workers（免費、不用信用卡）
+
+`cloudflare/worker.js` 是 Cloudflare 版伺服器：房間與對局一樣用 `lib/rooms.js`，只把連線層換成 Durable Object。全站一個 Durable Object 持有所有房間（等同 Node 版的單一行程），第一次建立時指定亞太區。設定在 `wrangler.toml`。
+
+```bash
+npx wrangler@4 login     # 第一次：開瀏覽器登入 Cloudflare
+npm run cf:deploy        # 部署（之後每次更新也是這行）
+```
+
+部署完會印出 `https://long-truth-0c64.<你的子網域>.workers.dev`。打開 `/health` 會看到 `{"ok":true,"runtime":"cloudflare","colo":"…"}`；接著把 GitHub 的 `GAME_SERVER_URL` 改成這個網址，重新跑一次 Pages 部署。
+
+- 允許的前端網址在 `wrangler.toml` 的 `GAME_ALLOWED_ORIGIN`（預設 `https://pjh-eric.github.io`）。
+- 本機試跑：`npm run cf:dev` 會在 `http://127.0.0.1:8787` 啟動；用 `SERVER=http://127.0.0.1:8787 node scripts/online-check.js` 跑完整線上流程檢查（也可以把 `SERVER` 換成已部署的網址）。
+- 免費方案只能用 SQLite 版 Durable Object（`wrangler.toml` 已設定）；每天有請求數與執行時間額度，朋友間遊玩通常用不完，以 Cloudflare 公告為準。
+- 房間只存在記憶體：重新部署或 Cloudflare 回收 Durable Object 時房間會消失（跟 Render 重啟一樣）。
 
 ## 部署後端到 Cloud Run（台灣機房，延遲最低）
 
