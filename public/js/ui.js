@@ -271,6 +271,8 @@
   }, true);
   const modalOpen = () => stack.length > 0;
   function closeAllModals() { while (stack.length) stack[stack.length - 1].close(); }
+  /** 返回鍵用：只關最上層、而且要是可關閉的（對局結果這種不能被返回鍵關掉） */
+  function closeTopModal() { const top = stack[stack.length - 1]; if (top && top.dismissible) top.close(); }
 
   function confirmBox(o) {
     const m = modal({
@@ -297,5 +299,5 @@
     return ok;
   }
 
-  root.UI = { h, btn, iconBtn, seg, stepper, toggle, volume, dropdown, closePop, avatar, keycap, toast, modal, confirmBox, copyText, modalOpen, closeAllModals };
+  root.UI = { h, btn, iconBtn, seg, stepper, toggle, volume, dropdown, closePop, avatar, keycap, toast, modal, confirmBox, copyText, modalOpen, closeAllModals, closeTopModal };
 })(typeof self !== 'undefined' ? self : this);

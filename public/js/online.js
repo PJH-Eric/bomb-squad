@@ -46,8 +46,14 @@
     if (root.Config && root.Config.source === 'query' && root.Config.serverUrl) p.set('server', root.Config.serverUrl);
     return u.toString() + '?' + p.toString();
   }
+  /** 只拿掉邀請參數；?server= 要留著，不然重新整理就連不到同一台伺服器 */
   function clearInviteUrl() {
-    try { if (location.search) history.replaceState(history.state, '', location.pathname); } catch (e) { /* 忽略 */ }
+    try {
+      const u = new URL(location.href);
+      if (!u.searchParams.has('room') && !u.searchParams.has('invite')) return;
+      u.searchParams.delete('room'); u.searchParams.delete('invite');
+      history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+    } catch (e) { /* 忽略 */ }
   }
   function statusInfo() {
     const s = App.netStatus, C = root.Config || {};
@@ -386,6 +392,10 @@
     Net.on('welcome', m => {
       App.me = { pid: m.pid, name: m.name, animal: m.animal };
       App.room = m.room || null;
+      /* 斷線太久（或伺服器重啟）回來時房間已經沒了：關閉通知是在離線時送的，收不到，這裡補上 */
+      if (!m.room && (App.screen === 'room' || (App.screen === 'game' && App.onlineGame))) {
+        App.lobbyNotice = '房間已經結束了'; toast(App.lobbyNotice, 4200); leaveToLobby(); return;
+      }
       if (m.room && App.screen === 'lobby' && m.room.phase !== 'playing') App.go('room');
       else if (m.room && App.screen === 'room') App.roomUI && App.roomUI.paint();
       askInvite();

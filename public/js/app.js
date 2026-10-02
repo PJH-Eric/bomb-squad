@@ -188,6 +188,7 @@
       so.levels = so.levels.map(() => v);
       if (v === 'toddler') so.curses = false;
       save(); paintRows();
+      if (v === 'toddler') paintPanel();   /* 規則面板的「道具」也要跟著改成不含詛咒 */
     } });
     const sizeNote = h('span', { class: 'pill gray' });
     const detailBtn = h('button', { type: 'button', class: 'more-btn', 'aria-expanded': App.aiDetail ? 'true' : 'false', onClick: () => {
@@ -339,7 +340,7 @@
       h('p', { class: 'muted small' }, '形狀輔助：在暱稱旁加上圓、三角、星星等形狀，不只靠顏色分辨玩家。'));
     const m = modal({
       title: '設定', content: body, cls: 'dialog-lg',
-      actions: [btn('恢復預設', { cls: 'btn-ghost', onClick: () => { root.Store.resetSettings(st); applySettings(); m.close(true); App.settingsOpen = false; toast('已恢復預設設定'); App.openSettings(); } }), btn('完成', { cls: 'btn-mint', onClick: () => m.close() })],
+      actions: [btn('恢復預設', { cls: 'btn-ghost', onClick: () => { root.Store.resetSettings(st); applySettings(); App.game && App.game.layout(); m.close(true); App.settingsOpen = false; toast('已恢復預設設定'); App.openSettings(); } }), btn('完成', { cls: 'btn-mint', onClick: () => m.close() })],
       onClose: () => { App.settingsOpen = false; }
     });
     App.settingsOpen = true;
@@ -357,7 +358,7 @@
 
   /* ---------- 返回鍵（Android／瀏覽器） ---------- */
   function onBack() {
-    if (root.UI.modalOpen()) { root.UI.closeAllModals(); return true; }
+    if (root.UI.modalOpen()) { root.UI.closeTopModal(); return true; }
     switch (App.screen) {
       case 'help': case 'solo': go('home'); return true;
       case 'lobby': go('home'); return true;

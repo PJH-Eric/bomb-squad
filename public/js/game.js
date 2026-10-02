@@ -112,6 +112,8 @@
       this.touchEl = null;
       if (this.slot != null) this.buildTouch();
       this.root = h('div', { class: 'game' }, this.side, this.main, this.toggle, this.exitBtn);
+      /* 滑鼠／觸控點完按鈕就放掉焦點：不然暫停→繼續後焦點回到暫停鈕，按空白鍵會再開一次選單而不是放炸彈（鍵盤 Tab 過去的照常可按） */
+      this.root.addEventListener('pointerup', e => { const b = e.target.closest && e.target.closest('button'); if (b) b.blur(); });
       const narrow = root.innerWidth < 860 || root.innerHeight > root.innerWidth;
       if (narrow) this.root.classList.add('side-closed');
       this.applyTheme();

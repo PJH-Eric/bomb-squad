@@ -8,6 +8,8 @@
   let ws = null;
   let status = 'idle';            /* idle | waking | connecting | open | retrying | offline | unset */
   let retry = 0, retryTimer = 0, wantOpen = false;
+  /* 每次 open/close 都換一代：舊的喚醒迴圈醒來發現自己過期就收手，不會同時開出兩條連線（同 key 會被伺服器踢成 replaced） */
+  let gen = 0;
   let hello = { name: '', animal: 'cat' };
   const handlers = {};
   const statusListeners = [];
@@ -35,9 +37,9 @@
   }
 
   /** 先打 /health：Render 免費方案休眠時要 30～60 秒才醒，這段時間顯示喚醒動畫 */
-  async function wake(base) {
+  async function wake(base, my) {
     const started = Date.now();
-    for (let i = 0; wantOpen; i++) {
+    for (let i = 0; wantOpen && my === gen; i++) {
       try {
         const ctl = new AbortController();
         const t = setTimeout(() => ctl.abort(), 8000);
@@ -55,6 +57,7 @@
   async function open(profile) {
     if (profile) hello = profile;
     wantOpen = true;
+    const my = ++gen;
     const cfg = root.Config;
     if (!cfg || cfg.status !== 'ok' || !cfg.serverUrl) {
       setStatus('unset', cfg && cfg.error);
@@ -62,8 +65,8 @@
     }
     if (ws && (ws.readyState === 0 || ws.readyState === 1)) return;
     setStatus('connecting');
-    const ok = await wake(cfg.serverUrl);
-    if (!wantOpen) return;
+    const ok = await wake(cfg.serverUrl, my);
+    if (!wantOpen || my !== gen) return;
     if (!ok) { setStatus('offline'); scheduleRetry(); return; }
     connect(cfg.serverUrl);
   }
@@ -77,6 +80,7 @@
       setStatus('open');
     };
     ws.onmessage = e => {
+      if (ws !== me) return;
       let msg = null;
       try { msg = JSON.parse(e.data); } catch (err) { return; }
       if (msg.type === 'welcome' && msg.key) { try { localStorage.setItem(KEY_STORE, msg.key); } catch (err) { /* 忽略 */ } }
@@ -101,6 +105,7 @@
 
   function close() {
     wantOpen = false;
+    gen++;
     clearTimeout(retryTimer);
     if (ws) { const w = ws; ws = null; try { w.close(); } catch (e) { /* 忽略 */ } }
     setStatus('idle');

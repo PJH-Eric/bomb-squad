@@ -158,6 +158,7 @@
         for (const d of FOUR) {
           const nx = c.x + d[0], ny = c.y + d[1];
           if (!R.inside(s, nx, ny) || s.grid[ny * s.w + nx] !== 0 || R.bombAt(s, nx, ny)) continue;
+          if (dm.burn[ny * s.w + nx] > 0) continue;   /* 還在燒的格子沒有炸彈指著，danger 是 Infinity，不擋掉會直接走進火裡 */
           const t = dm.danger[ny * s.w + nx];
           if (t > bestT) { bestT = t; best = ny * s.w + nx; }
         }

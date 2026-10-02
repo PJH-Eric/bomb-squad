@@ -83,14 +83,19 @@
         if (el.scrollWidth <= el.clientWidth + 2 || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
         el.scrollLeft += e.deltaY; e.preventDefault();
       }, { passive: false });
+      /* document 的 move/up 只在拖曳期間掛上：元素常被重繪丟掉，常駐掛著會一直累積 */
       let down = null, moved = false;
-      el.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse' && e.button === 0) { down = { x: e.clientX, left: el.scrollLeft }; moved = false; } });
-      doc.addEventListener('pointermove', e => {
+      const onMove = e => {
         if (!down || !el.isConnected) return;
         const dx = e.clientX - down.x;
         if (Math.abs(dx) > 6) { moved = true; el.scrollLeft = down.left - dx; }
+      };
+      const onUp = () => { down = null; doc.removeEventListener('pointermove', onMove); doc.removeEventListener('pointerup', onUp); };
+      el.addEventListener('pointerdown', e => {
+        if (e.pointerType !== 'mouse' || e.button !== 0) return;
+        down = { x: e.clientX, left: el.scrollLeft }; moved = false;
+        doc.addEventListener('pointermove', onMove); doc.addEventListener('pointerup', onUp);
       });
-      doc.addEventListener('pointerup', () => { down = null; });
       el.addEventListener('click', e => { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true);
     }
     o.update();
