@@ -400,10 +400,7 @@
       if (this.pingEl) {
         const ms = root.Net && root.Net.connected && root.Net.rtt ? Math.round(root.Net.rtt * 1000) : null;
         const txt = ms == null ? '-- ms' : ms + ' ms';
-        if (this.pingEl.textContent !== txt) {
-          this.pingEl.textContent = txt;
-          this.pingEl.className = 'ping' + (ms == null ? '' : ms < 100 ? ' good' : ms < 200 ? ' mid' : ' bad');
-        }
+        if (this.pingEl.textContent !== txt) this.pingEl.textContent = txt;
       }
       /* 計時 */
       let txt;
