@@ -329,6 +329,7 @@
   function explodeAll(s) {
     const queue = s.bombs.filter(b => b.t <= 0);
     const exploded = new Set();
+    const broken = new Set();
     const drops = [];
     while (queue.length) {
       const b = queue.pop();
@@ -344,10 +345,11 @@
         const it = itemAt(s, c.x, c.y);
         if (it && !it.fresh) { s.itemsOn.splice(s.itemsOn.indexOf(it), 1); s.events.push({ t: 'itemgone', x: c.x, y: c.y }); }
       }
+      /* 同一波連鎖的磚塊等全部炸完才清掉：先清的話，後面的炸彈會穿過剛被炸掉的磚塊 */
       for (const sc of r.softs) {
         const i = cellIdx(s, sc.x, sc.y);
-        if (s.grid[i] === 2) {
-          s.grid[i] = 0; s.gridVer++;
+        if (!broken.has(i)) {
+          broken.add(i);
           s.events.push({ t: 'brk', x: sc.x, y: sc.y });
           const d = rollDrop(s);
           if (d) drops.push({ x: sc.x, y: sc.y, type: d });
@@ -358,6 +360,8 @@
       const owner = getPlayer(s, b.owner);
       if (owner) owner.bombsOut = Math.max(0, owner.bombsOut - 1);
     }
+    for (const i of broken) s.grid[i] = 0;
+    if (broken.size) s.gridVer++;
     if (exploded.size) s.bombs = s.bombs.filter(b => !exploded.has(b));
     for (const d of drops) s.itemsOn.push({ id: s.nextId++, cx: d.x, cy: d.y, type: d.type, fresh: true });
   }
