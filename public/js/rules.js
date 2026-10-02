@@ -627,7 +627,7 @@
     ITEM_TYPES, POSITIVE, CURSES, LAYOUTS, RANDOM_LAYOUTS, FAB_THEME, LAYOUT_NAMES, THEME_COUNT, SHAPES, SLOT_COLORS, DROP_WEIGHTS,
     mulberry32, rand, sizeFor, spawnPoints, generateMap, connected, createGame, step,
     blast, bombAt, itemAt, flameAt, cellOf, cellIdx, inside, speedOf, rangeOf, maxBombsOf,
-    canPlaceBomb, placeBomb, overlapsCell, movePlayer, slideFree, getPlayer, alivePlayers, collides, removePlayer, finish,
+    canPlaceBomb, placeBomb, overlapsCell, slideFree, getPlayer, alivePlayers, collides, removePlayer, finish,
     snapshot, startInfo, viewFromStart, applySnapshot, gridString
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = root.Rules;

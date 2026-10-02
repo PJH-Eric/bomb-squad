@@ -271,9 +271,9 @@
       const now = t / 1000;
       let dt = this.last ? Math.min(0.1, now - this.last) : 0.016;
       this.last = now;
-      if (this.kind === 'solo') this.stepSolo(dt); else this.predict(dt, now);
+      if (this.kind === 'solo') this.stepSolo(dt);
       this.rend.draw(this.view, {
-        selfSlot: this.slot, mode: this.kind === 'solo' ? 'given' : 'smooth', selfPos: this.pred || null,
+        selfSlot: this.slot, mode: this.kind === 'solo' ? 'given' : 'smooth',
         colorAssist: this.settings.colorAssist, reduceMotion: this.settings.reduceMotion
       });
       this.updateHud(now);
@@ -311,56 +311,10 @@
       }
     }
 
-    /* 線上：自己的角色在本機先走（同一套 Rules 碰撞），伺服器快照到了再校正。
-       * 快照描述的是大約一個來回延遲之前的自己，所以拿本機「那個時間點」的位置來比，差太多才拉回來。 */
-    predict(dt, now) {
-      const v = this.view;
-      const me = this.slot != null ? v.players.find(p => p.slot === this.slot) : null;
-      if (!me || !me.alive || v.phase !== 'play') { this.pred = null; return; }
-      if (!this.pred) this.pred = { x: me.x, y: me.y, dir: me.dir, acc: 0, hist: [], pass: new Set(), seen: new Set() };
-      const pr = this.pred;
-      const pm = { slot: me.slot, x: pr.x, y: pr.y, dir: pr.dir, moving: false, alive: true, curse: me.curse, speedLvl: me.speedLvl, kick: me.kick };
-      /* 炸彈「可穿過」：剛出現時自己還站在上面就能走出來，離開那格後變實心（跟伺服器規則一樣） */
-      for (const b of v.bombs) {
-        if (!pr.seen.has(b.id)) { pr.seen.add(b.id); if (R.overlapsCell(pm, b.cx, b.cy)) pr.pass.add(b.id); }
-      }
-      pr.acc += dt;
-      let n = 0;
-      while (pr.acc >= R.DT && n++ < 8) {
-        pr.acc -= R.DT;
-        const bombs = v.bombs.map(b => ({ id: b.id, cx: b.cx, cy: b.cy, sl: b.sl, pass: pr.pass.has(b.id) ? [me.slot] : [] }));
-        const tmp = { w: v.w, h: v.h, grid: v.grid, bombs, players: [pm], events: [] };
-        R.movePlayer(tmp, pm, this.dir, R.DT);
-        if (this.dir2 && this.dir2 !== this.dir && !pm.moving) R.movePlayer(tmp, pm, this.dir2, R.DT);
-        for (const b of v.bombs) if (pr.pass.has(b.id) && !R.overlapsCell(pm, b.cx, b.cy)) pr.pass.delete(b.id);
-      }
-      pr.x = pm.x; pr.y = pm.y; pr.dir = pm.dir;
-      pr.hist.push({ t: now, x: pr.x, y: pr.y });
-      while (pr.hist.length > 2 && pr.hist[0].t < now - 2) pr.hist.shift();
-    }
-    reconcile() {
-      const pr = this.pred;
-      const me = pr && this.view.players.find(p => p.slot === this.slot);
-      if (!pr || !me) return;
-      if (!me.alive) { this.pred = null; return; }
-      const now = performance.now() / 1000;
-      const at = now - ((root.Net && root.Net.rtt) || 0.15) - 0.03;   /* 快照平均晚半個廣播間隔 */
-      const hs = pr.hist;
-      let hx = pr.x, hy = pr.y;
-      for (let i = hs.length - 1; i >= 0; i--) if (hs[i].t <= at) { hx = hs[i].x; hy = hs[i].y; break; }
-      const ex = me.x - hx, ey = me.y - hy, err = Math.hypot(ex, ey);
-      if (err > 1.5) { pr.x = me.x; pr.y = me.y; pr.hist = []; return; }   /* 被踢、被擋、傳送之類：直接對齊 */
-      if (err < 0.04) return;
-      const k = 0.3, cx = ex * k, cy = ey * k;
-      pr.x += cx; pr.y += cy;
-      for (const q of hs) { q.x += cx; q.y += cy; }
-    }
-
     /* 線上：套用伺服器快照 */
     onSnap(snap) {
       const was = this.view.gridVer;
       R.applySnapshot(this.view, snap);
-      this.reconcile();
       this.rend.markSnap();
       if (this.view.gridVer !== was) this.rend.dirty = true;
       this.handleEvents(snap.e || []);
