@@ -52,7 +52,7 @@ npx wrangler@4 login     # 第一次：開瀏覽器登入 Cloudflare
 npm run cf:deploy        # 部署（之後每次更新也是這行）
 ```
 
-部署完會印出 `https://long-truth-0c64.<你的子網域>.workers.dev`。打開 `/health` 會看到 `{"ok":true,"runtime":"cloudflare","colo":"…"}`；接著把 GitHub 的 `GAME_SERVER_URL` 改成這個網址，重新跑一次 Pages 部署。
+部署完會印出 `https://bomb-squad.<你的子網域>.workers.dev`（目前是 https://bomb-squad.duck911527.workers.dev）。打開 `/health` 會看到 `{"ok":true,"runtime":"cloudflare","colo":"…"}`；接著把 GitHub 的 `GAME_SERVER_URL` 改成這個網址，重新跑一次 Pages 部署。
 
 - 允許的前端網址在 `wrangler.toml` 的 `GAME_ALLOWED_ORIGIN`（預設 `https://pjh-eric.github.io`）。
 - 本機試跑：`npm run cf:dev` 會在 `http://127.0.0.1:8787` 啟動；用 `SERVER=http://127.0.0.1:8787 node scripts/online-check.js` 跑完整線上流程檢查（也可以把 `SERVER` 換成已部署的網址）。

@@ -4,7 +4,9 @@
 const { createServer } = require('../server.js');
 let fails = 0;
 const ok = (c, m) => { console.log((c ? '  ✓ ' : '  ✗ ') + m); if (!c) fails++; };
-const wait = ms => new Promise(r => setTimeout(r, ms));
+/* 測遠端伺服器時等久一點（來回延遲可能數百毫秒） */
+const SLOW = process.env.SERVER ? 4 : 1;
+const wait = ms => new Promise(r => setTimeout(r, ms * SLOW));
 
 function client(base, key, name) {
   const ws = new WebSocket(base.replace(/^http/, 'ws') + '/ws');
