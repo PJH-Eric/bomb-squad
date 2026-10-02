@@ -29,7 +29,7 @@ node scripts/online-check.js
 
 瀏覽器煙霧測試（選用，需自行安裝 playwright）：先啟動 server，再 `node scripts/browser-check.js`，會檢查各尺寸直橫向無水平溢出、單機開局、線上邀請／觀戰／自動關閉，並輸出截圖到 `shots/`。
 
-## 部署（GitHub Pages ＋ Render）
+## 部署（GitHub Pages ＋ Render 或 Cloud Run）
 
 1. **後端（Render）**：用 `render.yaml` 建立 Web Service（免費方案，區域選 Singapore，台灣連線延遲最低；建立後無法改區域），啟動指令 `node server.js`，健康檢查 `/health`。環境變數 `GAME_ALLOWED_ORIGIN` 填前端網址，例如 `https://帳號.github.io`。
 2. **前端（GitHub Pages）**：Settings → Pages 選 GitHub Actions；Settings → Variables 新增 `GAME_SERVER_URL`＝Render 的 https 網址。推到 `main` 後 `.github/workflows/pages.yml` 會跑測試、注入網址並部署 `public/`。
@@ -37,11 +37,46 @@ node scripts/online-check.js
 
 | 變數 | 位置 | 說明 |
 |---|---|---|
-| `PORT` | 後端 | 預設 3120 |
+| `PORT` | 後端 | 預設 3120（Cloud Run 會自動設成 8080） |
 | `GAME_ALLOWED_ORIGIN` | 後端 | 允許的前端 origin，逗號分隔 |
 | `GAME_SERVER_URL` | Pages Variable | 前端連線位置，唯一入口是 `public/js/config.js` |
 
 Render 免費方案閒置會休眠，首次連線約 30～60 秒，畫面會顯示喚醒提示；房間只存在記憶體，重啟即消失。
+
+## 部署後端到 Cloud Run（台灣機房，延遲最低）
+
+Render 最近的機房在新加坡；Google Cloud Run 有台灣機房 `asia-east1`（彰化），台灣玩家延遲可降到約 10～20 ms。專案根目錄的 `Dockerfile` 就是給它用的。
+
+**事前準備（只做一次）**
+
+1. 到 [Google Cloud Console](https://console.cloud.google.com/) 建立專案並綁定帳單（Cloud Run 有每月免費額度，但仍要信用卡）。
+2. 建議到「帳單 → 預算與快訊」設一個小額預算（例如 NT$30）並開啟 email 通知，避免意外收費。
+3. 安裝 [Google Cloud CLI](https://cloud.google.com/sdk/docs/install)，然後登入並選專案：
+
+```bash
+gcloud auth login
+gcloud config set project 你的專案ID
+gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com
+```
+
+**部署（之後每次更新也是這一行）**：在專案根目錄執行
+
+```bash
+gcloud run deploy bomb-squad --source . --region asia-east1 --allow-unauthenticated --max-instances 1 --min-instances 0 --cpu 1 --memory 512Mi --timeout 3600 --session-affinity --set-env-vars GAME_ALLOWED_ORIGIN=https://帳號.github.io
+```
+
+完成後會印出 `https://bomb-squad-xxxx.asia-east1.run.app`，打開 `/health` 看到 `{"ok":true,...}` 就成功了。接著把 GitHub 的 `GAME_SERVER_URL` 改成這個網址，重新跑一次 Pages 部署。
+
+**參數為什麼這樣設**
+
+| 參數 | 原因 |
+|---|---|
+| `--max-instances 1` | 房間存在記憶體裡，開兩台的話玩家會被分到不同機器、看不到彼此的房間 |
+| `--min-instances 0` | 沒人玩時縮到 0 台不計費；第一個人連線時冷啟動約數秒 |
+| `--timeout 3600` | WebSocket 單次連線最長 60 分鐘，到時會斷線，遊戲會自動重連 |
+| `--session-affinity` | 重連時盡量回到同一台 |
+
+費用：只有在有玩家連線時才計費，免費額度約等於 1 vCPU 每月運轉 50 小時；對外流量從亞洲送出不在免費額度內，但這個遊戲的資料量很小。實際以 Google 的 [Cloud Run 價格](https://cloud.google.com/run/pricing) 為準。
 
 ## 假設與規則細節
 

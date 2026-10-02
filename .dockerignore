@@ -1,0 +1,13 @@
+.git
+.github
+node_modules
+tests
+scripts
+shots
+screenshots
+_to_delete
+*.bat
+*.md
+.env
+.env.*
+render.yaml
