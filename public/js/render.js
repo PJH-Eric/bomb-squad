@@ -330,10 +330,14 @@
 
     drawPlayer(ctx, view, p, now, dt, o) {
       const T = this.T;
+      const mine = o.selfPos && p.slot === o.selfSlot ? o.selfPos : null;
       /* 位置平滑 */
       let st = this.pos.get(p.slot);
       if (!st) { st = { x: p.x, y: p.y }; this.pos.set(p.slot, st); }
-      if (o.mode === 'smooth') {
+      if (mine) {
+        /* 線上的自己：用本機預測的位置，按鍵立刻有反應（伺服器快照只拿來校正） */
+        st.x = mine.x; st.y = mine.y; st.buf = null;
+      } else if (o.mode === 'smooth') {
         /* 線上：固定延遲 0.1 秒、在收到的快照之間內插。不外插（不會穿牆），快照到達時間抖動也被延遲吸收，所以不會忽快忽慢 */
         if (!st.buf) st.buf = [{ t: now, x: p.x, y: p.y }];
         if (st.seq !== this.snapSeq) {
@@ -369,7 +373,7 @@
       } else if (this.deaths.has(p.slot)) this.deaths.delete(p.slot);
 
       const cx = Math.round(st.x * T), cy = Math.round(st.y * T);
-      const facing = FACE[p.dir] || 'down';
+      const facing = FACE[mine ? mine.dir : p.dir] || 'down';
       if (moving) st.ph = (st.ph || 0) + dt * 9; else st.ph = 0;
       const frame = moving ? [1, 0, 2, 0][Math.floor(st.ph) % 4] : 0;
       const spr = this.animalSprite(p.animal, facing, frame);

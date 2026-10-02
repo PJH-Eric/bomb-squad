@@ -10,6 +10,8 @@
   let retry = 0, retryTimer = 0, wantOpen = false;
   /* 每次 open/close 都換一代：舊的喚醒迴圈醒來發現自己過期就收手，不會同時開出兩條連線（同 key 會被伺服器踢成 replaced） */
   let gen = 0;
+  /* 來回延遲（秒）：線上預測自己的位置時用來對齊伺服器快照；每 2 秒量一次，取平滑值 */
+  let rtt = 0, pingTimer = 0;
   let hello = { name: '', animal: 'cat' };
   const handlers = {};
   const statusListeners = [];
@@ -78,6 +80,9 @@
       retry = 0;
       me.send(JSON.stringify({ type: 'hello', key: key(), name: hello.name, animal: hello.animal }));
       setStatus('open');
+      clearInterval(pingTimer);
+      const ping = () => { if (ws === me && me.readyState === 1) me.send(JSON.stringify({ type: 'ping', t: performance.now() })); };
+      ping(); pingTimer = setInterval(ping, 2000);
     };
     ws.onmessage = e => {
       if (ws !== me) return;
@@ -85,11 +90,16 @@
       try { msg = JSON.parse(e.data); } catch (err) { return; }
       if (msg.type === 'welcome' && msg.key) { try { localStorage.setItem(KEY_STORE, msg.key); } catch (err) { /* 忽略 */ } }
       if (msg.type === 'replaced') { wantOpen = false; }
+      if (msg.type === 'pong' && typeof msg.t === 'number') {
+        const r = (performance.now() - msg.t) / 1000;
+        if (r >= 0 && r < 5) rtt = rtt ? rtt * 0.7 + r * 0.3 : r;
+      }
       (handlers[msg.type] || []).forEach(fn => fn(msg));
       (handlers['*'] || []).forEach(fn => fn(msg));
     };
     ws.onclose = () => {
       if (ws !== me) return;
+      clearInterval(pingTimer);
       ws = null;
       if (wantOpen) { setStatus('retrying'); scheduleRetry(); } else setStatus('idle');
     };
@@ -123,6 +133,7 @@
     open, close, send, on, onStatus, key,
     get status() { return status; },
     get connected() { return !!(ws && ws.readyState === 1); },
+    get rtt() { return rtt; },
     setProfile(p) { hello = p; }
   };
 })(typeof self !== 'undefined' ? self : this);
