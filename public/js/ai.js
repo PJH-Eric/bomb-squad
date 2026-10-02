@@ -18,7 +18,7 @@
     toddler: { name: '幼幼班', interval: 0.65, bombProb: 0.3, hunt: 0, chase: 0, chain: false, react: 0.4, itemRange: 3, itemProb: 0.4, wander: 0.55, sloppy: 0.5, curseOk: true },
     easy:    { name: '簡單',   interval: 0.4,  bombProb: 0.55, hunt: 0.2, chase: 3, chain: false, react: 0.8, itemRange: 4, itemProb: 0.6, wander: 0.2, sloppy: 0.15, curseOk: true },
     normal:  { name: '普通',   interval: 0.28, bombProb: 0.75, hunt: 0.4, chase: 5, chain: true, react: 0.92, itemRange: 6, itemProb: 0.85, wander: 0.1, sloppy: 0.06, curseOk: false },
-    hard:    { name: '困難',   interval: 0.12, bombProb: 0.95, hunt: 0.8, chase: 10, chain: true, react: 1, itemRange: 12, itemProb: 1, wander: 0.02, sloppy: 0, curseOk: false, trap: true }
+    hard:    { name: '困難',   interval: 0.07, bombProb: 1, hunt: 1, chase: 14, chain: true, react: 1, itemRange: 16, itemProb: 1, wander: 0, sloppy: 0, curseOk: false, trap: true }
   };
   const FOUR = [[1, 0], [-1, 0], [0, 1], [0, -1]];
   const DIR_OF = { '1,0': 'R', '-1,0': 'L', '0,1': 'D', '0,-1': 'U' };

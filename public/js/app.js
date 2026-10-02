@@ -47,6 +47,9 @@
     if (!fn) throw new Error('沒有這個畫面：' + name);
     const el = fn(params || {});
     if (el) { el.setAttribute('data-screen', name); App.el.appendChild(el); }
+    /* 「← 回遊戲大廳」只在首頁出現，對戰與其他畫面不擋操作 */
+    const lobbyLink = document.getElementById('lobby-home-link');
+    if (lobbyLink) lobbyLink.hidden = name !== 'home';
     root.Sound.music(name === 'game' ? 'battle' : 'menu');
     if (focusIdx >= 0) { const f = focusables()[focusIdx]; if (f) try { f.focus({ preventScroll: true }); } catch (e) { /* 忽略 */ } }
     else if (!(opt && opt.quiet)) { const t = App.el.querySelector('h1,h2'); if (t) { t.setAttribute('tabindex', '-1'); try { t.focus({ preventScroll: true }); } catch (e) { /* 忽略 */ } } }

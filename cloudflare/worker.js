@@ -47,7 +47,7 @@ export default {
     const url = new URL(req.url);
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(env, req, new Headers()) });
     if (url.pathname === '/health') return json(env, req, { ok: true, game: 'bomb-squad', runtime: 'cloudflare', colo: req.cf && req.cf.colo });
-    if (url.pathname === '/api/presence') return json(env, req, await lobby(env).stats());
+    if (url.pathname === '/api/presence') return json(env, req, Object.assign({ gameId: 'bomb-squad' }, await lobby(env).stats(), { updatedAt: new Date().toISOString() }));
     if (url.pathname === '/ws') {
       if ((req.headers.get('Upgrade') || '').toLowerCase() !== 'websocket') return new Response('expected websocket', { status: 426 });
       if (!originOk(env, req.headers.get('Origin'))) return new Response('forbidden', { status: 403 });
@@ -82,7 +82,7 @@ export class GameHub extends DurableObject {
       this.hub.tick();
       const t = Date.now();
       for (const c of this.conns) if (t - c.lastSeen > (c.key ? IDLE_MS : HELLO_MS)) this.drop(c, 1001, 'idle');
-      if (!this.conns.size && !this.hub.stats().rooms) { clearInterval(this.timer); this.timer = 0; }
+      if (!this.conns.size && !this.hub.roomCount()) { clearInterval(this.timer); this.timer = 0; }
     }, 16);
   }
 

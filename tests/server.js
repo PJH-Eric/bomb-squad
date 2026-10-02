@@ -66,6 +66,10 @@ function rawGet(port, p) {
   ok(/ 403 /.test(await rawGet(port, '/../server.js')), '../ 跳出 public 回 403');
   ok(/ 403 /.test(await rawGet(port, '/../public-x/a.txt')), '名稱以 public 開頭的旁邊資料夾也回 403');
 
+  const pres = await (await fetch('http://127.0.0.1:' + port + '/api/presence')).json();
+  ok(pres.gameId === 'bomb-squad' && ['online', 'players', 'spectators', 'lobby', 'rooms'].every(k => Number.isInteger(pres[k]) && pres[k] >= 0) && !isNaN(Date.parse(pres.updatedAt)),
+    '/api/presence 符合遊戲大廳的統一格式');
+
   console.log('\nWebSocket');
   const big = await connect(port);
   big.json({ type: 'hello', key: 'big-frame-01', name: 'A' }); await wait(100);
@@ -114,6 +118,12 @@ function rawGet(port, p) {
   h.handle('guest-key-1', { type: 'input', dir: 'L', dir2: 'U' });
   h.disconnect('guest-key-1');
   ok(g && g.inputs[slot].dir === null && g.inputs[slot].dir2 === null, '斷線後放開方向鍵，角色不會自己一直走');
+  h.connect('lobby-key-01', { name: '丙' });
+  h.connect('spec-key-001', { name: '丁' });
+  h.handle('spec-key-001', { type: 'join', room: room.id, as: 'spectator' });
+  const st = h.stats();
+  ok(st.online === 3 && st.players === 1 && st.spectators === 1 && st.lobby === 1 && st.rooms === 1,
+    '在線人數分類正確（斷線的不算、玩家／觀戰／大廳分開）：' + JSON.stringify(st));
 
   server.close();
   console.log(fails ? '\n' + fails + ' 項失敗' : '\n全部通過');
