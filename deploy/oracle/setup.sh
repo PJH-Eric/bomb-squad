@@ -78,14 +78,21 @@ systemctl enable bomb-squad
 systemctl restart bomb-squad
 
 echo "== 4/5 設定 HTTPS（Caddy）"
-cat > /etc/caddy/Caddyfile <<EOF
+# 網站設定放 /etc/caddy/sites/bomb-squad.caddy，主 Caddyfile 只 import：同一台 VM 上的其他網站不會被覆蓋
+mkdir -p /etc/caddy/sites
+if ! grep -qxF 'import /etc/caddy/sites/*.caddy' /etc/caddy/Caddyfile 2>/dev/null; then
+  [ -s /etc/caddy/Caddyfile ] && cp /etc/caddy/Caddyfile "/etc/caddy/Caddyfile.bak.$(date +%Y%m%d%H%M%S)"
+  echo 'import /etc/caddy/sites/*.caddy' > /etc/caddy/Caddyfile
+fi
+cat > /etc/caddy/sites/bomb-squad.caddy <<EOF
 $DOMAIN {
   encode gzip
   reverse_proxy 127.0.0.1:$PORT
 }
 EOF
+caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null
 systemctl enable caddy
-systemctl restart caddy
+systemctl reload caddy 2>/dev/null || systemctl restart caddy
 
 echo "== 5/5 打開防火牆 80／443"
 for p in 80 443; do
