@@ -55,12 +55,14 @@ function createServer(opt) {
   const server = http.createServer((req, res) => {
     let urlPath;
     try { urlPath = decodeURIComponent((req.url || '/').split('?')[0]); } catch (e) { res.writeHead(400); res.end(); return; }
+    /* %00 會讓 fs.readFile 同步丟例外，整個伺服器跟著掛掉 */
+    if (urlPath.indexOf('\0') >= 0) { res.writeHead(400); res.end(); return; }
     if (req.method === 'OPTIONS') { cors(req, res); res.writeHead(204); res.end(); return; }
     if (urlPath === '/health') { json(req, res, 200, { ok: true, game: 'bomb-squad', uptime: Math.round(process.uptime()) }); return; }
     if (urlPath === '/api/presence') { json(req, res, 200, hub.stats()); return; }
     if (urlPath === '/') urlPath = '/index.html';
     const file = path.normalize(path.join(ROOT, urlPath));
-    if (file.indexOf(ROOT) !== 0) { res.writeHead(403); res.end('forbidden'); return; }
+    if (file !== ROOT && file.indexOf(ROOT + path.sep) !== 0) { res.writeHead(403); res.end('forbidden'); return; }
     fs.readFile(file, (e, buf) => {
       if (e) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('找不到頁面'); return; }
       res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-store' });
@@ -80,11 +82,12 @@ function createServer(opt) {
         try { msg = JSON.parse(text); } catch (e) { return; }
         if (!msg || typeof msg.type !== 'string') return;
         if (!key) {
-          if (msg.type !== 'hello' || typeof msg.key !== 'string' || msg.key.length < 8 || msg.key.length > 64) return;
-          key = msg.key.replace(/[^\w-]/g, '').slice(0, 64);
+          /* 先驗格式再收：清掉怪字元後變空字串的 key 會讓這條連線永遠收不到回應、也不會被清掉 */
+          if (msg.type !== 'hello' || typeof msg.key !== 'string' || !/^[\w-]{8,64}$/.test(msg.key)) return;
+          key = msg.key;
           clearTimeout(helloTimer);
           const old = sockets.get(key);
-          if (old && old !== socket) { old.sendJSON({ type: 'replaced' }); old.alive = false; try { old.raw.end(); } catch (e) { /* 已斷 */ } }
+          if (old && old !== socket) { old.sendJSON({ type: 'replaced' }); old.alive = false; try { old.raw.end(); } catch (e) { /* 已斷 */ } setTimeout(() => old.raw.destroy(), 2000).unref(); }
           sockets.set(key, socket);
           hub.connect(key, msg);
           return;

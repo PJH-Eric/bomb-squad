@@ -23,6 +23,7 @@ Windows 可雙擊 `start-game.bat`。同一個 Wi-Fi 的平板／手機開終端
 npm test                # 規則、AI、房間、真實 WebSocket 端對端
 node tests/verify.js    # 規則核心＋AI 完整對局＋AI 難度階梯
 node tests/rooms.js     # 房間生命週期（假時鐘）
+node tests/server.js    # 伺服器防呆：靜態檔路徑、WebSocket 封包上限、斷線放開按鍵
 node scripts/online-check.js
 ```
 

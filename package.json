@@ -7,7 +7,7 @@
   "engines": { "node": ">=22" },
   "scripts": {
     "start": "node server.js",
-    "test": "node tests/verify.js && node tests/rooms.js && node scripts/online-check.js",
+    "test": "node tests/verify.js && node tests/rooms.js && node tests/server.js && node scripts/online-check.js",
     "verify": "node tests/verify.js",
     "inject": "node scripts/inject-server-url.js"
   },
