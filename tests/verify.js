@@ -239,8 +239,9 @@ test('空投機：每 45 秒飛來一架，掉 1～2 個正向道具，直到遊
   const off = mk(2, { items: false }); arena(off); off.phase = 'play'; off.countdown = 0;
   for (let i = 0; i < 60 * 60; i++) { R.step(off, {}, R.DT); off.players.forEach(p => { p.alive = true; p.invuln = 99; }); }
   assert(!off.plane && off.itemsOn.length === 0, '道具關閉時不空投');
-  const snapOn = (() => { const t = mk(2, { items: true }); arena(t); t.phase = 'play'; t.countdown = 0; t.time = 44.99; t.airAt = 45; for (let i = 0; i < 30; i++) R.step(t, {}, R.DT); const v = R.viewFromStart(R.startInfo(t)); R.applySnapshot(v, R.snapshot(t, false)); return v.plane; })();
-  assert(snapOn && typeof snapOn.x === 'number', '快照要帶飛機位置');
+  const snapOn = (() => { const t = mk(2, { items: true }); arena(t); t.phase = 'play'; t.countdown = 0; t.time = 44.99; t.airAt = 45; for (let i = 0; i < 30; i++) R.step(t, {}, R.DT); const v = R.viewFromStart(R.startInfo(t)); R.applySnapshot(v, R.snapshot(t, false)); return { got: v.plane, real: t.plane }; })();
+  assert(snapOn.got && snapOn.real, '快照要帶飛機位置');
+  assert(Math.abs(snapOn.got.x - snapOn.real.x) < 0.02 && snapOn.got.row === snapOn.real.row && snapOn.got.dir === snapOn.real.dir, '線上還原的飛機位置要跟伺服器一致：' + JSON.stringify(snapOn));
 });
 
 test('護盾擋一次爆炸，之後有短暫無敵', () => {

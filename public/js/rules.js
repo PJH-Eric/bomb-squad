@@ -674,7 +674,7 @@
     }));
     v.flames = snap.f.map(a => ({ cx: a[0], cy: a[1], t: a[2] / 100 }));
     v.itemsOn = snap.i.map(a => ({ id: a[0], cx: a[1], cy: a[2], type: ITEM_TYPES[a[3]] }));
-    v.plane = snap.pl ? { x: snap.pl[0], row: snap.pl[1], dir: snap.pl[2] } : null;
+    v.plane = snap.pl ? { x: snap.pl[0] / 100, row: snap.pl[1], dir: snap.pl[2] } : null;
     v.events = snap.e || [];
     return v;
   }
