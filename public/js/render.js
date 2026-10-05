@@ -40,7 +40,7 @@
       if (T !== this.T || dpr !== this.dpr || this.canvas.width !== w * T) {
         this.T = T; this.dpr = dpr;
         this.canvas.width = w * T; this.canvas.height = h * T;
-        this.tiles = null; this.statics = null; this.vig = null; this.preT = 0; this.sprites.clear(); this.itemImgs.clear(); this.bombImg = null; this.loading.clear();
+        this.tiles = null; this.statics = null; this.vig = null; this.preT = 0; this.gen = (this.gen || 0) + 1; this.sprites.clear(); this.itemImgs.clear(); this.bombImg = null; this.loading.clear();
       }
       const cssW = w * T / dpr, cssH = h * T / dpr;
       this.canvas.style.width = cssW + 'px'; this.canvas.style.height = cssH + 'px';
@@ -58,7 +58,9 @@
       if (this.sprites.has(key)) return this.sprites.get(key);
       if (this.loading.has(key)) return null;
       this.loading.add(key);
+      const gen = this.gen;
       Art.svgImage(svg, img => {
+        if (gen !== this.gen) return;   /* 格子大小已經變了：舊尺寸的圖丟掉，不然人物會一直卡在舊大小 */
         const c = document.createElement('canvas'); c.width = c.height = size;
         c.getContext('2d').drawImage(img, 0, 0, size, size);
         this.sprites.set(key, c); this.loading.delete(key); this.dirty = true;
