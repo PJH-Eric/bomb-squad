@@ -224,10 +224,10 @@ test('空投機：每 45 秒飛來一架，掉 1～2 個正向道具，直到遊
   const s = mk(2, { items: true }); arena(s);
   put(s.players[0], 1, 1); put(s.players[1], 13, 11);
   s.phase = 'play'; s.countdown = 0;
-  let planes = 0, drops = [], flying = false;
+  let planes = 0, drops = [], flying = false, row = -1;
   for (let i = 0; i < 60 * 100; i++) {
     R.step(s, {}, R.DT);
-    for (const e of s.events) { if (e.t === 'plane') planes++; if (e.t === 'airdrop') drops.push(e); }
+    for (const e of s.events) { if (e.t === 'plane') { planes++; row = e.row; } if (e.t === 'airdrop') { drops.push(e); assert.strictEqual(e.y, row, '道具要掉在飛機飛過的那一列'); } }
     if (s.plane) flying = true;
     if (planes === 0 && s.time < 44.5) assert(!s.plane, '45 秒前不該有飛機');
     s.players.forEach(p => { p.alive = true; p.invuln = 99; });

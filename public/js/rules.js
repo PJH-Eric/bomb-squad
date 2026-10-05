@@ -341,18 +341,23 @@
   function airFreeCell(s, x, y) {
     return inside(s, x, y) && s.grid[cellIdx(s, x, y)] === 0 && !bombAt(s, x, y) && !itemAt(s, x, y) && !flameAt(s, x, y);
   }
-  /** 空投機起飛：沿隨機一列橫越地圖，經過目標欄位時投下 1～2 個道具 */
+  /** 空投機起飛：沿隨機一列橫越地圖，道具就投在飛過的那一列（1～2 個） */
   function launchPlane(s) {
     const dir = rand(s) < 0.5 ? 1 : -1;
-    const row = 1 + Math.floor(rand(s) * (s.h - 2));
-    const n = rand(s) < 0.5 ? 1 : 2;
+    /* 只挑還有空位的列，空投才一定掉得下來 */
+    const rows = [];
+    for (let y = 1; y < s.h - 1; y++) {
+      const free = [];
+      for (let x = 1; x < s.w - 1; x++) if (airFreeCell(s, x, y)) free.push(x);
+      if (free.length) rows.push({ y, free });
+    }
+    if (!rows.length) return;
+    const pick = rows[Math.floor(rand(s) * rows.length)], row = pick.y;
+    const n = Math.min(pick.free.length, rand(s) < 0.5 ? 1 : 2);
     const drops = [];
     for (let k = 0; k < n; k++) {
-      for (let tries = 0; tries < 40; tries++) {
-        const x = 1 + Math.floor(rand(s) * (s.w - 2)), y = 1 + Math.floor(rand(s) * (s.h - 2));
-        if (!airFreeCell(s, x, y) || drops.some(d => d.cx === x && d.cy === y)) continue;
-        drops.push({ cx: x, cy: y, type: pickAirItem(s) }); break;
-      }
+      const x = pick.free.splice(Math.floor(rand(s) * pick.free.length), 1)[0];
+      drops.push({ cx: x, cy: row, type: pickAirItem(s) });
     }
     drops.sort((a, b) => dir * (a.cx - b.cx));
     s.plane = { x: dir > 0 ? -2 : s.w + 2, row, dir, drops };
