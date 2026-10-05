@@ -15,6 +15,8 @@
   const DT = 1 / 60;
   const DIRS = { U: [0, -1], D: [0, 1], L: [-1, 0], R: [1, 0] };
   const FUSE = 3;              /* 炸彈引爆秒數 */
+  const AIR_EVERY = 45;        /* 每隔幾秒飛來一架空投機 */
+  const PLANE_SPEED = 5;       /* 空投機飛行速度（格／秒） */
   const FLAME_COOL_T = 0.3;    /* 磚塊格的無殺傷火花停留秒數 */
   const FLAME_T = 0.5;         /* 火焰停留秒數 */
   const HIT_INSET = 0.1;       /* 火焰判定：人物中心要深入格子才算被炸（離格線 0.1 內算擦邊，安全） */
@@ -159,14 +161,16 @@
     let layout = opts.layout;
     if (!layout || layout === 'random') layout = themeId === FAB_THEME ? 'fab' : RANDOM_LAYOUTS[Math.floor(pick() * RANDOM_LAYOUTS.length)];
     const grid = generateMap(seed, w, h, layout, opts.density);
-    const spawns = spawnPoints(w, h);
+    /* 每局隨機分配出生點：只在「已清出安全區」的點之間洗牌，所以每個位置一樣公平；同一個 seed 洗出來一樣（連線雙方一致） */
+    const spawns = spawnPoints(w, h).slice(0, w <= 15 ? 4 : 8);
+    { const sr = mulberry32((seed ^ 0x51ed270b) >>> 0); for (let i = spawns.length - 1; i > 0; i--) { const j = Math.floor(sr() * (i + 1)); const t = spawns[i]; spawns[i] = spawns[j]; spawns[j] = t; } }
     const state = {
       seed, rng: (seed ^ 0xa5a5a5a5) | 0, w, h, grid, layout, themeId,
       phase: 'countdown', countdown: opts.countdown == null ? COUNTDOWN : opts.countdown,
       time: 0, timeLimit: opts.timeLimit == null ? 180 : opts.timeLimit,
       items: opts.items !== false, curses: opts.curses !== false,
       players: [], bombs: [], flames: [], itemsOn: [], events: [],
-      nextId: 1, gridVer: 1, result: null, endHold: 0
+      nextId: 1, gridVer: 1, result: null, endHold: 0, airAt: AIR_EVERY, plane: null
     };
     opts.players.forEach((p, i) => {
       const [sx, sy] = spawns[i % spawns.length];
@@ -324,6 +328,50 @@
     let r = rand(s) * total;
     for (const k of pool) { r -= DROP_WEIGHTS[k]; if (r < 0) return k; }
     return pool[0];
+  }
+
+  /** 空投：從正向道具裡依權重抽一種（不受掉寶率影響，空投一定有東西） */
+  function pickAirItem(s) {
+    const pool = Object.keys(DROP_WEIGHTS).filter(k => POSITIVE.indexOf(k) >= 0);
+    let total = 0; for (const k of pool) total += DROP_WEIGHTS[k];
+    let r = rand(s) * total;
+    for (const k of pool) { r -= DROP_WEIGHTS[k]; if (r < 0) return k; }
+    return pool[0];
+  }
+  function airFreeCell(s, x, y) {
+    return inside(s, x, y) && s.grid[cellIdx(s, x, y)] === 0 && !bombAt(s, x, y) && !itemAt(s, x, y) && !flameAt(s, x, y);
+  }
+  /** 空投機起飛：沿隨機一列橫越地圖，經過目標欄位時投下 1～2 個道具 */
+  function launchPlane(s) {
+    const dir = rand(s) < 0.5 ? 1 : -1;
+    const row = 1 + Math.floor(rand(s) * (s.h - 2));
+    const n = rand(s) < 0.5 ? 1 : 2;
+    const drops = [];
+    for (let k = 0; k < n; k++) {
+      for (let tries = 0; tries < 40; tries++) {
+        const x = 1 + Math.floor(rand(s) * (s.w - 2)), y = 1 + Math.floor(rand(s) * (s.h - 2));
+        if (!airFreeCell(s, x, y) || drops.some(d => d.cx === x && d.cy === y)) continue;
+        drops.push({ cx: x, cy: y, type: pickAirItem(s) }); break;
+      }
+    }
+    drops.sort((a, b) => dir * (a.cx - b.cx));
+    s.plane = { x: dir > 0 ? -2 : s.w + 2, row, dir, drops };
+    s.events.push({ t: 'plane', row, dir });
+  }
+  function stepPlane(s, dt) {
+    if (s.phase !== 'play') return;
+    if (!s.plane && s.items && s.time >= s.airAt) { s.airAt += AIR_EVERY; launchPlane(s); }
+    const pl = s.plane;
+    if (!pl) return;
+    pl.x += pl.dir * PLANE_SPEED * dt;
+    while (pl.drops.length && (pl.dir > 0 ? pl.x >= pl.drops[0].cx + 0.5 : pl.x <= pl.drops[0].cx + 0.5)) {
+      const d = pl.drops.shift();
+      if (airFreeCell(s, d.cx, d.cy)) {
+        s.itemsOn.push({ id: s.nextId++, cx: d.cx, cy: d.cy, type: d.type, fresh: true });
+        s.events.push({ t: 'airdrop', x: d.cx, y: d.cy, type: d.type });
+      }
+    }
+    if (pl.dir > 0 ? pl.x > s.w + 2 : pl.x < -2) s.plane = null;
   }
 
   function explodeAll(s) {
@@ -528,6 +576,7 @@
     for (const f of s.flames) f.t -= dt;
     s.flames = s.flames.filter(f => f.t > 0);
     for (const it of s.itemsOn) it.fresh = false;
+    stepPlane(s, dt);
     if (s.phase !== 'over') {
       for (const p of s.players) {
         if (!p.alive) continue;
@@ -538,6 +587,7 @@
       }
     }
 
+    if (s.phase === 'over') s.plane = null;
     if (s.phase === 'play') {
       const alive = alivePlayers(s);
       if (s.players.length >= 2 && alive.length <= 1) finish(s, 'last');
@@ -567,6 +617,7 @@
       b: s.bombs.map(b => [b.id, b.cx, b.cy, r2(b.t), b.owner, b.sl ? b.sl.dx : 0, b.sl ? b.sl.dy : 0, b.sl ? r2(b.sl.prog) : 0, b.range]),
       f: s.flames.map(f => [f.cx, f.cy, r2(f.t)]),
       i: s.itemsOn.map(i => [i.id, i.cx, i.cy, TYPE_CODE[i.type]]),
+      pl: s.plane ? [r2(s.plane.x), s.plane.row, s.plane.dir] : 0,
       e: s.events.slice(),
       r: s.result
     };
@@ -595,7 +646,7 @@
         idx: i, x: 0, y: 0, dir: 'D', moving: false, alive: true, shield: false, left: false,
         fire: START.fire, maxBombs: START.bomb, speedLvl: 0, kick: false, curse: null, invuln: 0, kills: 0, bombsOut: 0
       }, p)),
-      bombs: [], flames: [], itemsOn: [], events: []
+      bombs: [], flames: [], itemsOn: [], events: [], plane: null
     };
   }
 
@@ -618,12 +669,13 @@
     }));
     v.flames = snap.f.map(a => ({ cx: a[0], cy: a[1], t: a[2] / 100 }));
     v.itemsOn = snap.i.map(a => ({ id: a[0], cx: a[1], cy: a[2], type: ITEM_TYPES[a[3]] }));
+    v.plane = snap.pl ? { x: snap.pl[0], row: snap.pl[1], dir: snap.pl[2] } : null;
     v.events = snap.e || [];
     return v;
   }
 
   root.Rules = {
-    DT, DIRS, FUSE, FLAME_T, HALF, HIT_INSET, START, MAX, SPEED, CURSE_T, COUNTDOWN, SLIDE_SPEED,
+    DT, DIRS, FUSE, AIR_EVERY, PLANE_SPEED, FLAME_T, HALF, HIT_INSET, START, MAX, SPEED, CURSE_T, COUNTDOWN, SLIDE_SPEED,
     ITEM_TYPES, POSITIVE, CURSES, LAYOUTS, RANDOM_LAYOUTS, FAB_THEME, LAYOUT_NAMES, THEME_COUNT, SHAPES, SLOT_COLORS, DROP_WEIGHTS,
     mulberry32, rand, sizeFor, spawnPoints, generateMap, connected, createGame, step,
     blast, bombAt, itemAt, flameAt, cellOf, cellIdx, inside, speedOf, rangeOf, maxBombsOf,

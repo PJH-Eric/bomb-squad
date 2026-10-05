@@ -77,10 +77,11 @@
       if (this.preT === this.T) return;
       this.preT = this.T;
       for (const p of view.players) for (const f of ['down', 'up', 'left']) for (const fr of [0, 1, 2]) this.animalSprite(p.animal, f, fr);
-      this.bombSprite();
+      this.bombSprite(); this.planeSprite();
       for (const t of R.ITEM_TYPES) this.itemSprite(t);
     }
     itemSprite(type) { return this.loadSprite('item|' + type, Art.itemSVG(type), Math.round(this.T * 0.82)); }
+    planeSprite() { return this.loadSprite('plane', Art.planeSVG(), Math.round(this.T * 2.1)); }
     bombSprite() { return this.loadSprite('bomb', Art.bombSVG(), Math.round(this.T * 0.96)); }
 
     ensureStatic(view) {
@@ -155,6 +156,7 @@
       const calm = opts && opts.reduceMotion;
       for (const e of events) {
         if (e.t === 'boom') { if (!calm) this.shake = Math.max(this.shake, 0.18); this.burst(e.x + 0.5, e.y + 0.5, '#ffb12e', calm ? 3 : 10, 'dot'); }
+        else if (e.t === 'airdrop') { this.burst(e.x + 0.5, e.y + 0.5, '#ffe9a0', calm ? 4 : 12, 'star'); this.burst(e.x + 0.5, e.y + 0.5, '#ffffff', calm ? 2 : 6, 'dot'); }
         else if (e.t === 'item') this.burst(e.x + 0.5, e.y + 0.5, '#fff3a0', calm ? 3 : 9, 'star');
         else if (e.t === 'die') this.burst(e.x, e.y, '#fff3a0', calm ? 4 : 14, 'star');
         else if (e.t === 'place') this.burst(e.x + 0.5, e.y + 0.8, '#ffffff66', 4, 'dot');
@@ -274,6 +276,7 @@
       }
 
       /* 玩家（由上到下排序，下面的蓋住上面的） */
+      this._arrow = null;
       const list = view.players.slice().sort((a, b) => (a.ry != null ? a.ry : a.y) - (b.ry != null ? b.ry : b.y));
       for (const p of list) this.drawPlayer(ctx, view, p, now, dt, o);
 
@@ -302,6 +305,35 @@
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.lineWidth = T * 0.28; ctx.strokeStyle = '#5a2d8c'; ctx.lineJoin = 'round'; ctx.strokeText(String(n), 0, 0);
         ctx.fillStyle = '#fff6b0'; ctx.fillText(String(n), 0, 0);
+        ctx.restore();
+      }
+      /* 空投機：飛過整張地圖（地面有影子），機身在最上層 */
+      if (view.plane && view.phase === 'play') {
+        const pi = this.planeSprite();
+        if (pi) {
+          const target = view.plane.x;
+          if (!this.pl || this.pl.dir !== view.plane.dir || Math.abs(this.pl.x - target) > 2.5) this.pl = { x: target, dir: view.plane.dir };
+          this.pl.x += (target + view.plane.dir * R.PLANE_SPEED * 0.04 - this.pl.x) * Math.min(1, dt * 12);
+          const px = this.pl.x * T, py = (view.plane.row + 0.5) * T, sw = pi.width, sh = pi.height;
+          ctx.save();
+          ctx.translate(px, py);
+          if (view.plane.dir < 0) ctx.scale(-1, 1);
+          ctx.globalAlpha = 0.22; ctx.fillStyle = '#000';
+          ctx.drawImage(pi, -sw / 2 + T * 0.35, -sh / 2 + T * 0.55, sw * 0.9, sh * 0.9);
+          ctx.globalAlpha = 1;
+          const bob = o.reduceMotion ? 0 : Math.sin(now * 9) * T * 0.03;
+          ctx.drawImage(pi, -sw / 2, -sh / 2 + bob);
+          ctx.restore();
+        }
+      } else this.pl = null;
+      if (this._arrow && view.phase === 'countdown') {
+        const { ax, tip, aw, ah, sh } = this._arrow;
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(ax, tip); ctx.lineTo(ax + aw / 2, tip - ah); ctx.lineTo(ax + aw * 0.2, tip - ah); ctx.lineTo(ax + aw * 0.2, tip - ah - sh);
+        ctx.lineTo(ax - aw * 0.2, tip - ah - sh); ctx.lineTo(ax - aw * 0.2, tip - ah); ctx.lineTo(ax - aw / 2, tip - ah); ctx.closePath();
+        ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(3, T * 0.09); ctx.strokeStyle = '#17122b'; ctx.stroke();
+        ctx.fillStyle = '#ffe03d'; ctx.fill();
         ctx.restore();
       }
       if (view.phase === 'play' && view.time < 0.9) {
@@ -414,8 +446,14 @@
         ctx.strokeStyle = 'rgba(150,90,220,0.7)'; ctx.lineWidth = Math.max(2, T * 0.05); ctx.setLineDash([T * 0.1, T * 0.1]);
         ctx.beginPath(); ctx.arc(cx, cy, T * 0.46, now * 2, now * 2 + 5.2); ctx.stroke(); ctx.setLineDash([]);
       }
-      /* 暱稱 */
-      if (o.names !== false) {
+      /* 倒數期間：在自己頭上標一個往下的箭頭（出生點每局隨機，開局先認出自己） */
+      if (view.phase === 'countdown' && o.selfSlot != null && p.slot === o.selfSlot && p.alive) {
+        const bob = o.reduceMotion ? 0 : Math.abs(Math.sin(now * 6)) * T * 0.1;
+        const ax = cx, tip = cy - T * 0.58 - bob, aw = T * 0.6, ah = T * 0.5, sh = T * 0.26;
+        this._arrow = { ax, tip, aw, ah, sh };
+      }
+      /* 暱稱（倒數時自己頭上改放箭頭，避免上排出生點被畫面邊緣切掉） */
+      if (o.names !== false && !(view.phase === 'countdown' && o.selfSlot != null && p.slot === o.selfSlot)) {
         const label = p.kind === 'ai' && p.level && root.AI ? p.name + '·' + root.AI.LEVELS[p.level].name : p.name;
         const fs = Math.max(10, Math.round(T * 0.26));
         ctx.font = '800 ' + fs + 'px "Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif';

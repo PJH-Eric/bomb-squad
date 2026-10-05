@@ -374,6 +374,8 @@
           case 'place': S.sfx('place'); break;
           case 'boom': S.sfx('boom'); break;
           case 'brk': S.sfx('brk'); break;
+          case 'plane': S.sfx('plane'); break;
+          case 'airdrop': S.sfx('airdrop'); break;
           case 'item':
             if (e.slot === this.slot) { S.sfx(e.type.indexOf('c_') === 0 ? 'curse' : 'item'); if (e.type.indexOf('c_') === 0) this.vibrate(80); }
             break;

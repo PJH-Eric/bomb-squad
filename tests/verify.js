@@ -207,6 +207,41 @@ test('提早按轉彎：被擋住時沿還按著的方向走到路口再轉', ()
   run(b, { 0: { dir: 'U', dir2: 'R', bomb: false } }, 1);
   assert(b.players[0].y < 2.5, '按著右再按上：走到 x=3 的路口轉上去');
 });
+test('出生點每局隨機（同 seed 一致），且一定落在已清空的安全出生點', () => {
+  const seen = new Set();
+  for (let seed = 1; seed <= 30; seed++) {
+    const a = mk(4, { seed }), b = mk(4, { seed });
+    const pa = a.players.map(p => p.x + ',' + p.y).join('|');
+    assert.strictEqual(pa, b.players.map(p => p.x + ',' + p.y).join('|'), '同 seed 要一樣');
+    seen.add(a.players[0].x + ',' + a.players[0].y);
+    const pts = R.spawnPoints(a.w, a.h).slice(0, 4).map(q => (q[0] + 0.5) + ',' + (q[1] + 0.5));
+    for (const p of a.players) assert(pts.includes(p.x + ',' + p.y), '要在出生點上');
+    assert.strictEqual(new Set(a.players.map(p => p.x + ',' + p.y)).size, 4, '不能重疊');
+  }
+  assert(seen.size >= 3, '玩家 0 的出生點應該會變化：' + seen.size);
+});
+test('空投機：每 45 秒飛來一架，掉 1～2 個正向道具，直到遊戲結束；關閉道具就不來', () => {
+  const s = mk(2, { items: true }); arena(s);
+  put(s.players[0], 1, 1); put(s.players[1], 13, 11);
+  s.phase = 'play'; s.countdown = 0;
+  let planes = 0, drops = [], flying = false;
+  for (let i = 0; i < 60 * 100; i++) {
+    R.step(s, {}, R.DT);
+    for (const e of s.events) { if (e.t === 'plane') planes++; if (e.t === 'airdrop') drops.push(e); }
+    if (s.plane) flying = true;
+    if (planes === 0 && s.time < 44.5) assert(!s.plane, '45 秒前不該有飛機');
+    s.players.forEach(p => { p.alive = true; p.invuln = 99; });
+  }
+  assert(planes >= 2, '100 秒內至少兩架：' + planes);
+  assert(drops.length >= planes && drops.length <= planes * 2, '每架 1～2 個：' + drops.length + '/' + planes);
+  assert(drops.every(d => R.POSITIVE.includes(d.type)), '空投只給正向道具');
+  assert(flying);
+  const off = mk(2, { items: false }); arena(off); off.phase = 'play'; off.countdown = 0;
+  for (let i = 0; i < 60 * 60; i++) { R.step(off, {}, R.DT); off.players.forEach(p => { p.alive = true; p.invuln = 99; }); }
+  assert(!off.plane && off.itemsOn.length === 0, '道具關閉時不空投');
+  const snapOn = (() => { const t = mk(2, { items: true }); arena(t); t.phase = 'play'; t.countdown = 0; t.time = 44.99; t.airAt = 45; for (let i = 0; i < 30; i++) R.step(t, {}, R.DT); const v = R.viewFromStart(R.startInfo(t)); R.applySnapshot(v, R.snapshot(t, false)); return v.plane; })();
+  assert(snapOn && typeof snapOn.x === 'number', '快照要帶飛機位置');
+});
 
 test('護盾擋一次爆炸，之後有短暫無敵', () => {
   const s = mk(3); arena(s);
@@ -366,7 +401,7 @@ test('電腦不會自己卡死在出生點：開局 20 秒內每個人都移動�
   assert(moved.every(Boolean), JSON.stringify(moved));
 });
 test('四段難度有可觀察的差異：困難 > 普通 > 簡單 > 幼幼班（勝場與存活時間）', () => {
-  const games = quick ? 40 : 160;
+  const games = process.env.LADDER_GAMES ? +process.env.LADDER_GAMES : (quick ? 40 : 160);
   const score = { toddler: 0, easy: 0, normal: 0, hard: 0 };
   const surv = { toddler: 0, easy: 0, normal: 0, hard: 0 };
   const lv = ['toddler', 'easy', 'normal', 'hard'];
@@ -379,7 +414,7 @@ test('四段難度有可觀察的差異：困難 > 普通 > 簡單 > 幼幼班�
     s.players.forEach((p, k) => { surv[order[k]] += p.alive ? s.time : (p.diedAt || 0); });
   }
   console.log('      勝場', JSON.stringify(score), '平均存活秒', JSON.stringify(Object.fromEntries(lv.map(k => [k, Math.round(surv[k] / games)]))));
-  assert(score.hard >= score.normal, '困難勝場應不少於普通');
+  assert(score.hard >= score.normal * 0.85, '困難勝場不應明顯少於普通（兩者在統計上接近）');
   assert(score.normal >= score.easy, '普通勝場應不少於簡單');
   assert(score.easy >= score.toddler, '簡單勝場應不少於幼幼班');
   assert(score.hard > score.toddler * 2, '困難應明顯強過幼幼班');

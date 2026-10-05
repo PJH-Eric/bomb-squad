@@ -204,6 +204,24 @@
       ring + itemGlyph(type) + '</svg>';
   }
 
+  /** 空投機：卡通小飛機（由上往下看，機頭朝右），尾翼一抹品牌綠 */
+  function planeSVG() {
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80">' +
+      '<path d="M44 40 L22 8 L36 8 L66 38Z" fill="#e9eef7" stroke="#1d2b5c" stroke-width="3" stroke-linejoin="round"/>' +
+      '<path d="M44 40 L22 72 L36 72 L66 42Z" fill="#e9eef7" stroke="#1d2b5c" stroke-width="3" stroke-linejoin="round"/>' +
+      '<path d="M10 40 L4 22 L16 26 L28 36Z" fill="#17a35a" stroke="#1d2b5c" stroke-width="3" stroke-linejoin="round"/>' +
+      '<path d="M10 40 L4 58 L16 54 L28 44Z" fill="#17a35a" stroke="#1d2b5c" stroke-width="3" stroke-linejoin="round"/>' +
+      '<path d="M6 40 Q6 30 24 29 L86 29 Q112 32 114 40 Q112 48 86 51 L24 51 Q6 50 6 40Z" fill="#ffffff" stroke="#1d2b5c" stroke-width="3.5" stroke-linejoin="round"/>' +
+      '<path d="M8 40 Q8 34 20 33 L86 33 Q108 35 111 40 Q108 45 86 47 L20 47 Q8 46 8 40Z" fill="#f6f8fd"/>' +
+      '<rect x="40" y="35" width="20" height="10" rx="3" fill="#ef6a47" opacity="0.9"/>' +
+      '<path d="M82 33 Q98 33 104 40 Q98 47 82 47Z" fill="#7fd6ff" stroke="#1d2b5c" stroke-width="2.5" stroke-linejoin="round"/>' +
+      '<path d="M86 36 Q94 36 98 39" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/>' +
+      '<circle cx="114" cy="40" r="4" fill="#ffd84d" stroke="#1d2b5c" stroke-width="2"/>' +
+      '<rect x="62" y="10" width="4" height="9" rx="2" fill="#ffd84d" stroke="#1d2b5c" stroke-width="1.5"/>' +
+      '<rect x="62" y="61" width="4" height="9" rx="2" fill="#ffd84d" stroke="#1d2b5c" stroke-width="1.5"/>' +
+      '</svg>';
+  }
+
   function bombSVG() {
     return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs>' +
       '<radialGradient id="bb" cx="0.35" cy="0.3" r="0.8"><stop offset="0" stop-color="#6b6390"/><stop offset="0.45" stop-color="#2f2a4d"/><stop offset="1" stop-color="#15122a"/></radialGradient></defs>' +
@@ -527,6 +545,6 @@
 
   root.Art = {
     ANIMALS, ANIMAL_IDS, THEMES, ITEM_NAMES, ITEM_DESC,
-    animalSVG, itemSVG, bombSVG, icon, buildTileset, drawFabHard, drawFabFloor, svgImage, svgUrl, rr
+    animalSVG, itemSVG, bombSVG, planeSVG, icon, buildTileset, drawFabHard, drawFabFloor, svgImage, svgUrl, rr
   };
 })(typeof self !== 'undefined' ? self : this);

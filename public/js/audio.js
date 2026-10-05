@@ -62,6 +62,8 @@
     place(t) { tone(560, t, 0.14, 'sine', 0.4, null, 240); noise(t, 0.04, 0.12, 3000, 1500, 'highpass'); },
     boom(t) { noise(t, 0.55, 0.9, 2200, 90, 'lowpass'); tone(110, t, 0.45, 'sine', 0.7, null, 40); },
     brk(t) { noise(t, 0.14, 0.35, 5000, 1200, 'highpass'); },
+    plane(t) { noise(t, 0.9, 0.22, 500, 1400, 'bandpass'); tone(150, t, 0.9, 'sawtooth', 0.12, null, 220); tone(300, t + 0.1, 0.7, 'triangle', 0.08, null, 380); },
+    airdrop(t) { tone(1175, t, 0.12, 'sine', 0.3, null, 880); tone(1568, t + 0.08, 0.2, 'triangle', 0.3); },
     item(t) { [660, 880, 1320].forEach((f, i) => tone(f, t + i * 0.06, 0.14, 'triangle', 0.34)); },
     curse(t) { tone(330, t, 0.4, 'sawtooth', 0.22, null, 110); tone(250, t + 0.05, 0.4, 'square', 0.12, null, 90); },
     shield(t) { tone(500, t, 0.25, 'sine', 0.35, null, 1300); noise(t, 0.12, 0.2, 4000, 8000, 'highpass'); },

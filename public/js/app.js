@@ -118,7 +118,7 @@
             h('li', null, '剛放下炸彈時可以走開，離開後它就變成障礙物。'),
             h('li', null, '被火焰碰到就出局，自己的炸彈也一樣，小心逃生。')))),
       h('section', { class: 'card' }, h('h3', null, '道具'),
-        h('p', { class: 'muted small', style: { marginBottom: '8px' } }, '炸開軟磚有機會掉出道具；圓形是好道具，帶尖刺的紫色外框是詛咒，會限時捉弄你。出局時，身上一半的強化道具會噴出來。'),
+        h('p', { class: 'muted small', style: { marginBottom: '8px' } }, '炸開軟磚有機會掉出道具；每隔 45 秒還會有空投機飛過地圖，投下 1～2 個好道具。圓形是好道具，帶尖刺的紫色外框是詛咒，會限時捉弄你。出局時，身上一半的強化道具會噴出來。'),
         h('div', { class: 'item-list' }, items)),
       h('div', { class: 'row', style: { justifyContent: 'center' } },
         btn('開始單機練習', { cls: 'btn-pink btn-lg', onClick: () => go('solo') }),
