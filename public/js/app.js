@@ -80,14 +80,14 @@
       h('nav', { class: 'home-menu', 'aria-label': '主選單' },
         btn('一個人玩', { cls: 'btn-pink btn-lg btn-block', icon: 'robot', iconSize: 28, onClick: () => go('solo') }),
         btn('跟別人玩', { cls: 'btn-sky btn-lg btn-block', icon: 'user', iconSize: 28, onClick: () => go('lobby') }),
-        btn('怎麼玩', { cls: 'btn-sun btn-lg btn-block', icon: 'help', iconSize: 28, onClick: () => go('help') })),
-      sline.length ? h('p', { class: 'home-foot' }, '本機戰績：' + sline.join('　')) : null,
-      castIntro()
+        btn('怎麼玩', { cls: 'btn-sun btn-lg btn-block', icon: 'help', iconSize: 28, onClick: () => go('help') }),
+        btn('角色介紹', { cls: 'btn-grape btn-lg btn-block', icon: 'paw', iconSize: 28, onClick: () => go('cast') })),
+      sline.length ? h('p', { class: 'home-foot' }, '本機戰績：' + sline.join('　')) : null
     ]);
   };
 
-  /** 首頁的角色介紹：每隻的定位、個性、初始能力與上限（深色是開場，淺色是撿道具最多能升到哪） */
-  function castIntro() {
+  /* ---------- 角色介紹：每隻的定位、個性、開場能力與上限（深色是開場，淺色是撿道具最多能升到哪） ---------- */
+  App.screens.cast = function () {
     const SPD = { 2: '快', 1.5: '中', 1: '慢' };
     const stat = (item, label, start, cap, scale, text) => h('div', { class: 'cast-stat' },
       h('img', { alt: '', src: Art.svgUrl(Art.itemSVG(item)) }),
@@ -108,11 +108,15 @@
           stat('bomb', '炸彈', st.bomb, mx.bomb, 8, st.bomb + '→' + mx.bomb + ' 顆'),
           stat('speed', '跑速', v0, v1, 7.4, SPD[st.speed] + ' +' + mx.speed + ' 次')));
     });
-    return h('section', { class: 'card cast-intro', 'aria-labelledby': 'cast-title' },
-      h('h2', { id: 'cast-title' }, '角色介紹'),
-      h('p', { class: 'muted small' }, '每隻的開場能力都在 1～2 之間：火力或炸彈多的，跑得就慢一點。撿道具能升級，但每隻的上限不一樣（深色是開場、淺色是最多能升到哪；跑速的「+5 次」是最多能加速幾次），三項上限加起來每隻都一樣多，沒有誰全面比較強，挑喜歡的玩法就好。'),
-      h('div', { class: 'cast-grid' }, cards));
-  }
+    return screenBox('', h('div', { class: 'wrap' },
+      topbar('角色介紹', () => go('home')),
+      h('section', { class: 'card' },
+        h('p', { class: 'muted small cast-note' }, '每隻的開場能力都在 1～2 之間：火力或炸彈多的，跑得就慢一點。撿道具能升級，但每隻的上限不一樣（深色是開場、淺色是最多能升到哪；跑速的「+5 次」是最多能加速幾次），三項上限加起來每隻都一樣多，沒有誰全面比較強，挑喜歡的玩法就好。'),
+        h('div', { class: 'cast-grid' }, cards)),
+      h('div', { class: 'row', style: { justifyContent: 'center' } },
+        btn('開始單機練習', { cls: 'btn-pink btn-lg', onClick: () => go('solo') }),
+        btn('回首頁', { cls: 'btn-ghost btn-lg', onClick: () => go('home') }))));
+  };
 
   /* ---------- 教學（靜態圖文） ---------- */
   function blastFigure() {
@@ -408,7 +412,7 @@
   function onBack() {
     if (root.UI.modalOpen()) { root.UI.closeTopModal(); return true; }
     switch (App.screen) {
-      case 'help': case 'solo': go('home'); return true;
+      case 'help': case 'cast': case 'solo': go('home'); return true;
       case 'lobby': go('home'); return true;
       case 'room': App.confirmLeave(); return true;
       case 'game': App.openMenu(); return true;

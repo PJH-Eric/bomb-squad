@@ -460,6 +460,7 @@
     help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7M12 17h.01"/>',
     refresh: '<path d="M20 5v5h-5M4 19v-5h5"/><path d="M5.5 9A7.5 7.5 0 0 1 19 10M18.5 15A7.5 7.5 0 0 1 5 14"/>',
     trash: '<path d="M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13"/>',
+    paw: '<ellipse cx="12" cy="16" rx="4.5" ry="3.6"/><circle cx="6" cy="10.5" r="1.9"/><circle cx="9.6" cy="6.6" r="1.9"/><circle cx="14.4" cy="6.6" r="1.9"/><circle cx="18" cy="10.5" r="1.9"/>',
     robot: '<rect x="5" y="8" width="14" height="11" rx="3"/><path d="M12 8V4M9 13h.01M15 13h.01M9 16.5h6"/>',
     pause: '<path d="M8.5 5v14M15.5 5v14"/>',
     flag: '<path d="M6 21V4M6 5h11l-2 4 2 4H6"/>',
