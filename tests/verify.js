@@ -543,6 +543,14 @@ test('四段難度有可觀察的差異：困難 > 普通 > 簡單 > 幼幼班�
   assert(score.easy >= score.toddler, '簡單勝場應不少於幼幼班');
   assert(score.hard > score.toddler * 2, '困難應明顯強過幼幼班');
   assert(surv.hard > surv.toddler, '困難存活應比幼幼班久');
+  /* 簡單、普通、困難要拉得開：平均存活要有明顯差距（單位：秒），場數夠多時勝場也要差一截 */
+  const avg = k => surv[k] / games;
+  assert(avg('normal') - avg('easy') >= 6, '普通應比簡單多活至少 6 秒：' + Math.round(avg('normal') - avg('easy')));
+  assert(avg('hard') - avg('normal') >= 4, '困難應比普通多活至少 4 秒：' + Math.round(avg('hard') - avg('normal')));
+  if (games >= 100) {
+    assert(score.normal >= score.easy * 1.5, '普通勝場應明顯多於簡單');
+    assert(score.hard >= score.normal * 1.5, '困難勝場應明顯多於普通');
+  }
 });
 
 console.log('\n' + passed + ' 項通過' + (failed.length ? '，' + failed.length + ' 項失敗：\n  - ' + failed.join('\n  - ') : ''));
