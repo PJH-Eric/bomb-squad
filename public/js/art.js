@@ -1,6 +1,6 @@
 /* ===== art.js — 手繪向量美術（全部是程式產生的 SVG／Canvas 路徑，沒有 emoji、沒有外部圖檔） =====
  *
- *   Art.animalSVG(id, facing, frame)  炸彈小隊隊員（圓頭盔＋臉窗＋天線球，頭＋身體＋手＋腳，漸層做立體感）
+ *   Art.animalSVG(id, facing, frame)  炸彈小隊隊員（八種小動物，各有不同頭型、五官與尾巴，脖子上的領巾是隊伍色）
  *   Art.itemSVG(type)                 道具圖示：強化是圓形、詛咒是帶刺的紫色外框，形狀就能分辨
  *   Art.bombSVG()                     炸彈
  *   Art.icon(name)                    介面小圖示（currentColor）
@@ -9,140 +9,344 @@
 (function (root) {
   'use strict';
 
+  /* 每隻動物的頭型、身材、配色都不同，縮小在格子裡也能靠輪廓分辨；accent 是領巾（隊伍色） */
   const ANIMALS = {
-    cat:     { name: '小貓', body: '#ffb86b', dark: '#e88f3b', belly: '#fff0da', ear: 'point', earIn: '#ff9db4', nose: '#ff7f9f', tail: 'cat', stripes: true },
-    dog:     { name: '小狗', body: '#e8b87c', dark: '#c58b4d', belly: '#fff4e2', ear: 'floppy', earCol: '#a8693a', nose: '#3a2a2a', muzzle: '#fff4e2', tail: 'dog' },
-    bunny:   { name: '小兔', body: '#fff7fb', dark: '#e6cfe0', belly: '#ffe3ef', ear: 'long', earIn: '#ffb3d1', nose: '#ff8aa5', tail: 'puff' },
-    bear:    { name: '小熊', body: '#b9824f', dark: '#936235', belly: '#f4dab6', ear: 'round', earIn: '#ebc496', nose: '#3a2a2a', muzzle: '#f4dab6' },
-    panda:   { name: '熊貓', body: '#ffffff', dark: '#d9d9e0', belly: '#ffffff', ear: 'round', earCol: '#2d2d36', limb: '#2d2d36', patches: true, nose: '#2d2d36' },
-    fox:     { name: '狐狸', body: '#ff8c3f', dark: '#dd6420', belly: '#fff3e6', ear: 'point', earIn: '#3a2a2a', cheeks: '#fff3e6', tail: 'fox', nose: '#3a2a2a' },
-    frog:    { name: '青蛙', body: '#72d56c', dark: '#43b04a', belly: '#e0f8b0', ear: 'none', eyesTop: true, nose: null, wide: true },
-    penguin: { name: '企鵝', body: '#465176', dark: '#2c3452', belly: '#ffffff', ear: 'none', beak: '#ffb43b', feet: '#ffb43b', penguin: true }
+    cat:     { name: '小貓', body: '#b8bfd3', dark: '#7f88a6', belly: '#f4f5fb', stripe: '#5f6884', earIn: '#ffa8c3', nose: '#ff7f9f', accent: '#ff4f8b', head: [17, 15, 24], bw: 22 },
+    dog:     { name: '小狗', body: '#f6d9a8', dark: '#d9a86a', belly: '#fffaf0', earCol: '#8a5530', spot: '#b9773f', nose: '#2a1f2a', accent: '#2f86e6', head: [17, 15, 24], bw: 24 },
+    bunny:   { name: '小兔', body: '#ffe6f1', dark: '#e9b7cf', belly: '#ffffff', earIn: '#ff9cc4', nose: '#ff6f9a', accent: '#a35cff', head: [15.5, 14.5, 27], bw: 22 },
+    bear:    { name: '小熊', body: '#a8703f', dark: '#7a4b25', belly: '#f1d3a6', earIn: '#e3b582', nose: '#2a1f2a', accent: '#2fbf63', head: [18.5, 16, 24], bw: 28 },
+    panda:   { name: '熊貓', body: '#ffffff', dark: '#d6d6e2', belly: '#ffffff', limb: '#2d2d36', nose: '#2d2d36', accent: '#ff9a1f', head: [18, 15.5, 24], bw: 26 },
+    fox:     { name: '狐狸', body: '#ff8a3a', dark: '#d9601c', belly: '#fff6ea', earIn: '#3a2a2a', nose: '#2a1f2a', accent: '#18b9d6', head: [17, 14.5, 25], bw: 22 },
+    frog:    { name: '青蛙', body: '#72d56c', dark: '#3fa847', belly: '#e6fbb8', nose: '#2f7a38', accent: '#ffcf2e', head: [21, 12.5, 30], bw: 30 },
+    penguin: { name: '企鵝', body: '#3f4a72', dark: '#232a48', belly: '#ffffff', beak: '#ffb43b', accent: '#ff5545' }
   };
   const ANIMAL_IDS = Object.keys(ANIMALS);
 
   const f1 = n => Math.round(n * 10) / 10;
-
-  /* ---------- 動物 ---------- */
-  function defs(a, id) {
-    return '<defs>' +
-      '<linearGradient id="b' + id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + a.body + '"/><stop offset="1" stop-color="' + a.dark + '"/></linearGradient>' +
-      '<radialGradient id="h' + id + '" cx="0.35" cy="0.28" r="0.85"><stop offset="0" stop-color="#ffffff" stop-opacity="0.75"/><stop offset="0.35" stop-color="' + a.body + '"/><stop offset="1" stop-color="' + a.dark + '"/></radialGradient>' +
-      '</defs>';
-  }
-  function ear(a, kind, x, y, flip, id) {
-    const s = flip ? -1 : 1;
-    const col = a.earCol || a.body;
-    const inner = a.earIn || '#ffb3c9';
-    switch (kind) {
-      case 'point':
-        return '<path d="M' + (x - 8 * s) + ' ' + (y + 6) + ' L' + (x - 1 * s) + ' ' + (y - 11) + ' L' + (x + 8 * s) + ' ' + (y + 5) + ' Z" fill="' + col + '" stroke="' + a.dark + '" stroke-width="1.4" stroke-linejoin="round"/>' +
-          '<path d="M' + (x - 4 * s) + ' ' + (y + 3) + ' L' + (x - 1 * s) + ' ' + (y - 5) + ' L' + (x + 4 * s) + ' ' + (y + 3) + ' Z" fill="' + inner + '"/>';
-      case 'floppy':
-        return '<ellipse cx="' + (x + 2 * s) + '" cy="' + (y + 6) + '" rx="6" ry="10" transform="rotate(' + (s * 18) + ' ' + x + ' ' + y + ')" fill="' + col + '" stroke="#7a4a26" stroke-width="1.3"/>';
-      case 'long':
-        return '<ellipse cx="' + x + '" cy="' + (y - 4) + '" rx="5.2" ry="14" transform="rotate(' + (s * 8) + ' ' + x + ' ' + y + ')" fill="' + a.body + '" stroke="' + a.dark + '" stroke-width="1.4"/>' +
-          '<ellipse cx="' + x + '" cy="' + (y - 3) + '" rx="2.6" ry="10" transform="rotate(' + (s * 8) + ' ' + x + ' ' + y + ')" fill="' + inner + '"/>';
-      case 'round':
-        return '<circle cx="' + x + '" cy="' + y + '" r="6.4" fill="' + col + '" stroke="' + (a.earCol ? '#1c1c24' : a.dark) + '" stroke-width="1.3"/>' +
-          (a.earCol ? '' : '<circle cx="' + x + '" cy="' + y + '" r="3.2" fill="' + inner + '"/>');
-      default: return '';
-    }
-  }
-
-  /* 小隊配色：頭盔／連身服用動物主色，手套、靴子、天線球用各自的亮色 */
-  const ACCENT = { cat: '#ff4f8b', dog: '#2f86e6', bunny: '#a35cff', bear: '#2fbf63', panda: '#ff9a1f', fox: '#18b9d6', frog: '#ffcf2e', penguin: '#ff5545' };
   const INK = '#2a1f3d';
+  /** 小工具：el('ellipse', { cx: 1, stroke_width: 2 }) → <ellipse cx="1" stroke-width="2"/> */
+  function el(tag, o) {
+    let s = '<' + tag;
+    for (const k in o) if (o[k] != null) s += ' ' + k.replace(/_/g, '-') + '="' + (typeof o[k] === 'number' ? f1(o[k]) : o[k]) + '"';
+    return s + '/>';
+  }
+  const ell = (cx, cy, rx, ry, fill, o) => el('ellipse', Object.assign({ cx, cy, rx, ry, fill }, o));
+  const line = (d, stroke, w, o) => el('path', Object.assign({ d, fill: 'none', stroke, stroke_width: w, stroke_linecap: 'round', stroke_linejoin: 'round' }, o));
+  /* 有黑色外框的粗線條（尾巴、領巾帶子）：先畫粗的墨色，再疊細的本色 */
+  const tube = (d, col, w) => line(d, INK, w + 2.6) + line(d, col, w);
+  const OUT = { stroke: INK, stroke_width: 2.4 };
 
-  /** 炸彈小隊隊員（圓頭盔＋臉窗＋天線球的連身裝）。facing: 'down'（正面）| 'up'（背面）| 'left'（側面，向右時由畫面鏡射）；frame: 0 站 1 左腳 2 右腳 */
-  function animalSVG(id, facing, frame) {
-    const a = ANIMALS[id] || ANIMALS.cat;
-    const ac = ACCENT[id] || '#ff4f8b';
-    const uid = id + facing + frame;
-    const step = frame === 1 ? 1 : frame === 2 ? -1 : 0;
-    const side = facing === 'left', back = facing === 'up';
-    const suit = a.penguin ? a.body : a.body;
-    let s = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">' + defs(a, uid) +
-      '<linearGradient id="a' + uid + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity="0.55"/><stop offset="0.3" stop-color="' + ac + '"/><stop offset="1" stop-color="' + ac + '"/></linearGradient>';
-    s = s.replace('</defs>', '').replace(/<\/defs>$/, '');
-    s += '</defs><g transform="translate(3.8 6.5) scale(0.88)">';
+  function eye(x, y, k) {
+    k = k || 1;
+    return ell(x, y, 2.8 * k, 3.7 * k, '#1d1630') + el('circle', { cx: x - 0.9 * k, cy: y - 1.4 * k, r: 1.15 * k, fill: '#fff' });
+  }
+  const blush = (x, y) => ell(x, y, 2.6, 1.6, '#ff8fb0', { opacity: 0.6 });
 
-    /* 靴子 */
-    const bootY = n => (n ? 55 : 57.5);
-    if (side) {
-      s += '<ellipse cx="' + (37 - step * 3) + '" cy="' + bootY(step === -1) + '" rx="7" ry="4.6" fill="url(#a' + uid + ')" stroke="' + INK + '" stroke-width="2.4"/>';
-      s += '<ellipse cx="' + (27 + step * 3) + '" cy="' + bootY(step === 1) + '" rx="7" ry="4.6" fill="url(#a' + uid + ')" stroke="' + INK + '" stroke-width="2.4"/>';
-    } else {
-      s += '<ellipse cx="24.5" cy="' + bootY(step === 1) + '" rx="7" ry="4.8" fill="url(#a' + uid + ')" stroke="' + INK + '" stroke-width="2.4"/>';
-      s += '<ellipse cx="39.5" cy="' + bootY(step === -1) + '" rx="7" ry="4.8" fill="url(#a' + uid + ')" stroke="' + INK + '" stroke-width="2.4"/>';
+  /* ---------- 動物：各部位 ---------- */
+  function feet(v) {
+    const a = v.a, col = a.limb || a.dark, st = v.step;
+    const y = up => (up ? 55.5 : 58);
+    if (v.side) {
+      return ell(v.hx + 8 - st * 3, y(st === -1), 6.4, 4.2, col, OUT) + ell(v.hx - 1 + st * 3, y(st === 1), 6.4, 4.2, col, OUT);
     }
-
-    /* 連身服身體 */
-    const bx = side ? 22 : 19, bw = side ? 20 : 26;
-    s += '<rect x="' + bx + '" y="39" width="' + bw + '" height="17" rx="8" fill="url(#b' + uid + ')" stroke="' + INK + '" stroke-width="2.4"/>';
-    s += '<rect x="' + (bx + 1.5) + '" y="49" width="' + (bw - 3) + '" height="3.4" fill="' + ac + '" opacity="0.95"/>';
-    if (!back) {
-      const cx = side ? 29 : 32;
-      s += '<circle cx="' + cx + '" cy="44" r="3.7" fill="#2f2a4d" stroke="' + INK + '" stroke-width="1.2"/><circle cx="' + (cx - 1) + '" cy="43" r="1.1" fill="#fff" opacity="0.8"/>';
-    }
-
-    /* 手臂＋手套 */
-    const sw = step * 2.4;
-    if (side) {
-      s += '<circle cx="29.5" cy="' + f1(47 + sw) + '" r="5.2" fill="url(#a' + uid + ')" stroke="' + INK + '" stroke-width="2.4"/>';
-    } else {
-      s += '<ellipse cx="17" cy="' + f1(45 - sw * 0.5) + '" rx="4.2" ry="6" transform="rotate(20 17 45)" fill="url(#b' + uid + ')" stroke="' + INK + '" stroke-width="2.4"/>';
-      s += '<ellipse cx="47" cy="' + f1(45 + sw * 0.5) + '" rx="4.2" ry="6" transform="rotate(-20 47 45)" fill="url(#b' + uid + ')" stroke="' + INK + '" stroke-width="2.4"/>';
-      s += '<circle cx="13.5" cy="' + f1(50 - sw) + '" r="5" fill="url(#a' + uid + ')" stroke="' + INK + '" stroke-width="2.4"/>';
-      s += '<circle cx="50.5" cy="' + f1(50 + sw) + '" r="5" fill="url(#a' + uid + ')" stroke="' + INK + '" stroke-width="2.4"/>';
-    }
-
-    /* 頭盔 */
-    const hx = side ? 29 : 32, hy = 25, rx = 20, ry = 17.5;
-    if (!a.eyesTop) {
-      if (side) s += ear(a, a.ear, hx + 4, hy - 14, false, uid);
-      else { s += ear(a, a.ear, hx - 12.5, hy - 11, false, uid); s += ear(a, a.ear, hx + 12.5, hy - 11, true, uid); }
-    } else {
-      const eyes = side ? [[hx - 6, 9]] : [[hx - 11, 10], [hx + 11, 10]];
-      for (const [ex, ey] of eyes) s += '<circle cx="' + ex + '" cy="' + ey + '" r="7.5" fill="url(#h' + uid + ')" stroke="' + INK + '" stroke-width="2.4"/>';
-    }
-    /* 天線＋球 */
-    s += '<path d="M' + hx + ' ' + (hy - ry + 1) + ' L' + hx + ' ' + (hy - ry - 3) + '" stroke="' + INK + '" stroke-width="3.6" stroke-linecap="round"/>' +
-      '<circle cx="' + hx + '" cy="' + (hy - ry - 5) + '" r="4.2" fill="' + ac + '" stroke="' + INK + '" stroke-width="2.2"/><circle cx="' + (hx - 1.3) + '" cy="' + (hy - ry - 6.3) + '" r="1.3" fill="#fff" opacity="0.85"/>';
-    s += '<ellipse cx="' + hx + '" cy="' + hy + '" rx="' + rx + '" ry="' + ry + '" fill="url(#h' + uid + ')" stroke="' + INK + '" stroke-width="2.6"/>';
-    /* 頭盔亮面與下緣色帶 */
-    s += '<path d="M' + (hx - 14) + ' ' + (hy - 8) + ' Q' + (hx - 9) + ' ' + (hy - 15) + ' ' + (hx - 1) + ' ' + (hy - 15.5) + '" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity="0.75"/>';
-    if (!back) {
-      /* 臉窗 */
-      const wx = side ? hx - 17 : hx - 13.5, ww = side ? 20 : 27, wy = hy - 6.5, wh = 15.5;
-      s += '<rect x="' + wx + '" y="' + wy + '" width="' + ww + '" height="' + wh + '" rx="7.5" fill="#fff0e0" stroke="' + INK + '" stroke-width="2.2"/>';
-      s += '<rect x="' + (wx + 2) + '" y="' + (wy + 1.4) + '" width="' + (ww - 4) + '" height="3" rx="1.5" fill="#fff" opacity="0.85"/>';
-      const ey = hy + 0.5;
-      if (side) {
-        const ex = wx + 5.5;
-        if (a.patches) s += '<ellipse cx="' + ex + '" cy="' + ey + '" rx="3.7" ry="4.6" transform="rotate(18 ' + ex + ' ' + ey + ')" fill="#2d2d36"/>';
-        s += '<ellipse cx="' + ex + '" cy="' + ey + '" rx="2.7" ry="3.6" fill="#1d1630"/><circle cx="' + (ex - 0.8) + '" cy="' + (ey - 1.3) + '" r="1" fill="#fff"/>';
-        if (a.beak) s += '<path d="M' + (wx + 1) + ' ' + (ey + 3.5) + ' l-6 2.2 l6 2.2 z" fill="' + a.beak + '" stroke="' + INK + '" stroke-width="1"/>';
-        else if (a.nose) s += '<ellipse cx="' + (wx + 1.5) + '" cy="' + (ey + 3.8) + '" rx="2.1" ry="1.7" fill="' + a.nose + '"/>';
-      } else {
-        const exL = hx - 6, exR = hx + 6;
-        if (a.patches) {
-          s += '<ellipse cx="' + exL + '" cy="' + ey + '" rx="4.2" ry="5.4" transform="rotate(20 ' + exL + ' ' + ey + ')" fill="#2d2d36"/>';
-          s += '<ellipse cx="' + exR + '" cy="' + ey + '" rx="4.2" ry="5.4" transform="rotate(-20 ' + exR + ' ' + ey + ')" fill="#2d2d36"/>';
-        }
-        s += '<ellipse cx="' + exL + '" cy="' + ey + '" rx="2.8" ry="3.9" fill="#1d1630"/><circle cx="' + (exL - 0.9) + '" cy="' + (ey - 1.5) + '" r="1.15" fill="#fff"/>';
-        s += '<ellipse cx="' + exR + '" cy="' + ey + '" rx="2.8" ry="3.9" fill="#1d1630"/><circle cx="' + (exR - 0.9) + '" cy="' + (ey - 1.5) + '" r="1.15" fill="#fff"/>';
-        if (a.beak) s += '<path d="M' + (hx - 3.6) + ' ' + (ey + 3.6) + ' L' + hx + ' ' + (ey + 8) + ' L' + (hx + 3.6) + ' ' + (ey + 3.6) + ' Z" fill="' + a.beak + '" stroke="' + INK + '" stroke-width="1"/>';
-        else if (a.nose) s += '<ellipse cx="' + hx + '" cy="' + (ey + 4.6) + '" rx="2" ry="1.5" fill="' + a.nose + '"/>';
-        else if (a.wide) s += '<path d="M' + (hx - 5) + ' ' + (ey + 5.2) + ' Q' + hx + ' ' + (ey + 8) + ' ' + (hx + 5) + ' ' + (ey + 5.2) + '" fill="none" stroke="#2f7a38" stroke-width="1.8" stroke-linecap="round"/>';
-        s += '<ellipse cx="' + (hx - 10.5) + '" cy="' + (ey + 4) + '" rx="2.4" ry="1.6" fill="#ff8fb0" opacity="0.6"/><ellipse cx="' + (hx + 10.5) + '" cy="' + (ey + 4) + '" rx="2.4" ry="1.6" fill="#ff8fb0" opacity="0.6"/>';
+    const dx = v.id === 'frog' ? 11 : 7.5;
+    let s = ell(32 - dx, y(st === 1), v.id === 'frog' ? 7.5 : 6.4, 4.2, col, OUT) + ell(32 + dx, y(st === -1), v.id === 'frog' ? 7.5 : 6.4, 4.2, col, OUT);
+    if (v.id === 'frog' && !v.back) {
+      for (const sx of [-1, 1]) {
+        const fx = 32 + sx * dx, fy = y(sx === -1 ? st === 1 : st === -1);
+        s += line('M' + f1(fx - 2.5) + ' ' + f1(fy + 1) + ' v2.6 M' + f1(fx + 2.5) + ' ' + f1(fy + 1) + ' v2.6', a.dark, 1.4);
       }
-    } else {
-      /* 背面：頭盔後方的色帶 */
-      s += '<path d="M' + (hx - 15) + ' ' + (hy + 6) + ' Q' + hx + ' ' + (hy + 12) + ' ' + (hx + 15) + ' ' + (hy + 6) + '" fill="none" stroke="' + ac + '" stroke-width="3.2" stroke-linecap="round"/>';
     }
-    s += '</g></svg>';
     return s;
+  }
+  function body(v) {
+    const a = v.a;
+    if (v.side) {
+      const bx = v.hx - 7;
+      return el('rect', Object.assign({ x: bx, y: 38, width: 20, height: 19, rx: 9, fill: 'url(#b' + v.uid + ')' }, OUT)) +
+        ell(bx + 6, 49, 4.5, 5.5, a.belly);
+    }
+    const bw = a.bw, top = v.id === 'frog' ? 41 : 38;
+    let s = el('rect', Object.assign({ x: 32 - bw / 2, y: top, width: bw, height: 57 - top, rx: 9, fill: 'url(#b' + v.uid + ')' }, OUT));
+    if (!v.back) s += ell(32, 49.5, bw / 2 - 5, 5.6, a.belly);
+    return s;
+  }
+  function arms(v) {
+    const a = v.a, sw = v.step * 2.4, col = a.limb || 'url(#b' + v.uid + ')';
+    if (v.side) return ell(v.hx + 3, f1(47 + sw), 4.2, 6, col, Object.assign({ transform: 'rotate(' + (-v.step * 14) + ' ' + (v.hx + 3) + ' 43)' }, OUT));
+    const ax = a.bw / 2 + 1;
+    return ell(32 - ax, f1(46.5 - sw * 0.5), 4.2, 6.2, col, Object.assign({ transform: 'rotate(22 ' + (32 - ax) + ' 46)' }, OUT)) +
+      ell(32 + ax, f1(46.5 + sw * 0.5), 4.2, 6.2, col, Object.assign({ transform: 'rotate(-22 ' + (32 + ax) + ' 46)' }, OUT));
+  }
+  /** 領巾（隊伍色）：脖子一圈，前面打結；側面／背面看得到飄起來的兩條帶子 */
+  function scarf(v, neckY, half) {
+    const ac = v.a.accent, cx = v.side ? v.hx + 3 : 32;
+    const flap = v.step * 1.5;
+    let s = '';
+    if (v.side) s += tube('M' + (cx + 8) + ' ' + (neckY + 1) + ' q6 ' + f1(1 + flap) + ' 10 ' + f1(4 - flap) + ' M' + (cx + 8) + ' ' + (neckY + 1) + ' q5 ' + f1(4 + flap) + ' 7 ' + f1(8 - flap), ac, 3.2);
+    else if (v.back) s += tube('M32 ' + (neckY + 1) + ' l-3 ' + f1(8 + flap) + ' M32 ' + (neckY + 1) + ' l3.5 ' + f1(7.5 - flap), ac, 3.4);
+    s += tube('M' + f1(cx - half) + ' ' + neckY + ' Q' + cx + ' ' + (neckY + 4.5) + ' ' + f1(cx + half) + ' ' + neckY, ac, 4.4);
+    if (!v.back && !v.side) s += el('path', { d: 'M' + (cx + 4) + ' ' + (neckY + 2) + ' l4.5 6 l-6 0.6 z', fill: ac, stroke: INK, stroke_width: 1.8, stroke_linejoin: 'round' });
+    return s;
+  }
+  /** 尾巴：(x, y) 是接在身體上的點，dir 1 往右長 */
+  function tail(v, x, y) {
+    const a = v.a, w = v.step * 1.5;
+    switch (v.id) {
+      case 'cat': return tube('M' + x + ' ' + y + ' C' + (x + 10) + ' ' + (y + 2) + ' ' + (x + 13) + ' ' + (y - 9) + ' ' + f1(x + 8 + w) + ' ' + (y - 17), a.body, 5) +
+        line('M' + (x + 9) + ' ' + (y - 2) + ' l3 -1 M' + (x + 11) + ' ' + (y - 8) + ' l3 0', a.stripe, 1.8);
+      case 'dog': return tube('M' + x + ' ' + y + ' Q' + (x + 8) + ' ' + (y - 2) + ' ' + f1(x + 7 + w * 2) + ' ' + (y - 11), a.body, 5);
+      case 'fox':
+        /* 蓬鬆大尾巴＋白色尾尖：以 (x, y) 為原點畫，再整體放大 */
+        return '<g transform="translate(' + x + ' ' + y + ') scale(1.3)">' +
+          el('path', Object.assign({ d: 'M0 4 C16 8 ' + f1(20 + w) + ' -10 ' + f1(11 + w) + ' -20 C8 -16 9 -8 5 -5 C3 -3 0 -3 0 -3 Z', fill: a.body, stroke_linejoin: 'round' }, OUT, { stroke_width: 1.9 })) +
+          el('path', { d: 'M' + f1(11 + w) + ' -20 C9 -17 8.5 -13 9 -11 Q' + f1(14 + w) + ' -11 ' + f1(16.5 + w) + ' -13 C' + f1(15.5 + w) + ' -16 ' + f1(14 + w) + ' -18 ' + f1(11 + w) + ' -20 Z', fill: a.belly, stroke: INK, stroke_width: 1.3, stroke_linejoin: 'round' }) + '</g>';
+      case 'bunny': return v.back || v.side ? el('circle', Object.assign({ cx: x, cy: y, r: 5.2, fill: '#fff' }, OUT)) : '';
+      case 'bear': case 'panda': return v.back || v.side ? el('circle', Object.assign({ cx: x, cy: y, r: 3.4, fill: v.id === 'panda' ? a.limb : a.body }, OUT)) : '';
+    }
+    return '';
+  }
+  /** 耳朵：behind=true 的畫在頭後面；狗的垂耳要蓋在頭上，另外畫 */
+  function ears(v) {
+    const a = v.a, hx = v.hx, hy = v.hy, top = hy - v.ry;
+    const pos = v.side ? [[hx + 2, 1], [hx + 8, 1]] : [[hx - 11, -1], [hx + 11, 1]];
+    let s = '';
+    for (const [x, sx] of pos) {
+      switch (v.id) {
+        case 'cat': {
+          const d = 'M' + (x - 7 * sx) + ' ' + (top + 7) + ' L' + (x + 1 * sx) + ' ' + (top - 8) + ' L' + (x + 7 * sx) + ' ' + (top + 5) + ' Z';
+          s += el('path', Object.assign({ d, fill: a.body, stroke_linejoin: 'round' }, OUT));
+          if (!v.back) s += el('path', { d: 'M' + (x - 3.5 * sx) + ' ' + (top + 5) + ' L' + (x + 0.8 * sx) + ' ' + (top - 3) + ' L' + (x + 3.5 * sx) + ' ' + (top + 4) + ' Z', fill: a.earIn });
+          break;
+        }
+        case 'fox': {
+          const d = 'M' + (x - 8 * sx) + ' ' + (top + 8) + ' L' + (x + 2 * sx) + ' ' + (top - 11) + ' L' + (x + 8 * sx) + ' ' + (top + 6) + ' Z';
+          s += el('path', Object.assign({ d, fill: a.body, stroke_linejoin: 'round' }, OUT));
+          s += el('path', { d: 'M' + (x - 1.4 * sx) + ' ' + (top - 4.5) + ' L' + (x + 2 * sx) + ' ' + (top - 11) + ' L' + (x + 4.6 * sx) + ' ' + (top - 3.5) + ' Z', fill: a.earIn, stroke: INK, stroke_width: 1.2, stroke_linejoin: 'round' });
+          if (!v.back) s += el('path', { d: 'M' + (x - 4 * sx) + ' ' + (top + 6) + ' L' + (x - 0.6 * sx) + ' ' + (top - 2) + ' L' + (x + 4 * sx) + ' ' + (top + 5) + ' Z', fill: a.belly });
+          break;
+        }
+        case 'bunny': {
+          const rot = (v.side ? 14 : sx * 10) + (sx > 0 && !v.side ? 8 : 0);
+          s += ell(x * 0.55 + hx * 0.45, top - 10, 5.2, 13.5, a.body, Object.assign({ transform: 'rotate(' + rot + ' ' + f1(x * 0.55 + hx * 0.45) + ' ' + (top + 2) + ')' }, OUT));
+          if (!v.back) s += ell(x * 0.55 + hx * 0.45, top - 9, 2.5, 9.5, a.earIn, { transform: 'rotate(' + rot + ' ' + f1(x * 0.55 + hx * 0.45) + ' ' + (top + 2) + ')' });
+          break;
+        }
+        case 'bear': case 'panda': {
+          const ex = x + 2 * sx * (v.side ? 0 : 1);
+          s += el('circle', Object.assign({ cx: ex, cy: top + 3, r: 6.4, fill: a.limb || a.body }, OUT));
+          if (!a.limb && !v.back) s += el('circle', { cx: ex, cy: top + 3.4, r: 3.2, fill: a.earIn });
+          break;
+        }
+      }
+    }
+    return s;
+  }
+  function dogEars(v) {
+    const a = v.a, hx = v.hx, hy = v.hy, sw = v.step * 1.2;
+    const one = (x, sx) => el('path', Object.assign({ d: 'M' + (x - 2 * sx) + ' ' + (hy - 13) + ' C' + (x + 9 * sx) + ' ' + (hy - 13) + ' ' + f1(x + 10 * sx) + ' ' + f1(hy + 5 + sw) + ' ' + f1(x + 6 * sx) + ' ' + f1(hy + 9 + sw) +
+      ' C' + (x + 2 * sx) + ' ' + f1(hy + 12 + sw) + ' ' + (x - 1 * sx) + ' ' + (hy + 4) + ' ' + (x - 3 * sx) + ' ' + (hy - 4) + ' Z', fill: a.earCol, stroke_linejoin: 'round' }, OUT));
+    if (v.side) return one(hx + 3, 1);
+    return one(hx - 11, -1) + one(hx + 11, 1);
+  }
+  function headShape(v) {
+    const { hx, hy, rx, ry } = v;
+    const fill = 'url(#h' + v.uid + ')';
+    if (v.id === 'fox' && !v.side) {
+      /* 狐狸：兩頰往外蓬、下巴尖 */
+      return el('path', Object.assign({ d: 'M' + (hx - rx) + ' ' + (hy + 2) + ' C' + (hx - rx) + ' ' + f1(hy - ry * 1.3) + ' ' + (hx + rx) + ' ' + f1(hy - ry * 1.3) + ' ' + (hx + rx) + ' ' + (hy + 2) +
+        ' L' + (hx + rx + 3.5) + ' ' + (hy + 8) + ' Q' + (hx + 8) + ' ' + (hy + ry + 1) + ' ' + hx + ' ' + (hy + ry + 1) + ' Q' + (hx - 8) + ' ' + (hy + ry + 1) + ' ' + (hx - rx - 3.5) + ' ' + (hy + 8) + ' Z', fill, stroke_linejoin: 'round' }, OUT, { stroke_width: 2.6 }));
+    }
+    return ell(hx, hy, rx, ry, fill, Object.assign({}, OUT, { stroke_width: 2.6 }));
+  }
+  const shine = v => line('M' + (v.hx - v.rx + 5) + ' ' + (v.hy - v.ry * 0.45) + ' Q' + (v.hx - v.rx * 0.5) + ' ' + f1(v.hy - v.ry + 1.8) + ' ' + (v.hx - 1) + ' ' + f1(v.hy - v.ry + 1.4), '#fff', 2.6, { opacity: 0.7 });
+
+  function faceFront(v) {
+    const a = v.a, hx = v.hx, hy = v.hy;
+    const ey = hy + 1;
+    let s = '';
+    switch (v.id) {
+      case 'cat':
+        s += line('M' + hx + ' ' + (hy - 14) + ' v4 M' + (hx - 4.5) + ' ' + (hy - 13) + ' l1 3.5 M' + (hx + 4.5) + ' ' + (hy - 13) + ' l-1 3.5', a.stripe, 2);
+        s += eye(hx - 6.5, ey) + eye(hx + 6.5, ey);
+        s += el('path', { d: 'M' + (hx - 1.8) + ' ' + (hy + 4.6) + ' h3.6 l-1.8 2.2 z', fill: a.nose, stroke: a.nose, stroke_width: 0.8, stroke_linejoin: 'round' });
+        s += line('M' + (hx - 3.4) + ' ' + (hy + 7.4) + ' Q' + (hx - 1.7) + ' ' + (hy + 9.4) + ' ' + hx + ' ' + (hy + 7) + ' Q' + (hx + 1.7) + ' ' + (hy + 9.4) + ' ' + (hx + 3.4) + ' ' + (hy + 7.4), INK, 1.3);
+        s += line('M' + (hx - 9) + ' ' + (hy + 5) + ' l-9 -2 M' + (hx - 9) + ' ' + (hy + 7.5) + ' l-9 1.5 M' + (hx + 9) + ' ' + (hy + 5) + ' l9 -2 M' + (hx + 9) + ' ' + (hy + 7.5) + ' l9 1.5', INK, 1.1, { opacity: 0.7 });
+        s += blush(hx - 10.5, hy + 5) + blush(hx + 10.5, hy + 5);
+        break;
+      case 'dog':
+        s += ell(hx + 6.5, ey, 5.2, 5.6, a.spot);
+        s += eye(hx - 6.5, ey) + eye(hx + 6.5, ey);
+        s += ell(hx, hy + 8, 8, 5.6, a.belly, { stroke: a.dark, stroke_width: 1.2 });
+        s += el('path', { d: 'M' + (hx - 1.6) + ' ' + (hy + 10) + ' h3.2 v3 a1.6 1.6 0 0 1 -3.2 0 z', fill: '#ff7f9f', stroke: INK, stroke_width: 1 });
+        s += line('M' + (hx - 3.5) + ' ' + (hy + 9.4) + ' Q' + hx + ' ' + (hy + 11.4) + ' ' + (hx + 3.5) + ' ' + (hy + 9.4), INK, 1.3);
+        s += ell(hx, hy + 5.4, 3.6, 2.6, a.nose) + ell(hx - 1, hy + 4.6, 1.1, 0.7, '#fff', { opacity: 0.8 });
+        break;
+      case 'bunny':
+        s += eye(hx - 6, ey, 1.05) + eye(hx + 6, ey, 1.05);
+        s += ell(hx, hy + 5, 2, 1.5, a.nose);
+        s += line('M' + hx + ' ' + (hy + 6.4) + ' v1.4 M' + (hx - 2.6) + ' ' + (hy + 8) + ' Q' + hx + ' ' + (hy + 9.4) + ' ' + (hx + 2.6) + ' ' + (hy + 8), INK, 1.2);
+        s += el('rect', { x: hx - 2.2, y: hy + 8.4, width: 4.4, height: 3.4, rx: 0.8, fill: '#fff', stroke: INK, stroke_width: 1 }) + line('M' + hx + ' ' + (hy + 8.6) + ' v3', INK, 0.8);
+        s += ell(hx - 10, hy + 5, 3.2, 2, '#ff8fb0', { opacity: 0.75 }) + ell(hx + 10, hy + 5, 3.2, 2, '#ff8fb0', { opacity: 0.75 });
+        break;
+      case 'bear':
+        s += eye(hx - 7.5, hy - 1, 0.9) + eye(hx + 7.5, hy - 1, 0.9);
+        s += ell(hx, hy + 6.5, 8, 6, a.belly, { stroke: a.dark, stroke_width: 1.2 });
+        s += el('path', { d: 'M' + (hx - 3.2) + ' ' + (hy + 3.6) + ' h6.4 l-3.2 3.4 z', fill: a.nose, stroke: a.nose, stroke_width: 1.4, stroke_linejoin: 'round' });
+        s += line('M' + hx + ' ' + (hy + 7) + ' v2 M' + (hx - 2.8) + ' ' + (hy + 10) + ' Q' + hx + ' ' + (hy + 11.5) + ' ' + (hx + 2.8) + ' ' + (hy + 10), INK, 1.3);
+        s += blush(hx - 12, hy + 5) + blush(hx + 12, hy + 5);
+        break;
+      case 'panda':
+        for (const sx of [-1, 1]) {
+          s += ell(hx + sx * 6.5, ey + 0.5, 4.6, 5.8, a.limb, { transform: 'rotate(' + (sx * -28) + ' ' + (hx + sx * 6.5) + ' ' + (ey + 0.5) + ')' });
+          s += el('circle', { cx: hx + sx * 6.5 + sx * 0.6, cy: ey, r: 2.3, fill: '#fff' }) + el('circle', { cx: hx + sx * 6.5 + sx * 0.6, cy: ey + 0.3, r: 1.3, fill: '#1d1630' });
+        }
+        s += ell(hx, hy + 6, 2.4, 1.7, a.nose);
+        s += line('M' + (hx - 2.6) + ' ' + (hy + 8.6) + ' Q' + hx + ' ' + (hy + 10.4) + ' ' + (hx + 2.6) + ' ' + (hy + 8.6), INK, 1.3);
+        s += blush(hx - 12, hy + 6) + blush(hx + 12, hy + 6);
+        break;
+      case 'fox':
+        s += el('path', { d: 'M' + (hx - v.rx - 3) + ' ' + (hy + 8) + ' Q' + (hx - 9) + ' ' + (hy + 1) + ' ' + (hx - 3) + ' ' + (hy + 5) + ' L' + hx + ' ' + (hy + 7) + ' L' + (hx + 3) + ' ' + (hy + 5) + ' Q' + (hx + 9) + ' ' + (hy + 1) + ' ' + (hx + v.rx + 3) + ' ' + (hy + 8) +
+          ' Q' + (hx + 8) + ' ' + (hy + v.ry) + ' ' + hx + ' ' + (hy + v.ry) + ' Q' + (hx - 8) + ' ' + (hy + v.ry) + ' ' + (hx - v.rx - 3) + ' ' + (hy + 8) + ' Z', fill: a.belly });
+        /* 瞇瞇的狐狸眼 */
+        s += el('path', { d: 'M' + (hx - 9.5) + ' ' + (hy - 0.5) + ' Q' + (hx - 6) + ' ' + (hy - 3.5) + ' ' + (hx - 2.8) + ' ' + (hy - 0.8) + ' Q' + (hx - 6) + ' ' + (hy + 2.6) + ' ' + (hx - 9.5) + ' ' + (hy - 0.5) + ' Z', fill: '#1d1630' });
+        s += el('path', { d: 'M' + (hx + 9.5) + ' ' + (hy - 0.5) + ' Q' + (hx + 6) + ' ' + (hy - 3.5) + ' ' + (hx + 2.8) + ' ' + (hy - 0.8) + ' Q' + (hx + 6) + ' ' + (hy + 2.6) + ' ' + (hx + 9.5) + ' ' + (hy - 0.5) + ' Z', fill: '#1d1630' });
+        s += el('circle', { cx: hx - 6.6, cy: hy - 1, r: 0.9, fill: '#fff' }) + el('circle', { cx: hx + 5.4, cy: hy - 1, r: 0.9, fill: '#fff' });
+        s += ell(hx, hy + 7.2, 2.2, 1.6, a.nose);
+        s += line('M' + (hx - 2.6) + ' ' + (hy + 9.6) + ' Q' + hx + ' ' + (hy + 11) + ' ' + (hx + 2.6) + ' ' + (hy + 9.6), INK, 1.2);
+        break;
+      case 'frog':
+        s += line('M' + (hx - 12) + ' ' + (hy + 2) + ' Q' + hx + ' ' + (hy + 10.5) + ' ' + (hx + 12) + ' ' + (hy + 2), a.nose, 2.2);
+        s += el('circle', { cx: hx - 2.2, cy: hy - 2, r: 0.9, fill: a.nose }) + el('circle', { cx: hx + 2.2, cy: hy - 2, r: 0.9, fill: a.nose });
+        s += blush(hx - 14, hy + 3) + blush(hx + 14, hy + 3);
+        break;
+    }
+    return s;
+  }
+  function faceSide(v) {
+    const a = v.a, hx = v.hx, hy = v.hy, L = hx - v.rx;   /* L：臉的最左緣 */
+    let s = '';
+    switch (v.id) {
+      case 'cat':
+        s += line('M' + (hx - 3) + ' ' + (hy - 14) + ' v4 M' + (hx + 2) + ' ' + (hy - 14) + ' v4', a.stripe, 2);
+        s += eye(hx - 7, hy + 1);
+        s += el('path', { d: 'M' + (L - 0.5) + ' ' + (hy + 3.6) + ' l3 0.4 l-2 2 z', fill: a.nose });
+        s += line('M' + (L + 4) + ' ' + (hy + 6) + ' l-9 -1.5 M' + (L + 4) + ' ' + (hy + 8) + ' l-9 1.5', INK, 1.1, { opacity: 0.7 });
+        s += blush(hx - 3, hy + 5.5);
+        break;
+      case 'dog':
+        s += ell(L + 1, hy + 6.5, 7, 5, a.belly, OUT);
+        s += ell(L - 4.5, hy + 4.4, 3, 2.3, a.nose);
+        s += el('path', { d: 'M' + (L - 1) + ' ' + (hy + 10.5) + ' h3 v3 a1.5 1.5 0 0 1 -3 0 z', fill: '#ff7f9f', stroke: INK, stroke_width: 1 });
+        s += ell(hx - 5.5, hy, 4.6, 5, a.spot) + eye(hx - 6, hy);
+        break;
+      case 'bunny':
+        s += eye(hx - 6, hy + 1, 1.05);
+        s += ell(L + 0.6, hy + 4, 1.8, 1.4, a.nose);
+        s += el('rect', { x: L + 1.2, y: hy + 7, width: 2.6, height: 3.2, rx: 0.6, fill: '#fff', stroke: INK, stroke_width: 1 });
+        s += ell(hx - 2, hy + 5.5, 3, 2, '#ff8fb0', { opacity: 0.75 });
+        break;
+      case 'bear':
+        s += ell(L + 1.5, hy + 6, 6.5, 4.8, a.belly, OUT);
+        s += ell(L - 2.6, hy + 4, 2.6, 2, a.nose);
+        s += eye(hx - 6, hy - 1, 0.9) + blush(hx, hy + 6);
+        break;
+      case 'panda':
+        s += ell(hx - 7, hy + 1.5, 4.4, 5.6, a.limb, { transform: 'rotate(20 ' + (hx - 7) + ' ' + (hy + 1.5) + ')' });
+        s += el('circle', { cx: hx - 7.6, cy: hy + 1, r: 2.2, fill: '#fff' }) + el('circle', { cx: hx - 8, cy: hy + 1.3, r: 1.2, fill: '#1d1630' });
+        s += ell(L + 0.6, hy + 5.5, 2, 1.6, a.nose) + blush(hx - 1, hy + 7);
+        break;
+      case 'fox':
+        s += el('path', Object.assign({ d: 'M' + (L + 5) + ' ' + (hy + 0.5) + ' L' + (L - 8) + ' ' + (hy + 6.5) + ' L' + (L + 6) + ' ' + (hy + 11) + ' Z', fill: a.belly, stroke_linejoin: 'round' }, OUT, { stroke_width: 2 }));
+        s += ell(L - 7.5, hy + 6.4, 2, 1.6, a.nose);
+        s += el('path', { d: 'M' + (hx - 10) + ' ' + (hy - 0.5) + ' Q' + (hx - 7) + ' ' + (hy - 3.5) + ' ' + (hx - 3.5) + ' ' + (hy - 1) + ' Q' + (hx - 7) + ' ' + (hy + 2.4) + ' ' + (hx - 10) + ' ' + (hy - 0.5) + ' Z', fill: '#1d1630' });
+        s += el('circle', { cx: hx - 7.4, cy: hy - 1, r: 0.9, fill: '#fff' });
+        break;
+      case 'frog':
+        s += line('M' + (L + 1) + ' ' + (hy + 2.5) + ' Q' + (hx - 8) + ' ' + (hy + 8) + ' ' + (hx + 2) + ' ' + (hy + 6), a.nose, 2.2);
+        s += el('circle', { cx: L + 2, cy: hy - 2, r: 0.9, fill: a.nose }) + blush(hx - 2, hy + 2);
+        break;
+    }
+    return s;
+  }
+  /** 青蛙頭頂的兩顆凸眼 */
+  function frogEyes(v) {
+    const pos = v.side ? [[v.hx + 4, false], [v.hx - 6, true]] : [[v.hx - 10.5, true], [v.hx + 10.5, true]];
+    let s = '';
+    for (const [x, open] of pos) {
+      const y = v.hy - 10;
+      s += el('circle', Object.assign({ cx: x, cy: y, r: 7, fill: 'url(#h' + v.uid + ')' }, OUT));
+      if (open && !v.back) {
+        s += el('circle', { cx: x - (v.side ? 1.5 : 0), cy: y, r: 4.8, fill: '#fff', stroke: INK, stroke_width: 1 });
+        s += ell(x - (v.side ? 2.6 : 0), y + 0.4, 2.6, 3.3, '#1d1630') + el('circle', { cx: x - (v.side ? 3.4 : 0.9), cy: y - 1, r: 1, fill: '#fff' });
+      }
+    }
+    return s;
+  }
+
+  function critter(v) {
+    const a = v.a;
+    let s = '';
+    /* 尾巴：正面時從身體右後方露出來，側面在身後，背面最後才畫（蓋在背上，不會被頭擋住） */
+    const tailAt = v.side ? [v.hx + 12, 50] : v.back ? [32, 51] : [32 + a.bw / 2 - 1, 52];
+    if (!v.back) s += tail(v, tailAt[0], tailAt[1]);
+    s += feet(v) + body(v);
+    s += arms(v);
+    s += scarf(v, v.hy + v.ry - 0.5, v.side ? 8 : a.bw / 2 - 1);
+    if (v.id !== 'dog') s += ears(v);
+    s += headShape(v) + shine(v);
+    if (v.id === 'frog') s += frogEyes(v);
+    if (v.back) {
+      if (v.id === 'cat') s += line('M' + (v.hx - 6) + ' ' + (v.hy - 10) + ' l2 5 M' + v.hx + ' ' + (v.hy - 12) + ' v6 M' + (v.hx + 6) + ' ' + (v.hy - 10) + ' l-2 5', a.stripe, 2.2);
+      s += tail(v, tailAt[0], tailAt[1]);
+    } else s += v.side ? faceSide(v) : faceFront(v);
+    if (v.id === 'dog') s += dogEars(v);
+    return s;
+  }
+
+  /** 企鵝沒有分開的頭和身體：一顆蛋形，白臉白肚 */
+  function penguin(v) {
+    const a = v.a, sw = v.step * 3, st = v.step;
+    const fy = up => (up ? 55.5 : 58);
+    const fill = 'url(#h' + v.uid + ')';
+    let s = '';
+    if (v.side) {
+      s += ell(35 - st * 3, fy(st === -1), 6.4, 3.6, a.beak, OUT) + ell(27 + st * 3, fy(st === 1), 6.4, 3.6, a.beak, OUT);
+      s += ell(31, 36, 15.5, 21.5, fill, Object.assign({}, OUT, { stroke_width: 2.6 }));
+      s += ell(24, 43, 7.5, 12, a.belly) + ell(23.5, 27, 7, 6.2, a.belly);
+      s += el('path', { d: 'M17.5 28.5 L9.5 31 L17.5 33.5 Z', fill: a.beak, stroke: INK, stroke_width: 1.5, stroke_linejoin: 'round' });
+      s += eye(22, 26.5) + blush(26, 31);
+      s += scarf(v, 37, 13);
+      s += ell(36, f1(43 + sw * 0.6), 4.2, 9.5, a.dark, Object.assign({ transform: 'rotate(' + f1(18 - st * 10) + ' 36 36)' }, OUT));
+      return s;
+    }
+    s += ell(24.5, fy(st === 1), 6.4, 3.8, a.beak, OUT) + ell(39.5, fy(st === -1), 6.4, 3.8, a.beak, OUT);
+    s += ell(13.5, f1(41 - sw * 0.5), 4.2, 10, a.dark, Object.assign({ transform: 'rotate(28 13.5 34)' }, OUT));
+    s += ell(50.5, f1(41 + sw * 0.5), 4.2, 10, a.dark, Object.assign({ transform: 'rotate(-28 50.5 34)' }, OUT));
+    s += ell(32, 36, 18, 21.5, fill, Object.assign({}, OUT, { stroke_width: 2.6 }));
+    s += line('M19 26 Q22 16.5 31 15', '#fff', 2.6, { opacity: 0.55 });
+    if (!v.back) {
+      s += ell(32, 45, 12, 11.5, a.belly);
+      s += el('path', { d: 'M32 33 C28 22 18 22 19 30 C19.5 35 26 37 32 37 C38 37 44.5 35 45 30 C46 22 36 22 32 33 Z', fill: a.belly });
+      s += eye(26, 28.5) + eye(38, 28.5);
+      s += el('path', { d: 'M28.6 31.5 L35.4 31.5 L32 36 Z', fill: a.beak, stroke: INK, stroke_width: 1.4, stroke_linejoin: 'round' });
+      s += blush(21.5, 33) + blush(42.5, 33);
+    }
+    s += scarf(v, 38.5, 14.5);
+    return s;
+  }
+
+  /** 炸彈小隊隊員（各種小動物）。facing: 'down'（正面）| 'up'（背面）| 'left'（側面，向右時由畫面鏡射）；frame: 0 站 1 左腳 2 右腳 */
+  function animalSVG(id, facing, frame) {
+    if (!ANIMALS[id]) id = 'cat';
+    const a = ANIMALS[id];
+    const v = { id, a, uid: id + facing + frame, step: frame === 1 ? 1 : frame === 2 ? -1 : 0, side: facing === 'left', back: facing === 'up' };
+    v.hx = v.side ? (a.head ? 30 : 28) : 32;
+    if (a.head) { v.rx = a.head[0]; v.ry = a.head[1]; v.hy = a.head[2]; }
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs>' +
+      '<linearGradient id="b' + v.uid + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + a.body + '"/><stop offset="1" stop-color="' + a.dark + '"/></linearGradient>' +
+      '<radialGradient id="h' + v.uid + '" cx="0.35" cy="0.28" r="0.85"><stop offset="0" stop-color="#ffffff" stop-opacity="0.6"/><stop offset="0.35" stop-color="' + a.body + '"/><stop offset="1" stop-color="' + a.dark + '"/></radialGradient>' +
+      '</defs><g transform="translate(3.2 4.4) scale(0.9)">' + (id === 'penguin' ? penguin(v) : critter(v)) + '</g></svg>';
   }
 
   /* ---------- 道具 ---------- */
