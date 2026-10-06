@@ -30,7 +30,7 @@
     if (!Array.isArray(data.solo.levels) || !data.solo.levels.length) data.solo.levels = SOLO_DEFAULTS.levels.slice();
     data.stats = Object.assign({}, (raw && raw.stats) || {});
     if (!raw || !raw.animal) {
-      const ids = ['cat', 'dog', 'bunny', 'bear', 'panda', 'fox', 'frog', 'penguin'];
+      const ids = ['cat', 'dog', 'bunny', 'bear', 'panda', 'fox', 'frog', 'penguin', 'chick'];
       data.animal = ids[Math.floor(Math.random() * ids.length)];
       save(data);
     }

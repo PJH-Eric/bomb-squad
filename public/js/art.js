@@ -1,6 +1,6 @@
 /* ===== art.js — 手繪向量美術（全部是程式產生的 SVG／Canvas 路徑，沒有 emoji、沒有外部圖檔） =====
  *
- *   Art.animalSVG(id, facing, frame)  炸彈小隊隊員（八種小動物，各有不同頭型、五官與尾巴，脖子上的領巾是隊伍色）
+ *   Art.animalSVG(id, facing, frame)  炸彈小隊隊員（九種小動物，各有不同頭型、五官與尾巴，脖子上的領巾是隊伍色）
  *   Art.itemSVG(type)                 道具圖示：強化是圓形、詛咒是帶刺的紫色外框，形狀就能分辨
  *   Art.bombSVG()                     炸彈
  *   Art.icon(name)                    介面小圖示（currentColor）
@@ -18,7 +18,8 @@
     panda:   { name: '熊貓', role: '力量型', intro: '圓滾滾的實力派，開場火力、炸彈都是 2，火力能練到 8，可惜跑不太動。', body: '#ffffff', dark: '#d6d6e2', belly: '#ffffff', limb: '#2d2d36', nose: '#2d2d36', accent: '#ff9a1f', head: [18, 15.5, 24], bw: 26 },
     fox:     { name: '狐狸', role: '陷阱型', intro: '狡猾愛佈陷阱，開場 2 顆炸彈，腳程也還能練得很快。', body: '#ff8a3a', dark: '#d9601c', belly: '#fff6ea', earIn: '#3a2a2a', nose: '#2a1f2a', accent: '#18b9d6', head: [17, 14.5, 25], bw: 22 },
     frog:    { name: '青蛙', role: '遠攻型', intro: '舌頭長長，火力 2 格起跳，蹦蹦跳跳也能加速 6 次。', body: '#72d56c', dark: '#3fa847', belly: '#e6fbb8', nose: '#2f7a38', accent: '#ffcf2e', head: [21, 12.5, 30], bw: 30 },
-    penguin: { name: '企鵝', role: '重砲型', intro: '搖搖擺擺跑得慢，但開場火力、炸彈都是 2，炸彈能帶到 8 顆。', body: '#3f4a72', dark: '#232a48', belly: '#ffffff', beak: '#ffb43b', accent: '#ff5545' }
+    penguin: { name: '企鵝', role: '重砲型', intro: '搖搖擺擺跑得慢，但開場火力、炸彈都是 2，炸彈能帶到 8 顆。', body: '#3f4a72', dark: '#232a48', belly: '#ffffff', beak: '#ffb43b', accent: '#ff5545' },
+    chick:   { name: '小雞', role: '游擊型', intro: '小小一隻跑得飛快，炸彈能帶到 8 顆到處丟，可惜火力上限只有 5。', body: '#ffdc4a', dark: '#eaa51c', belly: '#fff6c4', paw: '#ff9a2e', beak: '#ff9a2e', accent: '#3d47c9', head: [16, 14.5, 25], bw: 24 }
   };
   const ANIMAL_IDS = Object.keys(ANIMALS);
 
@@ -44,7 +45,7 @@
 
   /* ---------- 動物：各部位 ---------- */
   function feet(v) {
-    const a = v.a, col = a.limb || a.dark, st = v.step;
+    const a = v.a, col = a.paw || a.limb || a.dark, st = v.step;
     const y = up => (up ? 55.5 : 58);
     if (v.side) {
       return ell(v.hx + 8 - st * 3, y(st === -1), 6.4, 4.2, col, OUT) + ell(v.hx - 1 + st * 3, y(st === 1), 6.4, 4.2, col, OUT);
@@ -101,6 +102,7 @@
         return '<g transform="translate(' + x + ' ' + y + ') scale(1.3)">' +
           el('path', Object.assign({ d: 'M0 4 C16 8 ' + f1(20 + w) + ' -10 ' + f1(11 + w) + ' -20 C8 -16 9 -8 5 -5 C3 -3 0 -3 0 -3 Z', fill: a.body, stroke_linejoin: 'round' }, OUT, { stroke_width: 1.9 })) +
           el('path', { d: 'M' + f1(11 + w) + ' -20 C9 -17 8.5 -13 9 -11 Q' + f1(14 + w) + ' -11 ' + f1(16.5 + w) + ' -13 C' + f1(15.5 + w) + ' -16 ' + f1(14 + w) + ' -18 ' + f1(11 + w) + ' -20 Z', fill: a.belly, stroke: INK, stroke_width: 1.3, stroke_linejoin: 'round' }) + '</g>';
+      case 'chick': return v.back || v.side ? el('path', Object.assign({ d: 'M' + (x - 3) + ' ' + (y + 2) + ' L' + (x + 5) + ' ' + (y - 4) + ' L' + (x + 3) + ' ' + (y + 1) + ' L' + (x + 7) + ' ' + y + ' L' + (x + 1) + ' ' + (y + 5) + ' Z', fill: a.body, stroke_linejoin: 'round' }, OUT, { stroke_width: 2 })) : '';
       case 'bunny': return v.back || v.side ? el('circle', Object.assign({ cx: x, cy: y, r: 5.2, fill: '#fff' }, OUT)) : '';
       case 'bear': case 'panda': return v.back || v.side ? el('circle', Object.assign({ cx: x, cy: y, r: 3.4, fill: v.id === 'panda' ? a.limb : a.body }, OUT)) : '';
     }
@@ -109,6 +111,11 @@
   /** 耳朵：behind=true 的畫在頭後面；狗的垂耳要蓋在頭上，另外畫 */
   function ears(v) {
     const a = v.a, hx = v.hx, hy = v.hy, top = hy - v.ry;
+    if (v.id === 'chick') {
+      const cx = v.side ? hx + 2 : hx;
+      return [[-32, -4.2, 1.5], [0, 0, 0], [32, 4.2, 1.5]].map(([rot, dx, dy]) =>
+        ell(cx + dx, top - 3 + dy, 2.4, 5.6, a.body, Object.assign({ transform: 'rotate(' + rot + ' ' + (cx + dx) + ' ' + (top + 2 + dy) + ')' }, OUT, { stroke_width: 2 }))).join('');
+    }
     const pos = v.side ? [[hx + 2, 1], [hx + 8, 1]] : [[hx - 11, -1], [hx + 11, 1]];
     let s = '';
     for (const [x, sx] of pos) {
@@ -215,6 +222,12 @@
         s += ell(hx, hy + 7.2, 2.2, 1.6, a.nose);
         s += line('M' + (hx - 2.6) + ' ' + (hy + 9.6) + ' Q' + hx + ' ' + (hy + 11) + ' ' + (hx + 2.6) + ' ' + (hy + 9.6), INK, 1.2);
         break;
+      case 'chick':
+        s += eye(hx - 6.5, hy, 1.05) + eye(hx + 6.5, hy, 1.05);
+        s += el('path', { d: 'M' + (hx - 3.6) + ' ' + (hy + 4.4) + ' L' + hx + ' ' + (hy + 2) + ' L' + (hx + 3.6) + ' ' + (hy + 4.4) + ' L' + hx + ' ' + (hy + 8.4) + ' Z', fill: a.beak, stroke: INK, stroke_width: 1.3, stroke_linejoin: 'round' });
+        s += line('M' + (hx - 3.6) + ' ' + (hy + 4.4) + ' H' + (hx + 3.6), INK, 1);
+        s += blush(hx - 10.5, hy + 5) + blush(hx + 10.5, hy + 5);
+        break;
       case 'frog':
         s += line('M' + (hx - 12) + ' ' + (hy + 2) + ' Q' + hx + ' ' + (hy + 10.5) + ' ' + (hx + 12) + ' ' + (hy + 2), a.nose, 2.2);
         s += el('circle', { cx: hx - 2.2, cy: hy - 2, r: 0.9, fill: a.nose }) + el('circle', { cx: hx + 2.2, cy: hy - 2, r: 0.9, fill: a.nose });
@@ -261,6 +274,11 @@
         s += ell(L - 7.5, hy + 6.4, 2, 1.6, a.nose);
         s += el('path', { d: 'M' + (hx - 10) + ' ' + (hy - 0.5) + ' Q' + (hx - 7) + ' ' + (hy - 3.5) + ' ' + (hx - 3.5) + ' ' + (hy - 1) + ' Q' + (hx - 7) + ' ' + (hy + 2.4) + ' ' + (hx - 10) + ' ' + (hy - 0.5) + ' Z', fill: '#1d1630' });
         s += el('circle', { cx: hx - 7.4, cy: hy - 1, r: 0.9, fill: '#fff' });
+        break;
+      case 'chick':
+        s += eye(hx - 6.5, hy, 1.05);
+        s += el('path', { d: 'M' + (L + 2) + ' ' + (hy + 1.5) + ' L' + (L - 6) + ' ' + (hy + 4) + ' L' + (L + 2) + ' ' + (hy + 6.5) + ' Z', fill: a.beak, stroke: INK, stroke_width: 1.3, stroke_linejoin: 'round' });
+        s += blush(hx - 1.5, hy + 5.5);
         break;
       case 'frog':
         s += line('M' + (L + 1) + ' ' + (hy + 2.5) + ' Q' + (hx - 8) + ' ' + (hy + 8) + ' ' + (hx + 2) + ' ' + (hy + 6), a.nose, 2.2);

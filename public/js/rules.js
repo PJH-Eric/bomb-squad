@@ -26,9 +26,9 @@
   const SPEED = { base: 3.5, step: 0.5, slow: 1.7, trait: 0.8 };
   /* 各角色的能力（兩層平衡）：
    *   初始：火力、炸彈數 1～2；跑速 1～2（1.5 是標準 3.5 格／秒，2 是 3.9、1 是 3.1）。
-   *         四種組合，火力＋炸彈每多 1，跑速就少 0.5（火力＋炸彈＋2×跑速 都是 6）。
+   *         四種組合（九隻分在這四組），火力＋炸彈每多 1，跑速就少 0.5（火力＋炸彈＋2×跑速 都是 6）。
    *   上限：撿道具最多能升到的火力格數／炸彈顆數／加速次數，三項加起來每隻都是 19，
-   *         同一種初始組合的兩隻靠上限走不同路線，所以 8 隻都不一樣，也沒有哪隻全面比別隻強。 */
+   *         同一種初始組合的幾隻靠上限走不同路線，所以 9 隻都不一樣，也沒有哪隻全面比別隻強。 */
   const ANIMAL_STATS = {
     cat:     { fire: 1, bomb: 1, speed: 2,   max: { fire: 7, bomb: 7, speed: 5 } },
     dog:     { fire: 1, bomb: 2, speed: 1.5, max: { fire: 6, bomb: 8, speed: 5 } },
@@ -37,7 +37,8 @@
     panda:   { fire: 2, bomb: 2, speed: 1,   max: { fire: 8, bomb: 7, speed: 4 } },
     fox:     { fire: 1, bomb: 2, speed: 1.5, max: { fire: 7, bomb: 6, speed: 6 } },
     frog:    { fire: 2, bomb: 1, speed: 1.5, max: { fire: 8, bomb: 5, speed: 6 } },
-    penguin: { fire: 2, bomb: 2, speed: 1,   max: { fire: 7, bomb: 8, speed: 4 } }
+    penguin: { fire: 2, bomb: 2, speed: 1,   max: { fire: 7, bomb: 8, speed: 4 } },
+    chick:   { fire: 1, bomb: 1, speed: 2,   max: { fire: 5, bomb: 8, speed: 6 } }
   };
   const START_STATS = { fire: START.fire, bomb: START.bomb, speed: 1.5, max: MAX };
   const statsOf = animal => ANIMAL_STATS[animal] || START_STATS;

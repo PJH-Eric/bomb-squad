@@ -197,7 +197,7 @@ test('電腦席位：房主可以換角色，跟別台電腦重複就互換，�
   x.hub.handle('aaaaaaaa1', { type: 'aiAnimal', seat: ai[0].i, animal: a2 });
   ai = x.room('aaaaaaaa1').seats.filter(s => s.kind === 'ai');
   assert.deepStrictEqual(ai.map(s => s.animal), [a2, a1]);
-  const NAMES = { cat: '小貓', dog: '小狗', bunny: '小兔', bear: '小熊', panda: '熊貓', fox: '狐狸', frog: '青蛙', penguin: '企鵝' };
+  const NAMES = { cat: '小貓', dog: '小狗', bunny: '小兔', bear: '小熊', panda: '熊貓', fox: '狐狸', frog: '青蛙', penguin: '企鵝', chick: '小雞' };
   assert.deepStrictEqual(ai.map(s => s.name), [NAMES[a2], NAMES[a1]], '名字要跟著角色換');
   const free = ['dog', 'bunny', 'bear', 'panda', 'fox', 'frog', 'penguin'].find(a => a !== a1 && a !== a2);
   x.hub.handle('aaaaaaaa1', { type: 'aiAnimal', seat: ai[1].i, animal: free });
