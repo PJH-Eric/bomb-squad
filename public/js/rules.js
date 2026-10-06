@@ -43,16 +43,19 @@
   const START_STATS = { fire: START.fire, bomb: START.bomb, speed: 1.5, max: MAX };
   const statsOf = animal => ANIMAL_STATS[animal] || START_STATS;
   const CURSE_T = 8;           /* 負面道具持續秒數 */
+  const GHOST_T = 8;           /* 隱身持續秒數 */
+  const SUPER_T = 15;          /* 超人標誌持續秒數 */
   const SHIELD_T = 1.2;        /* 護盾破掉後的無敵秒數 */
   const COUNTDOWN = 3;
   const SLIDE_SPEED = 7;       /* 被踢的炸彈滑行格/秒 */
   const AUTO_BOMB_EVERY = 0.7; /* 手滑詛咒：自動放炸彈的間隔 */
   const END_HOLD = 2.2;        /* 分出勝負後，畫面多跑幾秒讓爆炸演完 */
 
-  const ITEM_TYPES = ['fire', 'bomb', 'speed', 'kick', 'shield', 'c_slow', 'c_auto', 'c_short'];
-  const POSITIVE = ['fire', 'bomb', 'speed', 'kick', 'shield'];
-  const CURSES = ['c_slow', 'c_auto', 'c_short'];
-  const DROP_WEIGHTS = { fire: 24, bomb: 24, speed: 18, kick: 7, shield: 7, c_slow: 6, c_auto: 6, c_short: 6 };
+  /* 新道具一律加在最後面：快照用「順序」當道具編號 */
+  const ITEM_TYPES = ['fire', 'bomb', 'speed', 'kick', 'shield', 'c_slow', 'c_auto', 'c_short', 'ghost', 'super', 'ultra', 'c_flip'];
+  const POSITIVE = ['fire', 'bomb', 'speed', 'kick', 'shield', 'ghost', 'super', 'ultra'];
+  const CURSES = ['c_slow', 'c_auto', 'c_short', 'c_flip'];
+  const DROP_WEIGHTS = { fire: 24, bomb: 24, speed: 18, kick: 7, shield: 7, c_slow: 6, c_auto: 6, c_short: 6, ghost: 8, super: 5, ultra: 3, c_flip: 6 };
   const ITEM_RATE = 0.4;       /* 軟磚被炸掉時掉寶機率 */
 
   const LAYOUTS = ['classic', 'open', 'dense', 'fab'];
@@ -197,7 +200,7 @@
         kind: p.kind || 'human', level: p.level || null,
         x: sx + 0.5, y: sy + 0.5, dir: 'D', moving: false, alive: true,
         fire: statsOf(p.animal || 'cat').fire, maxBombs: statsOf(p.animal || 'cat').bomb, speedLvl: 0, kick: false, shield: false,
-        curse: null, invuln: 0, bombsOut: 0, kills: 0, autoT: 0,
+        curse: null, invuln: 0, bombsOut: 0, kills: 0, autoT: 0, ghostT: 0, superT: 0,
         diedAt: null, killer: null, cause: null, left: false
       });
     });
@@ -208,12 +211,18 @@
   const cellIdx = (s, x, y) => y * s.w + x;
   const inside = (s, x, y) => x >= 0 && y >= 0 && x < s.w && y < s.h;
   const cellOf = p => ({ x: Math.floor(p.x), y: Math.floor(p.y) });
+  /* 超人標誌期間：火力、炸彈數、加速都拉到「這隻角色」的上限（詛咒照樣有效，所以遲緩、短火還是會壓過它） */
+  const fireOf = p => p.superT > 0 ? Math.max(p.fire, statsOf(p.animal).max.fire) : p.fire;
+  const speedLvlOf = p => p.superT > 0 ? Math.max(p.speedLvl, statsOf(p.animal).max.speed) : p.speedLvl;
   function speedOf(p) {
     if (p.curse && p.curse.type === 'c_slow') return SPEED.slow;
-    return SPEED.base + SPEED.trait * (statsOf(p.animal).speed - 1.5) + SPEED.step * p.speedLvl;
+    return SPEED.base + SPEED.trait * (statsOf(p.animal).speed - 1.5) + SPEED.step * speedLvlOf(p);
   }
-  function rangeOf(p) { return p.curse && p.curse.type === 'c_short' ? 1 : p.fire; }
-  function maxBombsOf(p) { return p.maxBombs; }
+  function rangeOf(p) { return p.curse && p.curse.type === 'c_short' ? 1 : fireOf(p); }
+  function maxBombsOf(p) { return p.superT > 0 ? Math.max(p.maxBombs, statsOf(p.animal).max.bomb) : p.maxBombs; }
+  /** 方向顛倒詛咒：上下左右對調（移動與預測共用 movePlayer，所以伺服器和本機預測一致） */
+  const FLIP = { U: 'D', D: 'U', L: 'R', R: 'L' };
+  const flipDir = (p, dir) => (dir && p.curse && p.curse.type === 'c_flip' ? FLIP[dir] : dir);
   function bombAt(s, x, y) {
     for (const b of s.bombs) if (b.cx === x && b.cy === y) return b;
     return null;
@@ -283,6 +292,7 @@
   }
 
   function movePlayer(s, p, dir, dt) {
+    dir = flipDir(p, dir);
     if (!dir || !DIRS[dir]) { p.moving = false; return; }
     p.dir = dir;
     const [dx, dy] = DIRS[dir];
@@ -497,6 +507,9 @@
       case 'speed': p.speedLvl = Math.min(statsOf(p.animal).max.speed, p.speedLvl + 1); break;
       case 'kick': p.kick = true; break;
       case 'shield': p.shield = true; break;
+      case 'ghost': p.ghostT = GHOST_T; break;
+      case 'super': p.superT = SUPER_T; break;
+      case 'ultra': p.fire = Math.max(p.fire, statsOf(p.animal).max.fire); break;   /* 永久：火力直接升到這隻角色的上限 */
       default: p.curse = { type: it.type, t: CURSE_T }; p.autoT = 0;
     }
     s.events.push({ t: 'item', slot: p.slot, type: it.type, x: it.cx, y: it.cy });
@@ -569,6 +582,8 @@
       if (!p.alive) continue;
       const inp = (playing && inputs[p.slot]) || null;
       if (p.invuln > 0) p.invuln = Math.max(0, p.invuln - dt);
+      if (p.ghostT > 0) p.ghostT = Math.max(0, p.ghostT - dt);
+      if (p.superT > 0) p.superT = Math.max(0, p.superT - dt);
       if (p.curse) { p.curse.t -= dt; if (p.curse.t <= 0) p.curse = null; }
       movePlayer(s, p, inp ? inp.dir : null, dt);
       if (inp && inp.dir2 && inp.dir2 !== inp.dir && !p.moving) movePlayer(s, p, inp.dir2, dt);
@@ -621,8 +636,8 @@
   }
 
   /* ---------- 線上快照 ---------- */
-  const CURSE_CODE = { c_slow: 1, c_auto: 2, c_short: 3 };
-  const CURSE_NAME = [null, 'c_slow', 'c_auto', 'c_short'];
+  const CURSE_CODE = { c_slow: 1, c_auto: 2, c_short: 3, c_flip: 4 };
+  const CURSE_NAME = [null, 'c_slow', 'c_auto', 'c_short', 'c_flip'];
   const TYPE_CODE = {}; ITEM_TYPES.forEach((t, i) => { TYPE_CODE[t] = i; });
   const r2 = n => Math.round(n * 100);
 
@@ -636,7 +651,7 @@
         p.slot, r2(p.x), r2(p.y), p.dir, (p.alive ? 1 : 0) | (p.moving ? 2 : 0) | (p.shield ? 4 : 0) | (p.left ? 8 : 0),
         p.fire, p.maxBombs, p.speedLvl, p.kick ? 1 : 0,
         p.curse ? CURSE_CODE[p.curse.type] : 0, p.curse ? Math.round(p.curse.t * 10) : 0,
-        p.kills, Math.round(p.invuln * 10), p.bombsOut
+        p.kills, Math.round(p.invuln * 10), p.bombsOut, Math.round(p.ghostT * 10), Math.round(p.superT * 10)
       ]),
       b: s.bombs.map(b => [b.id, b.cx, b.cy, r2(b.t), b.owner, b.sl ? b.sl.dx : 0, b.sl ? b.sl.dy : 0, b.sl ? r2(b.sl.prog) : 0, b.range]),
       f: s.flames.map(f => [f.cx, f.cy, r2(f.t)]),
@@ -647,6 +662,22 @@
     };
     if (includeGrid) snap.g = gridString(s);
     return snap;
+  }
+
+  /**
+   * 隱身：把指定玩家的位置從快照裡藏起來（回傳淺拷貝，原本的快照不動）。
+   * 位置歸零、方向與移動狀態清掉，只留「還活著」和「被藏起來」兩個旗標（第 5 欄的 1 與 16）。
+   */
+  function hideInSnapshot(snap, slots) {
+    if (!slots.length) return snap;
+    return Object.assign({}, snap, {
+      p: snap.p.map(a => {
+        if (slots.indexOf(a[0]) < 0) return a;
+        const b = a.slice();
+        b[1] = 0; b[2] = 0; b[3] = 'D'; b[4] = (a[4] & 1) | 16;
+        return b;
+      })
+    });
   }
 
   /** 靜態資料（開局時送一次）：地圖尺寸、玩家名單、規則設定 */
@@ -668,7 +699,7 @@
       phase: 'countdown', countdown: COUNTDOWN, time: 0, result: null,
       players: info.players.map((p, i) => Object.assign({
         idx: i, x: 0, y: 0, dir: 'D', moving: false, alive: true, shield: false, left: false,
-        fire: statsOf(p.animal).fire, maxBombs: statsOf(p.animal).bomb, speedLvl: 0, kick: false, curse: null, invuln: 0, kills: 0, bombsOut: 0
+        fire: statsOf(p.animal).fire, maxBombs: statsOf(p.animal).bomb, speedLvl: 0, kick: false, curse: null, invuln: 0, kills: 0, bombsOut: 0, ghostT: 0, superT: 0, hidden: false
       }, p)),
       bombs: [], flames: [], itemsOn: [], events: [], plane: null
     };
@@ -681,11 +712,12 @@
     for (const a of snap.p) {
       const p = v.players.find(q => q.slot === a[0]);
       if (!p) continue;
-      p.x = a[1] / 100; p.y = a[2] / 100; p.dir = a[3];
-      p.alive = !!(a[4] & 1); p.moving = !!(a[4] & 2); p.shield = !!(a[4] & 4); p.left = !!(a[4] & 8);
+      p.hidden = !!(a[4] & 16);
+      if (!p.hidden) { p.x = a[1] / 100; p.y = a[2] / 100; p.dir = a[3]; }   /* 被藏起來時沿用舊位置，反正不會畫 */
+      p.alive = !!(a[4] & 1); p.moving = !p.hidden && !!(a[4] & 2); p.shield = !!(a[4] & 4); p.left = !!(a[4] & 8);
       p.fire = a[5]; p.maxBombs = a[6]; p.speedLvl = a[7]; p.kick = !!a[8];
       p.curse = a[9] ? { type: CURSE_NAME[a[9]], t: a[10] / 10 } : null;
-      p.kills = a[11]; p.invuln = a[12] / 10; p.bombsOut = a[13];
+      p.kills = a[11]; p.invuln = a[12] / 10; p.bombsOut = a[13]; p.ghostT = (a[14] || 0) / 10; p.superT = (a[15] || 0) / 10;
     }
     v.bombs = snap.b.map(a => ({
       id: a[0], cx: a[1], cy: a[2], t: a[3] / 100, owner: a[4],
@@ -699,10 +731,10 @@
   }
 
   root.Rules = {
-    DT, DIRS, FUSE, AIR_EVERY, PLANE_SPEED, FLAME_T, HALF, HIT_INSET, START, MAX, SPEED, ANIMAL_STATS, statsOf, CURSE_T, COUNTDOWN, SLIDE_SPEED,
+    DT, DIRS, FUSE, AIR_EVERY, PLANE_SPEED, FLAME_T, HALF, HIT_INSET, START, MAX, SPEED, ANIMAL_STATS, statsOf, CURSE_T, GHOST_T, SUPER_T, COUNTDOWN, SLIDE_SPEED,
     ITEM_TYPES, POSITIVE, CURSES, LAYOUTS, RANDOM_LAYOUTS, FAB_THEME, LAYOUT_NAMES, THEME_COUNT, SHAPES, SLOT_COLORS, DROP_WEIGHTS,
     mulberry32, rand, sizeFor, spawnPoints, generateMap, connected, createGame, step,
-    blast, bombAt, itemAt, flameAt, cellOf, cellIdx, inside, speedOf, rangeOf, maxBombsOf,
+    blast, bombAt, itemAt, flameAt, cellOf, cellIdx, inside, speedOf, rangeOf, maxBombsOf, fireOf, speedLvlOf, flipDir, hideInSnapshot,
     canPlaceBomb, placeBomb, overlapsCell, movePlayer, slideFree, getPlayer, alivePlayers, collides, removePlayer, finish,
     snapshot, startInfo, viewFromStart, applySnapshot, gridString
   };

@@ -398,6 +398,11 @@
       st.moving = now - (st.mv || -9) < 0.14;         // 停下後再撐 0.14 秒，貼牆磨蹭時不會一直切換站姿／走路
       const moving = !!st.moving && p.alive;
 
+      /* 隱身：還活著的玩家看不到別人的隱身玩家（線上時伺服器根本沒送位置）；自己、觀戰者、已淘汰的人看得到，畫成半透明 */
+      const selfP = o.selfSlot != null ? view.players.find(q => q.slot === o.selfSlot) : null;
+      const ghostOn = p.alive && p.ghostT > 0;
+      if (p.alive && (p.hidden || (ghostOn && p.slot !== o.selfSlot && selfP && selfP.alive))) return;
+
       let death = 0;
       if (!p.alive) {
         let d = this.deaths.get(p.slot);
@@ -412,7 +417,8 @@
       const frame = moving ? [1, 0, 2, 0][Math.floor(st.ph) % 4] : 0;
       const spr = this.animalSprite(p.animal, facing, frame);
       const color = R.SLOT_COLORS[p.slot % 8];
-      const alpha = p.alive && p.invuln > 0 && Math.floor(now * 12) % 2 === 0 ? 0.45 : 1;
+      let alpha = p.alive && p.invuln > 0 && Math.floor(now * 12) % 2 === 0 ? 0.45 : 1;
+      if (ghostOn) alpha = Math.min(alpha, 0.4);
 
       ctx.save();
       /* 影子與自己的光環 */
@@ -447,6 +453,13 @@
         if (img) { const s = img.width * 0.55; ctx.drawImage(img, cx + T * 0.2, cy - T * 0.72 + Math.sin(now * 6) * T * 0.03, s, s); }
         ctx.strokeStyle = 'rgba(150,90,220,0.7)'; ctx.lineWidth = Math.max(2, T * 0.05); ctx.setLineDash([T * 0.1, T * 0.1]);
         ctx.beginPath(); ctx.arc(cx, cy, T * 0.46, now * 2, now * 2 + 5.2); ctx.stroke(); ctx.setLineDash([]);
+      }
+      /* 超人標誌：金色光環＋頭上的徽章，最後 3 秒閃爍提醒快結束了 */
+      if (p.superT > 0 && (p.superT > 3 || Math.floor(now * 8) % 2 === 0)) {
+        const img = this.itemSprite('super');
+        if (img) { const s = img.width * 0.55; ctx.drawImage(img, cx - T * 0.2 - s, cy - T * 0.72 + Math.sin(now * 6 + 1) * T * 0.03, s, s); }
+        ctx.strokeStyle = 'rgba(255,206,60,0.9)'; ctx.lineWidth = Math.max(2, T * 0.06);
+        ctx.beginPath(); ctx.arc(cx, cy, T * 0.5 + (o.reduceMotion ? 0 : Math.sin(now * 7) * T * 0.02), 0, 7); ctx.stroke();
       }
       /* 倒數期間：在自己頭上標一個往下的箭頭（出生點每局隨機，開局先認出自己） */
       if (view.phase === 'countdown' && o.selfSlot != null && p.slot === o.selfSlot && p.alive) {

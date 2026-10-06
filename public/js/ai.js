@@ -110,7 +110,8 @@
     try { return fn(); } finally { s.bombs.pop(); }
   }
 
-  function enemiesOf(s, p) { return s.players.filter(q => q.alive && q.slot !== p.slot); }
+  /* 隱身的對手電腦也「看不到」，不然就變成開外掛 */
+  function enemiesOf(s, p) { return s.players.filter(q => q.alive && q.slot !== p.slot && !(q.ghostT > 0)); }
 
   /* ---------- 判斷：這裡放炸彈划不划算 ---------- */
   function bombWanted(brain, s, p, me, dm) {
@@ -272,6 +273,8 @@
     }
     /* 卡住（被炸彈或別人擋到）就重新想 */
     if (dir && !p.moving) { brain.stuck += dt; if (brain.stuck > 0.35) { brain.stuck = 0; brain.path = []; brain.next = 0; } } else brain.stuck = 0;
+    /* 方向顛倒：電腦不會因為操作反了就自己走進火裡，先反過來抵銷（其他詛咒對電腦照常有效） */
+    if (dir && p.curse && p.curse.type === 'c_flip') dir = R.flipDir(p, dir);
     brain.dir = dir;
     return { dir, bomb: brain.bomb };
   }

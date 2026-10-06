@@ -249,6 +249,97 @@ test('出生點每局隨機（同 seed 一致），且一定落在已清空的�
   }
   assert(seen.size >= 3, '玩家 0 的出生點應該會變化：' + seen.size);
 });
+/** 在玩家腳下放一個道具並走一步，讓他撿起來 */
+function give(s, p, type) {
+  s.itemsOn.push({ id: s.nextId++, cx: Math.floor(p.x), cy: Math.floor(p.y), type });
+  R.step(s, {}, R.DT);
+}
+test('隱身道具：8 秒後消失，電腦對手看不到隱身的人', () => {
+  const s = mk(2); arena(s); const p = s.players[0]; put(p, 2, 1); put(s.players[1], 12, 11);
+  give(s, p, 'ghost');
+  assert(p.ghostT > 7.9 && p.ghostT <= 8, '撿到要有 8 秒隱身');
+  run(s, {}, 4); assert(p.ghostT > 3.8 && p.ghostT < 4.1);
+  run(s, {}, 4.1); assert.strictEqual(p.ghostT, 0);
+  /* 隱身中的人被炸到照樣會出局 */
+  const t = mk(2); arena(t); const q = t.players[0]; put(q, 5, 5); put(t.players[1], 12, 11); q.ghostT = 5;
+  t.bombs.push({ id: 1, owner: 1, cx: 5, cy: 5, t: 0, range: 1, pass: [], sl: null });
+  R.step(t, {}, R.DT);
+  assert(!q.alive, '隱身不能擋爆炸');
+});
+test('隱身：快照裡別人看不到你的位置，自己、觀戰者看得到，還原後恢復', () => {
+  const s = mk(3); arena(s); put(s.players[0], 2, 1); put(s.players[1], 5, 5); put(s.players[2], 9, 9);
+  s.players[1].ghostT = 5;
+  const snap = R.snapshot(s, false);
+  const hid = R.hideInSnapshot(snap, [1]);
+  const e = hid.p.find(a => a[0] === 1);
+  assert(e[4] & 16, '要有被藏起來的旗標'); assert.strictEqual(e[1], 0); assert.strictEqual(e[2], 0);
+  assert.strictEqual(snap.p.find(a => a[0] === 1)[4] & 16, 0, '不能改到原本的快照');
+  assert.notStrictEqual(hid.p.find(a => a[0] === 0)[1], 0, '其他人不受影響');
+  const v = R.viewFromStart(R.startInfo(s));
+  R.applySnapshot(v, JSON.parse(JSON.stringify(hid)));
+  assert(v.players[1].hidden && !v.players[0].hidden && v.players[1].ghostT > 4.9);
+  R.applySnapshot(v, snap);
+  assert(!v.players[1].hidden && Math.abs(v.players[1].x - 5.5) < 0.01);
+});
+test('超人標誌：15 秒內火力、炸彈、跑速都是這隻角色的最高，結束後還原；詛咒仍壓過它', () => {
+  const s = mk(2); arena(s); const p = s.players[0]; put(p, 2, 1); put(s.players[1], 12, 11);
+  const mx = R.ANIMAL_STATS.cat.max, base = { sp: R.speedOf(p), b: R.maxBombsOf(p), r: R.rangeOf(p) };
+  give(s, p, 'super');
+  assert(p.superT > 14.9 && p.superT <= 15);
+  assert.strictEqual(R.rangeOf(p), mx.fire); assert.strictEqual(R.maxBombsOf(p), mx.bomb);
+  assert(Math.abs(R.speedOf(p) - (base.sp + R.SPEED.step * mx.speed)) < 1e-9, '跑速要加到最高級');
+  assert.strictEqual(R.fireOf(p), mx.fire); assert.strictEqual(R.speedLvlOf(p), mx.speed);
+  p.curse = { type: 'c_short', t: 5 };
+  assert.strictEqual(R.rangeOf(p), 1, '短火詛咒照樣有效');
+  p.curse = null;
+  /* 超人期間可以同時放最高數量的炸彈，且爆炸範圍是最高火力 */
+  put(p, 3, 3);
+  for (let i = 0; i < mx.bomb; i++) { put(p, 3 + (i % 5), 2 + Math.floor(i / 5) * 2); R.placeBomb(s, p); }
+  assert.strictEqual(s.bombs.length, mx.bomb); assert(s.bombs.every(b => b.range === mx.fire));
+  s.bombs.length = 0; p.bombsOut = 0;
+  run(s, {}, 15.1);
+  assert.strictEqual(p.superT, 0);
+  assert.strictEqual(R.rangeOf(p), base.r); assert.strictEqual(R.maxBombsOf(p), base.b); assert(Math.abs(R.speedOf(p) - base.sp) < 1e-9);
+});
+test('大力藥丸：火力直接升到這隻角色的最高，而且不會消失', () => {
+  for (const a of ['cat', 'bear', 'chick']) {
+    const s = mk(2); arena(s); s.players[0].animal = a; const p = s.players[0]; put(p, 2, 1); put(s.players[1], 12, 11);
+    give(s, p, 'ultra');
+    assert.strictEqual(p.fire, R.ANIMAL_STATS[a].max.fire, a);
+    run(s, {}, 20); assert.strictEqual(R.rangeOf(p), R.ANIMAL_STATS[a].max.fire, a + ' 之後還是最高');
+  }
+});
+test('方向顛倒詛咒：8 秒內上下左右相反，結束後恢復；單人預測用的 movePlayer 也一樣', () => {
+  const s = mk(2); arena(s); const p = s.players[0]; put(p, 6, 5); put(s.players[1], 12, 11);
+  give(s, p, 'c_flip');
+  assert(p.curse && p.curse.type === 'c_flip' && p.curse.t > 7.9);
+  const x0 = p.x; run(s, { 0: { dir: 'R' } }, 0.4);
+  assert(p.x < x0 - 0.5 && p.dir === 'L', '按右應該往左走');
+  const y0 = p.y; run(s, { 0: { dir: 'D' } }, 0.4);
+  assert(p.y < y0 - 0.5, '按下應該往上走');
+  assert.strictEqual(R.flipDir({ curse: null }, 'R'), 'R');
+  run(s, {}, 8.1); assert.strictEqual(p.curse, null);
+  const x1 = p.x; run(s, { 0: { dir: 'R' } }, 0.3);
+  assert(p.x > x1 + 0.4, '詛咒結束後恢復正常');
+});
+test('新道具都有圖示、名稱、說明，掉落表有權重；關閉詛咒就不會掉方向顛倒', () => {
+  const Art = require('../public/js/art.js').Art || global.Art;
+  for (const t of R.ITEM_TYPES) {
+    assert(Art.itemSVG(t).length > 200, t + ' 沒有圖示'); assert(Art.ITEM_NAMES[t], t + ' 沒有名稱'); assert(Art.ITEM_DESC[t], t + ' 沒有說明');
+    assert(R.DROP_WEIGHTS[t] > 0, t + ' 沒有掉落權重');
+  }
+  assert(R.POSITIVE.includes('ghost') && R.POSITIVE.includes('super') && R.POSITIVE.includes('ultra') && R.CURSES.includes('c_flip'));
+  const s = mk(2, { curses: false }); arena(s);
+  const seen = new Set();
+  for (let i = 0; i < 4000; i++) {
+    s.grid[3 * s.w + 3] = 2;
+    s.bombs.push({ id: i + 1, owner: 0, cx: 3, cy: 4, t: 0, range: 1, pass: [], sl: null });
+    R.step(s, {}, R.DT);
+    for (const it of s.itemsOn) seen.add(it.type);
+    s.itemsOn.length = 0; s.flames.length = 0;
+  }
+  assert(seen.has('ghost') && seen.has('ultra') && !seen.has('c_flip') && !seen.has('c_slow'), '掉落：' + [...seen]);
+});
 test('空投機：每 45 秒飛來一架，掉 1～2 個正向道具，直到遊戲結束；關閉道具就不來', () => {
   const s = mk(2, { items: true }); arena(s);
   put(s.players[0], 1, 1); put(s.players[1], 13, 11);

@@ -218,6 +218,23 @@ function playing() {
   x.hub.handle('aaaaaaaa1', { type: 'start' });
   return { x, id };
 }
+test('隱身：伺服器不把隱身玩家的位置送給還活著的對手；本人與觀戰者收得到', () => {
+  const { x } = playing();
+  x.run(3300);
+  const g = [...x.hub._rooms.values()][0].game;
+  g.state.players[0].ghostT = 5;
+  x.clear(); x.run(300);
+  const at = (key, slot) => x.last(key, 'snap').s.p.find(a => a[0] === slot);
+  assert(at('bbbbbbbb2', 0)[4] & 16, '對手要看不到');
+  assert.strictEqual(at('bbbbbbbb2', 0)[1], 0, '位置不能外洩');
+  assert(!(at('aaaaaaaa1', 0)[4] & 16) && at('aaaaaaaa1', 0)[1] > 0, '本人要看得到自己');
+  assert(!(at('cccccccc3', 0)[4] & 16) && at('cccccccc3', 0)[1] > 0, '觀戰者看得到');
+  assert(!(at('bbbbbbbb2', 1)[4] & 16), '沒隱身的人照常');
+  /* 對手淘汰後就看得到了 */
+  g.state.players[1].alive = false;
+  x.clear(); x.run(300);
+  assert(!(at('bbbbbbbb2', 0)[4] & 16), '已淘汰的人可以看到');
+});
 test('伺服器權威：倒數後輸入才生效，快照持續廣播給玩家與觀戰者', () => {
   const { x } = playing();
   x.run(3300);                                      /* 3 秒倒數 */

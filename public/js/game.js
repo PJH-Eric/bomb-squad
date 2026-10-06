@@ -81,6 +81,7 @@
       this.sumEl = h('div', { class: 'summary', role: 'list', 'aria-label': '玩家狀態' });
       this.statsEl = h('div', { class: 'mystats' });
       this.curseEl = h('div', { class: 'curse-bar', hidden: true });
+      this.buffEl = h('div', { class: 'curse-bar buff-bar', hidden: true });
       this.keysEl = h('div', { hidden: true });
       this.specEl = h('div', { class: 'pill gray', hidden: true }, '觀戰中');
 
@@ -89,7 +90,7 @@
       const exitLabel = online ? '離開對局' : '暫停選單';
       this.sideHead = h('div', { class: 'side-head' }, h('h3', null, '對局'), root.UI.iconBtn(online ? 'close' : 'pause', exitLabel, () => this.cfg.onEsc && this.cfg.onEsc(), 'sm exit-in'), closeBtn);
       this.exitBtn = root.UI.iconBtn(online ? 'close' : 'pause', exitLabel, () => this.cfg.onEsc && this.cfg.onEsc(), 'exit-btn');
-      this.side = h('aside', { class: 'game-side', 'aria-label': '對局資訊與聊天室' }, this.sideHead, this.sumEl, this.statsEl, this.curseEl, this.specEl);
+      this.side = h('aside', { class: 'game-side', 'aria-label': '對局資訊與聊天室' }, this.sideHead, this.sumEl, this.statsEl, this.buffEl, this.curseEl, this.specEl);
 
       if (this.kind === 'online' && this.cfg.chat) {
         this.chat = createChat({ send: t => this.cfg.chat.send(t) });
@@ -319,7 +320,7 @@
       if (!me || !me.alive || v.phase !== 'play') { this.pred = null; return; }
       if (!this.pred) this.pred = { x: me.x, y: me.y, dir: me.dir, acc: 0, hist: [], pass: new Set(), seen: new Set() };
       const pr = this.pred;
-      const pm = { slot: me.slot, animal: me.animal, x: pr.x, y: pr.y, dir: pr.dir, moving: false, alive: true, curse: me.curse, speedLvl: me.speedLvl, kick: me.kick };
+      const pm = { slot: me.slot, animal: me.animal, x: pr.x, y: pr.y, dir: pr.dir, moving: false, alive: true, curse: me.curse, speedLvl: me.speedLvl, superT: me.superT, kick: me.kick };
       /* 炸彈「可穿過」：剛出現時自己還站在上面就能走出來，離開那格後變實心（跟伺服器規則一樣） */
       for (const b of v.bombs) {
         if (!pr.seen.has(b.id)) { pr.seen.add(b.id); if (R.overlapsCell(pm, b.cx, b.cy)) pr.pass.add(b.id); }
@@ -445,8 +446,12 @@
         const tile = (type, val, label, on) => h('div', { class: 'stat' + (on === false ? ' off' : '') }, h('img', { alt: '', src: Art.svgUrl(Art.itemSVG(type)) }), String(val), h('small', null, label));
         this.statsEl.textContent = '';
         this.statsEl.append(
-          tile('fire', me.fire, '火力'), tile('bomb', me.maxBombs, '炸彈'), tile('speed', me.speedLvl + 1, '速度'),
+          tile('fire', R.fireOf(me), '火力'), tile('bomb', R.maxBombsOf(me), '炸彈'), tile('speed', R.speedLvlOf(me) + 1, '速度'),
           tile('kick', me.kick ? '有' : '無', '踢炸彈', me.kick), tile('shield', me.shield ? '有' : '無', '護盾', me.shield));
+        const buffs = [];
+        if (me.alive && me.ghostT > 0) buffs.push(Art.ITEM_NAMES.ghost + '・' + Math.ceil(me.ghostT) + ' 秒');
+        if (me.alive && me.superT > 0) buffs.push(Art.ITEM_NAMES.super + '・' + Math.ceil(me.superT) + ' 秒');
+        this.buffEl.hidden = !buffs.length; this.buffEl.textContent = buffs.join('　');
         if (me.curse) { this.curseEl.hidden = false; this.curseEl.textContent = Art.ITEM_NAMES[me.curse.type] + '・' + Math.ceil(me.curse.t) + ' 秒'; } else this.curseEl.hidden = true;
         if (!me.alive) {
           this.ghost.hidden = false; this.ghost.textContent = me.left ? '已離場' : '淘汰';
@@ -456,7 +461,7 @@
             this.ghost.appendChild(this.ffBtn);
           }
         } else this.ghost.hidden = true;
-      } else { this.curseEl.hidden = true; this.ghost.hidden = true; }
+      } else { this.curseEl.hidden = true; this.buffEl.hidden = true; this.ghost.hidden = true; }
     }
 
     destroy() {

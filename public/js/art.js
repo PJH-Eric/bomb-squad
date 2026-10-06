@@ -376,11 +376,16 @@
     shield:  { bg1: '#ffe27a', bg2: '#f0a81e' },
     c_slow:  { bg1: '#b79adf', bg2: '#6f4aa3' },
     c_auto:  { bg1: '#b79adf', bg2: '#6f4aa3' },
-    c_short: { bg1: '#b79adf', bg2: '#6f4aa3' }
+    c_short: { bg1: '#b79adf', bg2: '#6f4aa3' },
+    c_flip:  { bg1: '#b79adf', bg2: '#6f4aa3' },
+    ghost:   { bg1: '#8fe8d4', bg2: '#25a58d' },
+    super:   { bg1: '#ff8a8a', bg2: '#d62839' },
+    ultra:   { bg1: '#ff9ccf', bg2: '#d3438a' }
   };
   const ITEM_NAMES = {
     fire: '火力 +1', bomb: '炸彈 +1', speed: '加速', kick: '踢炸彈', shield: '護盾',
-    c_slow: '遲緩詛咒', c_auto: '手滑詛咒', c_short: '短火詛咒'
+    c_slow: '遲緩詛咒', c_auto: '手滑詛咒', c_short: '短火詛咒',
+    ghost: '隱身', super: '超人標誌', ultra: '大力藥丸', c_flip: '方向顛倒詛咒'
   };
   const ITEM_DESC = {
     fire: '爆炸往外多延伸 1 格（上限 5～9 格，看角色）',
@@ -390,7 +395,11 @@
     shield: '擋掉一次爆炸，之後有 1 秒無敵',
     c_slow: '8 秒內只能慢慢走',
     c_auto: '8 秒內會自己一直放炸彈',
-    c_short: '8 秒內爆炸只剩 1 格長'
+    c_short: '8 秒內爆炸只剩 1 格長',
+    ghost: '8 秒內其他玩家看不到你（你自己會變半透明）；炸彈和火焰照常有效',
+    super: '15 秒內火力、炸彈數、跑速都變成你這隻角色的最高值',
+    ultra: '火力直接升到你這隻角色的最高值（不會消失）',
+    c_flip: '8 秒內上下左右操作顛倒'
   };
   function itemGlyph(type) {
     switch (type) {
@@ -402,6 +411,10 @@
       case 'c_slow': return '<circle cx="21" cy="25" r="9" fill="#fff"/><path d="M21 25 m-5 0 a5 5 0 1 1 5 5 a2.5 2.5 0 1 1 -2.4 -2.5" fill="none" stroke="#6f4aa3" stroke-width="2"/><path d="M12 36 h24 q3 0 3 -3 q0 -4 -4 -4 h-4" fill="#fff"/><path d="M34 29 q0 -6 3 -8 M37 29 q2 -5 5 -6" stroke="#fff" stroke-width="2" stroke-linecap="round" fill="none"/>';
       case 'c_auto': return '<circle cx="24" cy="27" r="8.5" fill="#2b2542"/><path d="M29 20 Q33 16 35 12" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><path d="M11 18 a14 14 0 0 1 24 -6 M37 30 a14 14 0 0 1 -24 6" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round"/><path d="M36 7 v7 h-7 M12 41 v-7 h7" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>';
       case 'c_short': return '<path d="M24 10 C26 15 31 17 31 23 C31 28 28 31 24 31 C20 31 17 28 17 24 C17 20 20 19 21 16 C22 18 23 18 23 18 C23 15 24 13 24 10 Z" fill="#fff6d8"/><path d="M24 34 v8 M19 38 l5 5 l5 -5" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>';
+      case 'ghost': return '<path d="M14 39 V23 a10 10 0 0 1 20 0 V39 l-3.3 -3.2 l-3.3 3.2 l-3.4 -3.2 l-3.4 3.2 l-3.3 -3.2 z" fill="#fff"/><circle cx="20" cy="24" r="2.6" fill="#1f8f7a"/><circle cx="28" cy="24" r="2.6" fill="#1f8f7a"/><path d="M21 30 q3 2.4 6 0" fill="none" stroke="#1f8f7a" stroke-width="2" stroke-linecap="round"/><path d="M36 11 l1.2 3 l3 1.2 l-3 1.2 l-1.2 3 l-1.2 -3 l-3 -1.2 l3 -1.2 z" fill="#fff6d8"/>';
+      case 'super': return '<path d="M24 8 L39 15 L36 33 L24 41 L12 33 L9 15 Z" fill="#ffd84d" stroke="#fff" stroke-width="2" stroke-linejoin="round"/><path d="M29.5 18 Q24 14.5 19.5 18.5 Q16.5 22 22 24.5 Q29.5 27 27 31.5 Q23 35 18 31.5" fill="none" stroke="#d62839" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>';
+      case 'ultra': return '<g transform="rotate(-42 24 24)"><rect x="8" y="16" width="32" height="16" rx="8" fill="#fff"/><path d="M24 16 H32 a8 8 0 0 1 0 16 H24 Z" fill="#5a2aa8"/><rect x="12" y="18.6" width="11" height="3" rx="1.5" fill="#ffd0e6"/></g><path d="M36 9 l1.4 3.6 l3.6 1.4 l-3.6 1.4 l-1.4 3.6 l-1.4 -3.6 l-3.6 -1.4 l3.6 -1.4 z" fill="#fff6d8"/>';
+      case 'c_flip': return '<path d="M17 36 V14 M11.5 20 L17 13.5 L22.5 20" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M31 12 V34 M25.5 28 L31 34.5 L36.5 28" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>';
     }
     return '';
   }
