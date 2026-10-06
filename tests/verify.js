@@ -328,6 +328,8 @@ test('新道具都有圖示、名稱、說明，掉落表有權重；關閉詛�
     assert(Art.itemSVG(t).length > 200, t + ' 沒有圖示'); assert(Art.ITEM_NAMES[t], t + ' 沒有名稱'); assert(Art.ITEM_DESC[t], t + ' 沒有說明');
     assert(R.DROP_WEIGHTS[t] > 0, t + ' 沒有掉落權重');
   }
+  assert(R.DROP_WEIGHTS.ultra > R.DROP_WEIGHTS.ghost && R.DROP_WEIGHTS.ultra > R.DROP_WEIGHTS.super, '大力藥丸要比隱身、超人標誌常見');
+  for (const t of ['ghost', 'super'].concat(R.CURSES)) assert(R.DROP_WEIGHTS[t] <= 3, t + ' 有秒數限制，掉落權重不能高');
   assert(R.POSITIVE.includes('ghost') && R.POSITIVE.includes('super') && R.POSITIVE.includes('ultra') && R.CURSES.includes('c_flip'));
   const s = mk(2, { curses: false }); arena(s);
   const seen = new Set();

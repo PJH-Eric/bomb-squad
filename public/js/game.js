@@ -422,7 +422,7 @@
       if (this.timerEl.textContent !== txt) this.timerEl.textContent = txt;
 
       const me = this.slot != null ? v.players.find(p => p.slot === this.slot) : null;
-      const sig = v.players.map(p => [p.slot, p.alive ? 1 : 0, p.kills, p.fire, p.maxBombs, p.speedLvl, p.kick ? 1 : 0, p.shield ? 1 : 0, p.curse ? p.curse.type + Math.ceil(p.curse.t) : ''].join(',')).join('|') + '|' + (me ? me.alive : '');
+      const sig = v.players.map(p => [p.slot, p.alive ? 1 : 0, p.kills, p.fire, p.maxBombs, p.speedLvl, p.kick ? 1 : 0, p.shield ? 1 : 0, p.curse ? p.curse.type + Math.ceil(p.curse.t) : '', Math.ceil(p.ghostT || 0), Math.ceil(p.superT || 0)].join(',')).join('|') + '|' + (me ? me.alive : '');
       if (sig === this.hudSig) return;
       this.hudSig = sig;
 
