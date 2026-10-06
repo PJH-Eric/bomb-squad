@@ -319,7 +319,7 @@
       if (!me || !me.alive || v.phase !== 'play') { this.pred = null; return; }
       if (!this.pred) this.pred = { x: me.x, y: me.y, dir: me.dir, acc: 0, hist: [], pass: new Set(), seen: new Set() };
       const pr = this.pred;
-      const pm = { slot: me.slot, x: pr.x, y: pr.y, dir: pr.dir, moving: false, alive: true, curse: me.curse, speedLvl: me.speedLvl, kick: me.kick };
+      const pm = { slot: me.slot, animal: me.animal, x: pr.x, y: pr.y, dir: pr.dir, moving: false, alive: true, curse: me.curse, speedLvl: me.speedLvl, kick: me.kick };
       /* 炸彈「可穿過」：剛出現時自己還站在上面就能走出來，離開那格後變實心（跟伺服器規則一樣） */
       for (const b of v.bombs) {
         if (!pr.seen.has(b.id)) { pr.seen.add(b.id); if (R.overlapsCell(pm, b.cx, b.cy)) pr.pass.add(b.id); }

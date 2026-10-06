@@ -79,7 +79,36 @@ test('玩家用方向移動，速度隨加速道具增加', () => {
   const s2 = mk(2); arena(s2);
   const q = s2.players[0]; put(q, 2, 1); q.speedLvl = 3;
   run(s2, { 0: { dir: 'R' } }, 0.5);
-  assert(q.x - 2.5 > slow * 1.4, '加速沒有生效');
+  assert(q.x - 2.5 > slow * 1.3, '加速沒有生效');
+});
+test('角色初始能力都在 1～2 之間，而且彼此平衡（沒有哪隻全面比別隻強）', () => {
+  const ids = Object.keys(R.ANIMAL_STATS);
+  const players = ids.map((a, i) => ({ slot: i, name: a, animal: a, kind: 'human' }));
+  const s = R.createGame({ seed: 5, players, layout: 'classic', countdown: 0, timeLimit: 0 });
+  for (const p of s.players) {
+    const st = R.ANIMAL_STATS[p.animal];
+    assert.strictEqual(p.fire, st.fire); assert.strictEqual(p.maxBombs, st.bomb);
+    for (const k of ['fire', 'bomb', 'speed']) assert(st[k] >= 1 && st[k] <= 2, p.animal + ' 的 ' + k + ' 超出 1～2');
+    assert.strictEqual(st.fire + st.bomb + 2 * st.speed, 6, p.animal + ' 的開場總強度跟別隻不一樣');
+    assert.strictEqual(st.max.fire + st.max.bomb + st.max.speed, 19, p.animal + ' 的上限總和跟別隻不一樣');
+  }
+  /* 把開場＋上限當成六個數字：每隻都不一樣，而且沒有哪隻六項全都不輸另一隻 */
+  const vec = a => { const t = R.ANIMAL_STATS[a]; return [t.fire, t.bomb, t.speed, t.max.fire, t.max.bomb, t.max.speed]; };
+  assert.strictEqual(new Set(ids.map(a => vec(a).join())).size, ids.length, '有角色的能力完全一樣');
+  for (const a of ids) for (const b of ids) {
+    if (a === b) continue;
+    const x = vec(a), y = vec(b);
+    assert(!x.every((v, k) => v <= y[k]), a + ' 全面不如 ' + b);
+  }
+  const sp = a => R.speedOf({ animal: a, speedLvl: 0 });
+  assert(sp('bunny') > sp('dog') && sp('dog') > sp('panda'));
+  /* 撿道具不會超過角色自己的上限 */
+  const bear = s.players.find(p => p.animal === 'bear'); bear.x = 2.5; bear.y = 1.5;
+  for (let i = 0; i < 12; i++) { s.itemsOn.push({ id: 900 + i, cx: 2, cy: 1, type: 'speed' }); R.step(s, {}, R.DT); }
+  assert.strictEqual(bear.speedLvl, R.ANIMAL_STATS.bear.max.speed);
+  /* 快照還原的畫面也要帶到同樣的初始值 */
+  const v = R.viewFromStart(R.startInfo(s));
+  v.players.forEach((p, i) => { assert.strictEqual(p.fire, s.players[i].fire); assert.strictEqual(p.maxBombs, s.players[i].maxBombs); });
 });
 test('撞硬牆停住', () => {
   const s = mk(2); arena(s);
@@ -263,7 +292,7 @@ test('軟磚掉寶：關閉道具就不掉；掉出的寶可以被撿起', () =>
   t.itemsOn.push({ id: 5, cx: 2, cy: 1, type: 'fire' }); t.itemsOn.push({ id: 6, cx: 3, cy: 1, type: 'c_slow' });
   put(t.players[0], 1, 1);
   run(t, { 0: { dir: 'R' } }, 0.9);
-  assert.strictEqual(t.players[0].fire, 3);
+  assert.strictEqual(t.players[0].fire, R.statsOf('cat').fire + 1);
   assert(t.players[0].curse && t.players[0].curse.type === 'c_slow');
 });
 test('詛咒限時消失；縮短火力讓炸彈只剩 1 格；手滑會自動放炸彈', () => {
@@ -290,7 +319,8 @@ test('踢炸彈：有踢炸彈能力才會滑，沒有就被擋住', () => {
 test('淘汰時噴出一半的強化道具', () => {
   const s = mk(3); arena(s);
   put(s.players[0], 1, 1); put(s.players[1], 6, 6); put(s.players[2], 11, 9);
-  const v = s.players[1]; v.fire = 6; v.maxBombs = 3; v.speedLvl = 2;   /* 4+2+2 = 8 個 */
+  const v = s.players[1], st = R.statsOf(v.animal);
+  v.fire = st.fire + 4; v.maxBombs = st.bomb + 2; v.speedLvl = 2;   /* 4+2+2 = 8 個（只算撿到的，不含角色初始能力） */
   s.bombs.push({ id: 1, owner: 0, cx: 6, cy: 6, t: 0, range: 1, pass: [], sl: null });
   R.step(s, {}, R.DT);
   assert.strictEqual(s.itemsOn.length, 4);

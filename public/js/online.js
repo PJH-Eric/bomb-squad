@@ -268,7 +268,8 @@
         box.appendChild(h('div', { class: 'seat ai' + '' },
           h('div', { class: 'seat-line' }, avatar(s.animal, 38), h('span', { class: 'seat-name' }, s.name),
             host && lobby
-              ? [root.UI.dropdown({ label: s.name + ' 難度', cls: 'lvl sm', options: U.LEVEL_DD, value: s.level, onChange: v => Net.send({ type: 'aiLevel', seat: s.i, level: v }) }),
+              ? [root.UI.dropdown({ label: s.name + ' 角色', cls: 'lvl sm', options: U.animalOptions(r.seats.filter(o => o.kind === 'human').map(o => o.animal)), value: s.animal, onChange: v => Net.send({ type: 'aiAnimal', seat: s.i, animal: v }) }),
+                root.UI.dropdown({ label: s.name + ' 難度', cls: 'lvl sm', options: U.LEVEL_DD, value: s.level, onChange: v => Net.send({ type: 'aiLevel', seat: s.i, level: v }) }),
                 root.UI.iconBtn('trash', '移除 ' + s.name, () => Net.send({ type: 'removeai', seat: s.i }), 'sm')]
               : h('span', { class: 'pill gray' }, AI.LEVELS[s.level] ? AI.LEVELS[s.level].name : '電腦'))));
         continue;

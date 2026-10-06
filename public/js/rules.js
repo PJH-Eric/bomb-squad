@@ -23,7 +23,24 @@
   const HALF = 0.36;           /* 玩家碰撞半寬（比格子小，轉角才好過） */
   const START = { fire: 2, bomb: 1 };
   const MAX = { fire: 8, bomb: 6, speed: 5 };
-  const SPEED = { base: 3.2, step: 0.5, slow: 1.7 };
+  const SPEED = { base: 3.5, step: 0.5, slow: 1.7, trait: 0.8 };
+  /* 各角色的能力（兩層平衡）：
+   *   初始：火力、炸彈數 1～2；跑速 1～2（1.5 是標準 3.5 格／秒，2 是 3.9、1 是 3.1）。
+   *         四種組合，火力＋炸彈每多 1，跑速就少 0.5（火力＋炸彈＋2×跑速 都是 6）。
+   *   上限：撿道具最多能升到的火力格數／炸彈顆數／加速次數，三項加起來每隻都是 19，
+   *         同一種初始組合的兩隻靠上限走不同路線，所以 8 隻都不一樣，也沒有哪隻全面比別隻強。 */
+  const ANIMAL_STATS = {
+    cat:     { fire: 1, bomb: 1, speed: 2,   max: { fire: 7, bomb: 7, speed: 5 } },
+    dog:     { fire: 1, bomb: 2, speed: 1.5, max: { fire: 6, bomb: 8, speed: 5 } },
+    bunny:   { fire: 1, bomb: 1, speed: 2,   max: { fire: 6, bomb: 6, speed: 7 } },
+    bear:    { fire: 2, bomb: 1, speed: 1.5, max: { fire: 9, bomb: 5, speed: 5 } },
+    panda:   { fire: 2, bomb: 2, speed: 1,   max: { fire: 8, bomb: 7, speed: 4 } },
+    fox:     { fire: 1, bomb: 2, speed: 1.5, max: { fire: 7, bomb: 6, speed: 6 } },
+    frog:    { fire: 2, bomb: 1, speed: 1.5, max: { fire: 8, bomb: 5, speed: 6 } },
+    penguin: { fire: 2, bomb: 2, speed: 1,   max: { fire: 7, bomb: 8, speed: 4 } }
+  };
+  const START_STATS = { fire: START.fire, bomb: START.bomb, speed: 1.5, max: MAX };
+  const statsOf = animal => ANIMAL_STATS[animal] || START_STATS;
   const CURSE_T = 8;           /* 負面道具持續秒數 */
   const SHIELD_T = 1.2;        /* 護盾破掉後的無敵秒數 */
   const COUNTDOWN = 3;
@@ -178,7 +195,7 @@
         slot: p.slot == null ? i : p.slot, idx: i, name: p.name || ('玩家' + (i + 1)), animal: p.animal || 'cat',
         kind: p.kind || 'human', level: p.level || null,
         x: sx + 0.5, y: sy + 0.5, dir: 'D', moving: false, alive: true,
-        fire: START.fire, maxBombs: START.bomb, speedLvl: 0, kick: false, shield: false,
+        fire: statsOf(p.animal || 'cat').fire, maxBombs: statsOf(p.animal || 'cat').bomb, speedLvl: 0, kick: false, shield: false,
         curse: null, invuln: 0, bombsOut: 0, kills: 0, autoT: 0,
         diedAt: null, killer: null, cause: null, left: false
       });
@@ -192,7 +209,7 @@
   const cellOf = p => ({ x: Math.floor(p.x), y: Math.floor(p.y) });
   function speedOf(p) {
     if (p.curse && p.curse.type === 'c_slow') return SPEED.slow;
-    return SPEED.base + SPEED.step * p.speedLvl;
+    return SPEED.base + SPEED.trait * (statsOf(p.animal).speed - 1.5) + SPEED.step * p.speedLvl;
   }
   function rangeOf(p) { return p.curse && p.curse.type === 'c_short' ? 1 : p.fire; }
   function maxBombsOf(p) { return p.maxBombs; }
@@ -435,8 +452,9 @@
   /** 淘汰時，把身上一半的強化道具噴到附近的空格 */
   function scatterItems(s, p) {
     const owned = [];
-    for (let i = 0; i < p.fire - START.fire; i++) owned.push('fire');
-    for (let i = 0; i < p.maxBombs - START.bomb; i++) owned.push('bomb');
+    const st = statsOf(p.animal);
+    for (let i = 0; i < p.fire - st.fire; i++) owned.push('fire');
+    for (let i = 0; i < p.maxBombs - st.bomb; i++) owned.push('bomb');
     for (let i = 0; i < p.speedLvl; i++) owned.push('speed');
     if (p.kick) owned.push('kick');
     if (p.shield) owned.push('shield');
@@ -473,9 +491,9 @@
     if (!it) return;
     s.itemsOn.splice(s.itemsOn.indexOf(it), 1);
     switch (it.type) {
-      case 'fire': p.fire = Math.min(MAX.fire, p.fire + 1); break;
-      case 'bomb': p.maxBombs = Math.min(MAX.bomb, p.maxBombs + 1); break;
-      case 'speed': p.speedLvl = Math.min(MAX.speed, p.speedLvl + 1); break;
+      case 'fire': p.fire = Math.min(statsOf(p.animal).max.fire, p.fire + 1); break;
+      case 'bomb': p.maxBombs = Math.min(statsOf(p.animal).max.bomb, p.maxBombs + 1); break;
+      case 'speed': p.speedLvl = Math.min(statsOf(p.animal).max.speed, p.speedLvl + 1); break;
       case 'kick': p.kick = true; break;
       case 'shield': p.shield = true; break;
       default: p.curse = { type: it.type, t: CURSE_T }; p.autoT = 0;
@@ -649,7 +667,7 @@
       phase: 'countdown', countdown: COUNTDOWN, time: 0, result: null,
       players: info.players.map((p, i) => Object.assign({
         idx: i, x: 0, y: 0, dir: 'D', moving: false, alive: true, shield: false, left: false,
-        fire: START.fire, maxBombs: START.bomb, speedLvl: 0, kick: false, curse: null, invuln: 0, kills: 0, bombsOut: 0
+        fire: statsOf(p.animal).fire, maxBombs: statsOf(p.animal).bomb, speedLvl: 0, kick: false, curse: null, invuln: 0, kills: 0, bombsOut: 0
       }, p)),
       bombs: [], flames: [], itemsOn: [], events: [], plane: null
     };
@@ -680,7 +698,7 @@
   }
 
   root.Rules = {
-    DT, DIRS, FUSE, AIR_EVERY, PLANE_SPEED, FLAME_T, HALF, HIT_INSET, START, MAX, SPEED, CURSE_T, COUNTDOWN, SLIDE_SPEED,
+    DT, DIRS, FUSE, AIR_EVERY, PLANE_SPEED, FLAME_T, HALF, HIT_INSET, START, MAX, SPEED, ANIMAL_STATS, statsOf, CURSE_T, COUNTDOWN, SLIDE_SPEED,
     ITEM_TYPES, POSITIVE, CURSES, LAYOUTS, RANDOM_LAYOUTS, FAB_THEME, LAYOUT_NAMES, THEME_COUNT, SHAPES, SLOT_COLORS, DROP_WEIGHTS,
     mulberry32, rand, sizeFor, spawnPoints, generateMap, connected, createGame, step,
     blast, bombAt, itemAt, flameAt, cellOf, cellIdx, inside, speedOf, rangeOf, maxBombsOf,

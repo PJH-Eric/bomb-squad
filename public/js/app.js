@@ -12,6 +12,8 @@
   const LEVEL_OPTS = AI.LEVEL_ORDER.map(k => ({ v: k, label: AI.LEVELS[k].name }));
   const LEVEL_HINT = { toddler: '亂走、很少放炸彈', easy: '會躲炸彈、偶爾追人', normal: '會追人、會連鎖', hard: '會設陷阱、反應最快' };
   const LEVEL_DD = AI.LEVEL_ORDER.map(k => ({ v: k, label: AI.LEVELS[k].name, hint: LEVEL_HINT[k] }));
+  /** 角色下拉選項；exclude 是別人（真人）已經在用、不能選的角色 */
+  const animalOptions = exclude => Art.ANIMAL_IDS.filter(id => !(exclude || []).includes(id)).map(id => ({ v: id, label: Art.ANIMALS[id].name, hint: Art.ANIMALS[id].role }));
   const ADJ = ['快樂', '勇敢', '調皮', '害羞', '閃亮', '軟綿綿', '圓滾滾', '機靈', '呆萌', '活潑'];
 
   const App = {
@@ -79,9 +81,38 @@
         btn('一個人玩', { cls: 'btn-pink btn-lg btn-block', icon: 'robot', iconSize: 28, onClick: () => go('solo') }),
         btn('跟別人玩', { cls: 'btn-sky btn-lg btn-block', icon: 'user', iconSize: 28, onClick: () => go('lobby') }),
         btn('怎麼玩', { cls: 'btn-sun btn-lg btn-block', icon: 'help', iconSize: 28, onClick: () => go('help') })),
-      sline.length ? h('p', { class: 'home-foot' }, '本機戰績：' + sline.join('　')) : null
+      sline.length ? h('p', { class: 'home-foot' }, '本機戰績：' + sline.join('　')) : null,
+      castIntro()
     ]);
   };
+
+  /** 首頁的角色介紹：每隻的定位、個性、初始能力與上限（深色是開場，淺色是撿道具最多能升到哪） */
+  function castIntro() {
+    const SPD = { 2: '快', 1.5: '中', 1: '慢' };
+    const stat = (item, label, start, cap, scale, text) => h('div', { class: 'cast-stat' },
+      h('img', { alt: '', src: Art.svgUrl(Art.itemSVG(item)) }),
+      h('span', null, label),
+      h('span', { class: 'cast-bar', 'aria-hidden': 'true' },
+        h('i', { class: 'cap', style: { width: Math.round(cap / scale * 100) + '%' } }),
+        h('i', { style: { width: Math.round(start / scale * 100) + '%' } })),
+      h('b', null, text));
+    const cards = Art.ANIMAL_IDS.map(id => {
+      const a = Art.ANIMALS[id], st = R.statsOf(id), mx = st.max;
+      /* 跑速的長條用實際格／秒畫，開場快的加速次數少、慢的也一樣有上限 */
+      const v0 = R.speedOf({ animal: id, speedLvl: 0 }), v1 = R.speedOf({ animal: id, speedLvl: mx.speed });
+      return h('article', { class: 'cast-card' },
+        avatar(id, 64),
+        h('div', null, h('h3', null, a.name, h('span', { class: 'pill gray' }, a.role)), h('p', { class: 'muted small' }, a.intro)),
+        h('div', { class: 'cast-stats' },
+          stat('fire', '火力', st.fire, mx.fire, 9, st.fire + '→' + mx.fire + ' 格'),
+          stat('bomb', '炸彈', st.bomb, mx.bomb, 8, st.bomb + '→' + mx.bomb + ' 顆'),
+          stat('speed', '跑速', v0, v1, 7.4, SPD[st.speed] + ' +' + mx.speed + ' 次')));
+    });
+    return h('section', { class: 'card cast-intro', 'aria-labelledby': 'cast-title' },
+      h('h2', { id: 'cast-title' }, '角色介紹'),
+      h('p', { class: 'muted small' }, '每隻的開場能力都在 1～2 之間：火力或炸彈多的，跑得就慢一點。撿道具能升級，但每隻的上限不一樣（深色是開場、淺色是最多能升到哪；跑速的「+5 次」是最多能加速幾次），三項上限加起來每隻都一樣多，沒有誰全面比較強，挑喜歡的玩法就好。'),
+      h('div', { class: 'cast-grid' }, cards));
+  }
 
   /* ---------- 教學（靜態圖文） ---------- */
   function blastFigure() {
@@ -150,6 +181,15 @@
   };
 
   /* ---------- 單機設定 ---------- */
+  /** 單機電腦的角色：沿用上次選的，去掉重複和玩家自己的角色，不夠 7 隻再隨機補 */
+  function aiAnimals() {
+    const st = App.store, so = st.solo;
+    const out = [];
+    for (const a of Array.isArray(so.animals) ? so.animals : []) if (Art.ANIMALS[a] && a !== st.animal && !out.includes(a)) out.push(a);
+    for (const a of pickAnimals(7, st.animal)) if (out.length < 7 && !out.includes(a)) out.push(a);
+    so.animals = out;
+    return out;
+  }
   function pickAnimals(n, exclude) {
     const pool = Art.ANIMAL_IDS.filter(a => a !== exclude);
     for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
@@ -181,7 +221,7 @@
     const st = App.store, so = st.solo;
     const prof = App.profileEditor({ onChange: () => paintRows() });
     const rows = h('div', { class: 'ai-rows', hidden: false });
-    let anim = pickAnimals(7, st.animal);
+    let anim = aiAnimals();
     const face = h('div', { class: 'ai-faces' });
     const countCtl = stepper({ label: '電腦數量', min: 1, max: 7, value: so.levels.length, onChange: v => {
       while (so.levels.length < v) so.levels.push(so.levels[so.levels.length - 1] || 'normal');
@@ -195,18 +235,23 @@
     } });
     const sizeNote = h('span', { class: 'pill gray' });
     const detailBtn = h('button', { type: 'button', class: 'more-btn', 'aria-expanded': App.aiDetail ? 'true' : 'false', onClick: () => {
-      App.aiDetail = !App.aiDetail; rows.hidden = !App.aiDetail; detailBtn.setAttribute('aria-expanded', App.aiDetail ? 'true' : 'false'); detailBtn.firstChild.textContent = App.aiDetail ? '收起' : '逐一調整難度';
-    } }, h('span', null, App.aiDetail ? '收起' : '逐一調整難度'), h('i', { 'aria-hidden': 'true' }));
+      App.aiDetail = !App.aiDetail; rows.hidden = !App.aiDetail; detailBtn.setAttribute('aria-expanded', App.aiDetail ? 'true' : 'false'); detailBtn.firstChild.textContent = App.aiDetail ? '收起' : '逐一調整角色與難度';
+    } }, h('span', null, App.aiDetail ? '收起' : '逐一調整角色與難度'), h('i', { 'aria-hidden': 'true' }));
     function paintRows() {
       sizeNote.textContent = (1 + so.levels.length) <= 4 ? '15×13' : '17×15';
-      anim = anim.filter(a => a !== st.animal);
-      if (anim.length < 7) anim = pickAnimals(7, st.animal);
+      anim = aiAnimals();
       rows.textContent = ''; face.textContent = '';
       face.appendChild(h('span', { class: 'face me' }, avatar(st.animal, 40)));
       so.levels.forEach((lv, i) => {
         const a = anim[i];
         face.appendChild(h('span', { class: 'face', title: '電腦 ' + (i + 1) + '・' + AI.LEVELS[lv].name }, avatar(a, 40)));
         rows.appendChild(h('div', { class: 'ai-row' }, avatar(a, 36), h('span', { class: 'name' }, '電腦 ' + (i + 1)),
+          root.UI.dropdown({ label: '電腦 ' + (i + 1) + ' 角色', cls: 'lvl', options: animalOptions([st.animal]), value: a, onChange: v => {
+            /* 選到別台電腦正在用的角色就互換，避免重複 */
+            const j = anim.indexOf(v);
+            if (j >= 0) anim[j] = anim[i];
+            anim[i] = v; so.animals = anim; save(); paintRows();
+          } }),
           root.UI.dropdown({ label: '電腦 ' + (i + 1) + ' 難度', cls: 'lvl', options: LEVEL_DD, value: lv, onChange: v => { so.levels[i] = v; save(); allSeg.setValue(so.levels.every(l => l === so.levels[0]) ? so.levels[0] : null); paintFaces(); } })));
       });
       allSeg.setValue(so.levels.every(l => l === so.levels[0]) ? so.levels[0] : null);
@@ -234,7 +279,7 @@
   /* ---------- 單機開局 ---------- */
   App.startSolo = function () {
     const st = App.store, so = st.solo;
-    const animals = pickAnimals(so.levels.length, st.animal);
+    const animals = aiAnimals();
     const players = [{ slot: 0, name: myName(), animal: st.animal, kind: 'human' }];
     so.levels.forEach((lv, i) => players.push({ slot: i + 1, name: Art.ANIMALS[animals[i]].name, animal: animals[i], kind: 'ai', level: lv }));
     const seed = Math.floor(Math.random() * 4294967296) >>> 0;
@@ -396,7 +441,7 @@
     } else go('home');
   };
 
-  App.util = { LEVEL_DD, rulesPanel, rulesSummary, itemMode, myName, randomName, save, applySettings, topbar, screenBox, LAYOUT_OPTS, TIME_OPTS, THEME_OPTS, LEVEL_OPTS };
+  App.util = { LEVEL_DD, animalOptions, rulesPanel, rulesSummary, itemMode, myName, randomName, save, applySettings, topbar, screenBox, LAYOUT_OPTS, TIME_OPTS, THEME_OPTS, LEVEL_OPTS };
 
   document.addEventListener('DOMContentLoaded', () => App.boot());
 })(typeof self !== 'undefined' ? self : this);
