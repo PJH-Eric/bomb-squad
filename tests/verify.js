@@ -398,6 +398,78 @@ test('新道具都有圖示、名稱、說明，掉落表有權重；關閉詛�
   }
   assert(seen.has('ghost') && seen.has('ultra') && !seen.has('c_flip') && !seen.has('c_slow'), '掉落：' + [...seen]);
 });
+test('空襲：150 秒前不掉炸彈；每秒掉的顆數 2:30→1、2:40→2、2:50 起 3，最多 3 顆', () => {
+  assert.deepStrictEqual([R.SKY_START, R.SKY_STEP, R.SKY_MAX, R.SKY_FUSE], [150, 10, 3, 2]);
+  assert.deepStrictEqual([0, 100, 149.9, 150, 159.9, 160, 169.9, 170, 180, 300].map(R.skyCount), [0, 0, 0, 1, 1, 2, 2, 3, 3, 3]);
+  const s = mk(2); arena(s); put(s.players[0], 1, 1); put(s.players[1], 15, 11);
+  s.players.forEach(p => { p.invuln = 1e9; });                   /* 不讓空襲把人炸死，才能一路數下去 */
+  s.time = 140;
+  const bucket = {};
+  for (let i = 0; i < 60 * 65; i++) {
+    R.step(s, {}, R.DT);
+    for (const e of s.events) if (e.t === 'sky') { const k = Math.floor(s.time); bucket[k] = (bucket[k] || 0) + 1; }
+  }
+  for (let t = 140; t < 150; t++) assert.strictEqual(bucket[t] || 0, 0, t + ' 秒不該有空襲');
+  for (let t = 150; t < 160; t++) assert.strictEqual(bucket[t], 1, t + ' 秒應該 1 顆：' + bucket[t]);
+  for (let t = 160; t < 170; t++) assert.strictEqual(bucket[t], 2, t + ' 秒應該 2 顆：' + bucket[t]);
+  for (let t = 170; t < 200; t++) assert.strictEqual(bucket[t], 3, t + ' 秒應該 3 顆（上限）：' + bucket[t]);
+});
+test('空襲炸彈：不屬於任何人、引信 2 秒、火力橫掃到牆邊；落在空格上，不會掉在人腳下或磚塊裡', () => {
+  const s = mk(2); arena(s); put(s.players[0], 1, 1); put(s.players[1], 15, 11);
+  s.players.forEach(p => { p.invuln = 1e9; });
+  s.grid[6 * s.w + 8] = 2; s.grid[7 * s.w + 3] = 1;
+  s.time = 149.99;
+  let landed = null;
+  for (let i = 0; i < 60 * 4 && !landed; i++) {
+    R.step(s, {}, R.DT);
+    const e = s.events.find(x => x.t === 'sky');
+    if (e) landed = e;
+  }
+  assert(landed, '應該有第一顆空襲');
+  const b = s.bombs.find(x => x.cx === landed.x && x.cy === landed.y);
+  assert(b && b.owner === -1 && b.range === R.SKY_RANGE && b.t <= R.SKY_FUSE && b.t > R.SKY_FUSE - 0.1, '空襲炸彈屬性：' + JSON.stringify(b));
+  assert.strictEqual(s.grid[landed.y * s.w + landed.x], 0, '不能掉進磚或牆');
+  assert(!s.players.some(p => R.overlapsCell(p, landed.x, landed.y)), '不能掉在人腳下');
+  assert(landed.x >= 1 && landed.y >= 1 && landed.x <= s.w - 2 && landed.y <= s.h - 2);
+  /* 引爆瞬間：這一列、這一欄都被火焰燒到牆邊（軟磚擋住就停在磚，一樣的規則） */
+  let boomed = false;
+  for (let i = 0; i < 60 * 3 && !boomed; i++) { R.step(s, {}, R.DT); boomed = s.events.some(x => x.t === 'boom' && x.x === landed.x && x.y === landed.y); }
+  assert(boomed, '2 秒後要爆炸');
+  const reach = (dx, dy) => { let n = 0; for (let x = landed.x + dx, y = landed.y + dy; ; x += dx, y += dy) { const g = s.grid[y * s.w + x]; if (x < 0 || y < 0 || x >= s.w || y >= s.h || g === 1) break; if (!R.flameAt(s, x, y)) break; n++; if (g === 2) break; } return n; };
+  const wallDist = (dx, dy) => { let n = 0; for (let x = landed.x + dx, y = landed.y + dy; x > 0 && y > 0 && x < s.w - 1 && y < s.h - 1; x += dx, y += dy) n++; return n; };
+  /* 沒有磚擋的方向，火焰一路燒到最外圈牆前一格 */
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    let blocked = false;
+    for (let x = landed.x + dx, y = landed.y + dy; x > 0 && y > 0 && x < s.w - 1 && y < s.h - 1; x += dx, y += dy) if (s.grid[y * s.w + x] !== 0) blocked = true;
+    if (!blocked) assert.strictEqual(reach(dx, dy), wallDist(dx, dy), '方向 ' + dx + ',' + dy + ' 應該一路燒到牆');
+  }
+});
+test('空襲炸彈炸死人不算任何人的擊倒；每局亂數相同、掉落位置也相同', () => {
+  const s = mk(3); arena(s); put(s.players[0], 1, 1); put(s.players[1], 5, 5); put(s.players[2], 15, 11);
+  s.bombs.push({ id: 99, owner: -1, cx: 5, cy: 5, t: 0, range: R.SKY_RANGE, pass: [], sl: null });
+  R.step(s, {}, R.DT);
+  assert(!s.players[1].alive, '被空襲炸到要淘汰');
+  assert.strictEqual(s.players.reduce((a, p) => a + p.kills, 0), 0, '空襲不算擊倒');
+  assert.strictEqual(s.players[1].cause, 'flame');
+  const drops = () => { const g = mk(2, { seed: 77 }); arena(g); put(g.players[0], 1, 1); put(g.players[1], 15, 11); g.players.forEach(p => { p.invuln = 1e9; }); g.time = 149.9; const out = []; for (let i = 0; i < 60 * 25; i++) { R.step(g, {}, R.DT); for (const e of g.events) if (e.t === 'sky') out.push(e.x + ',' + e.y); } return out.join('|'); };
+  const a = drops(); assert(a.length > 20 && a === drops(), '同 seed 掉落位置要一樣');
+});
+test('空襲：倒數與結束後不掉；沒有空格也不會出錯；快照裡帶得出去（owner -1、range 99）', () => {
+  const c = mk(2); arena(c); c.phase = 'countdown'; c.countdown = 100; c.time = 200;
+  R.step(c, {}, R.DT); assert.strictEqual(c.bombs.length, 0, '倒數中不掉');
+  const o = mk(2); arena(o); put(o.players[0], 1, 1); put(o.players[1], 15, 11); o.time = 200; o.phase = 'over'; o.endHold = 5;
+  R.step(o, {}, R.DT); assert.strictEqual(o.bombs.length, 0, '結束後不掉');
+  const f = mk(2); arena(f); for (let y = 1; y < f.h - 1; y++) for (let x = 1; x < f.w - 1; x++) f.grid[y * f.w + x] = 1;
+  f.time = 150; R.step(f, {}, R.DT); assert.strictEqual(f.bombs.length, 0, '沒有空格就不掉，也不能當掉');
+  const s = mk(2); arena(s); put(s.players[0], 1, 1); put(s.players[1], 15, 11); s.players.forEach(p => { p.invuln = 1e9; }); s.time = 149.99;
+  for (let i = 0; i < 3; i++) R.step(s, {}, R.DT);
+  assert(s.bombs.length >= 1);
+  const v = R.viewFromStart(R.startInfo(s));
+  R.applySnapshot(v, JSON.parse(JSON.stringify(R.snapshot(s, false))));
+  const vb = v.bombs.find(b => b.owner === -1);
+  assert(vb && vb.range === R.SKY_RANGE, '客戶端拿得到空襲炸彈');
+  assert(s.events.length === 0 || s.events.every(e => e.t), '事件格式正常');
+});
 test('空投機：每 45 秒飛來一架，掉 1～2 個正向道具，直到遊戲結束；關閉道具就不來', () => {
   const s = mk(2, { items: true }); arena(s);
   put(s.players[0], 1, 1); put(s.players[1], 13, 11);

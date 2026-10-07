@@ -388,6 +388,8 @@
           case 'brk': S.sfx('brk'); break;
           case 'plane': S.sfx('plane'); break;
           case 'airdrop': S.sfx('airdrop'); break;
+          case 'sky': S.sfx('place'); break;
+          case 'skyStart': S.sfx('plane'); root.UI.toast('⚠ 空襲開始！每秒都有炸彈從天上掉下來，火力橫掃到牆邊，快找掩護！', 4200); break;
           case 'item':
             if (e.slot === this.slot) { S.sfx(e.type.indexOf('c_') === 0 ? 'curse' : 'item'); if (e.type.indexOf('c_') === 0) this.vibrate(80); }
             break;

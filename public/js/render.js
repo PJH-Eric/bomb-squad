@@ -35,7 +35,7 @@
       this.statics = null; this.staticVer = -1; this.prevGrid = null;
       this.sprites = new Map(); this.itemImgs = new Map(); this.bombImg = null; this.loading = new Set();
       this.parts = []; this.pos = new Map(); this.deaths = new Map(); this.shake = 0;
-      this.last = 0; this.dirty = true; this.snapSeq = 0;
+      this.last = 0; this.dirty = true; this.snapSeq = 0; this.drops = [];
     }
 
     /** 一格的 CSS 像素邊長：整張地圖剛好塞進可用空間的最大整數（至少 12），不設上限，格子數越少每格越大 */
@@ -59,7 +59,7 @@
     markSnap() { this.snapSeq++; }
 
     reset() {
-      this.parts = []; this.pos.clear(); this.deaths.clear(); this.prevGrid = null; this.staticVer = -1; this.statics = null; this.tiles = null; this.themeId = -1; this.shake = 0;
+      this.parts = []; this.pos.clear(); this.deaths.clear(); this.prevGrid = null; this.staticVer = -1; this.statics = null; this.tiles = null; this.themeId = -1; this.shake = 0; this.drops = [];
     }
 
     /* ----- 圖片快取（SVG → 依格子大小點陣化一次） ----- */
@@ -171,6 +171,7 @@
         else if (e.t === 'item') this.burst(e.x + 0.5, e.y + 0.5, '#fff3a0', calm ? 3 : 9, 'star');
         else if (e.t === 'die') this.burst(e.x, e.y, '#fff3a0', calm ? 4 : 14, 'star');
         else if (e.t === 'place') this.burst(e.x + 0.5, e.y + 0.8, '#ffffff66', 4, 'dot');
+        else if (e.t === 'sky') this.drops.push({ x: e.x, y: e.y, t: 0 });   /* 空襲：炸彈從天上掉下來的動畫 */
       }
     }
 
@@ -243,9 +244,22 @@
         }
       }
 
+      /* 空襲：炸彈從天上掉下來（落地前這一格的真實炸彈先不畫，只畫掉落中的），地上先出現逐漸變大的預警影子 */
+      const DROP_T = 0.45, falling = new Set();
+      for (const d of this.drops) d.t += dt;
+      this.drops = this.drops.filter(d => d.t < DROP_T);
+      const dropBomb = this.bombSprite();
+      for (const d of this.drops) {
+        falling.add(d.y * view.w + d.x);
+        const k = d.t / DROP_T, ease = k * k, cx = (d.x + 0.5) * T, cy = (d.y + 0.5) * T;
+        ctx.fillStyle = 'rgba(0,0,0,' + (0.1 + 0.2 * k).toFixed(2) + ')'; ctx.beginPath(); ctx.ellipse(cx, cy + T * 0.3, T * (0.1 + 0.3 * k), T * (0.04 + 0.1 * k), 0, 0, 7); ctx.fill();
+        if (dropBomb) { const s0 = dropBomb.width; ctx.drawImage(dropBomb, cx - s0 / 2, cy - s0 / 2 - T * 0.02 - (1 - ease) * T * 7, s0, s0); }
+      }
+
       /* 炸彈 */
       const bombImg = this.bombSprite();
       for (const b of view.bombs) {
+        if (falling.has(b.cy * view.w + b.cx)) continue;
         let px = b.cx + 0.5, py = b.cy + 0.5;
         if (b.sl) { px -= b.sl.dx * (1 - b.sl.prog); py -= b.sl.dy * (1 - b.sl.prog); }
         const left = Math.max(0, b.t);
