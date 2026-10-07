@@ -116,6 +116,26 @@ for (const n of [2, 8]) {
     }
   });
 }
+test('不可破壞的東西不會太多：任何一張圖硬牆都不超過可走空間的 24%，經典／產線平均約 9%、密集約 12%、空曠約 5%', () => {
+  const avg = {};
+  for (const n of [2, 8]) {
+    const { w, h } = R.sizeFor(n), inner = (w - 2) * (h - 2);
+    for (const layout of LAYOUTS) {
+      let sum = 0, N = 150;
+      for (let seed = 1; seed <= N; seed++) {
+        const g = R.generateMap(seed, w, h, layout);
+        let hard = 0; for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) if (g[y * w + x] === 1) hard++;
+        assert(hard / inner <= 0.24, `${w}×${h} ${layout} seed ${seed} 硬牆佔 ${(hard / inner * 100).toFixed(0)}%，太多`);
+        sum += hard / inner;
+      }
+      (avg[layout] = avg[layout] || []).push(sum / N);
+    }
+  }
+  const m = k => avg[k].reduce((a, b) => a + b, 0) / avg[k].length;
+  assert(m('open') < m('classic') && m('classic') < m('dense'), '空曠 < 經典 < 密集 的硬牆量順序要保持');
+  assert(m('dense') <= 0.16 && m('classic') <= 0.12 && m('open') <= 0.07, '各版型平均硬牆量太高');
+  assert(m('open') >= 0.02, '空曠也要有一些硬牆，不然沒有變化');
+});
 test('約一半的地圖把中央硬牆換成軟磚（30%～70% 之間），小圖大圖都一樣', () => {
   for (const n of [2, 8]) {
     const { w, h } = R.sizeFor(n);

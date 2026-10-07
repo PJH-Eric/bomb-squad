@@ -64,10 +64,15 @@ test('邊框全是硬牆', () => {
   for (let y = 0; y < 13; y++) { assert.strictEqual(g[y * 17], 1); assert.strictEqual(g[y * 17 + 16], 1); }
 });
 test('密集版型比經典多硬牆', () => {
-  const count = g => g.filter(v => v === 1).length;
-  let more = 0;
-  for (let seed = 1; seed <= 20; seed++) if (count(R.generateMap(seed, 17, 13, 'dense')) > count(R.generateMap(seed, 17, 13, 'classic'))) more++;
-  assert(more >= 15, '密集應該通常比較多硬牆，只有 ' + more);
+  const count = g => g.filter(v => v === 1).length - (2 * (17 + 13) - 4);   /* 扣掉外框那圈牆，只比裡面的硬牆 */
+  /* 每張圖的硬牆量本來就會在 0.6～1.2 倍之間浮動，所以不逐張比，用 100 個 seed 的總量與多數決判斷 */
+  let more = 0, dense = 0, classic = 0;
+  for (let seed = 1; seed <= 100; seed++) {
+    const d = count(R.generateMap(seed, 17, 13, 'dense')), c = count(R.generateMap(seed, 17, 13, 'classic'));
+    dense += d; classic += c; if (d > c) more++;
+  }
+  assert(dense >= classic * 1.2, '密集的硬牆總量應該明顯比經典多：' + dense + ' vs ' + classic);
+  assert(more >= 60, '密集應該通常比較多硬牆，只有 ' + more + '／100');
 });
 
 console.log('\n移動');

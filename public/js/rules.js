@@ -116,13 +116,16 @@
     return n === free;
   }
 
-  /* 各版型的硬牆設定：rate＝硬牆佔左上四分之一空間的比例，len＝一組硬牆最長幾格，horiz＝只排橫條（機台） */
+  /* 各版型的硬牆設定：rate＝硬牆佔整張地圖可走空間（邊框內側）的平均比例，len＝一組硬牆最長幾格，horiz＝只排橫條（機台）。
+     每張圖實際比例是 rate 的 0.6～1.2 倍，而且放的時候不會超過目標太多，所以不會有少數地圖硬牆多到爆；
+     中央區的硬牆約一半的地圖還會再換成軟磚 */
   const HARD_STYLE = {
-    classic: { rate: 0.17, len: 3 },
-    open: { rate: 0.08, len: 2 },
-    dense: { rate: 0.27, len: 3 },
-    fab: { rate: 0.17, len: 3, minLen: 2, horiz: true }
+    classic: { rate: 0.12, len: 3 },
+    open: { rate: 0.06, len: 2 },
+    dense: { rate: 0.16, len: 3 },
+    fab: { rate: 0.12, len: 3, minLen: 2, horiz: true }
   };
+  const HARD_OVER = 1.1;        /* 放到一組之後總量最多可以超過目標幾倍（超過就不放那一組） */
   const SOFT_MIN = 0.88;        /* 可放軟磚的格子，每格至少 88% 機率放 */
   const SOFTEN_RATE = 0.5;     /* 約一半的地圖會把中央區的硬牆全換成軟磚 */
   const SOFTEN_REACH = 0.55;    /* 中央區範圍：離中心不超過半徑的這個比例 */
@@ -156,7 +159,7 @@
     }
 
     const st = HARD_STYLE[layout] || HARD_STYLE.classic;
-    const target = Math.round(st.rate * cx * cy * (0.55 + rnd() * 1.0));   /* 每張圖的硬牆總量也不一樣 */
+    const target = Math.round(st.rate * (w - 2) * (h - 2) * (0.6 + rnd() * 0.6));   /* 每張圖的硬牆總量也不一樣（0.6～1.2 倍，上限壓低，避免有些圖不可破壞的東西太多） */
     let placed = 0;
     for (let tries = 0; tries < 600 && placed < target; tries++) {
       const x0 = 1 + Math.floor(rnd() * cx), y0 = 1 + Math.floor(rnd() * cy);
@@ -183,8 +186,10 @@
       if (!ok) continue;
       const keep = grid.slice();
       for (const [x, y] of cells) set4(x, y, 1);
-      if (!connected(grid, w, h)) { for (let i = 0; i < grid.length; i++) grid[i] = keep[i]; continue; }
-      placed += cells.length;
+      let added = 0;
+      for (let i = 0; i < grid.length; i++) if (grid[i] === 1 && keep[i] === 0) added++;       /* 鏡射後真正多了幾格 */
+      if (!connected(grid, w, h) || placed + added > Math.ceil(target * HARD_OVER)) { for (let i = 0; i < grid.length; i++) grid[i] = keep[i]; continue; }
+      placed += added;
     }
 
     /* 約一半的地圖：中央區的硬牆全部換成軟磚，中間更好打、操作空間更大（出生點安全區裡的不動，那裡不放軟磚） */
