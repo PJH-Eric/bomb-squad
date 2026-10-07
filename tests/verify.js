@@ -202,6 +202,22 @@ test('判定寬鬆：中心離格線很近（擦邊）不算被炸，進到格�
   R.step(mid, {}, R.DT);
   assert(!mid.players[1].alive, '站在火焰格正中間應該被炸');
 });
+test('半身操作：身體有一半（中心剛好在格線上）進到火線格不會被炸，要再深入才算', () => {
+  /* 炸彈在 (3,3)、射程 2：火線是第 3 列 y∈[3,4]。玩家站在 x=5.5（火線上的一格），y 是他的中心；身體是 0.72 高 */
+  const hit = y => {
+    const s = mk(3); arena(s);
+    put(s.players[0], 1, 1); put(s.players[2], 11, 11);
+    s.players[1].x = 5.5; s.players[1].y = y;
+    s.bombs.push({ id: 1, owner: 0, cx: 3, cy: 3, t: 0, range: 2, pass: [], sl: null });
+    R.step(s, {}, R.DT);
+    return !s.players[1].alive;
+  };
+  assert(!hit(4.3), '身體只有一小角伸進火線：安全');
+  assert(!hit(4.0), '身體剛好一半伸進火線（中心在格線上）：安全，這就是半身操作');
+  assert(!hit(3.95), '中心剛過格線一點點（身體約 56% 在火線裡）：還是安全');
+  assert(hit(3.8), '中心深入火線超過 0.1（身體約 64% 以上）：被炸');
+  assert(hit(3.5), '站在火線正中間：被炸');
+});
 
 test('磚塊被炸掉後，那一格的火花不傷人（走進去不會被燒到），火線上的空格仍會', () => {
   const s = mk(3); arena(s);
