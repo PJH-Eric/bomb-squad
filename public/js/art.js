@@ -514,7 +514,10 @@
     { id: 6, name: '競技場', floorA: '#63b84a', floorB: '#4fa23c', hard: ['#c4cad6', '#6b7488'], hardPat: 'steel', soft: ['#e8794a', '#b84a28'], softPat: 'redbrick', border: ['#59627a', '#2a3042'], bg: '#2a3042', particle: '#ffd24d' },
     { id: 7, name: '日月光廠房', floorA: '#f6f1df', floorB: '#ece6cc', hard: ['#2b3d73', '#16224a'], hardPat: 'machine', soft: ['#f07d5a', '#c4492c'], softPat: 'wafer', border: ['#12803f', '#0b4a2a'], bg: '#16224a', particle: '#ffd84d' },
     { id: 8, name: '礦山', floorA: '#e0d0b8', floorB: '#d3c1a6', hard: ['#9a8d82', '#574d45'], hardPat: 'stone', soft: ['#d9964f', '#98602c'], softPat: 'crate', border: ['#7a5a3a', '#463220'], bg: '#463220', particle: '#d9964f' },
-    { id: 9, name: '地下墓穴', floorA: '#544866', floorB: '#4a3f5c', hard: ['#9a97b0', '#514e6a'], hardPat: 'pillar', soft: ['#e0d6ae', '#aa9c6a'], softPat: 'pot', border: ['#2f2742', '#1a1428'], bg: '#1a1428', particle: '#e0d6ae' }
+    { id: 9, name: '地下墓穴', floorA: '#544866', floorB: '#4a3f5c', hard: ['#9a97b0', '#514e6a'], hardPat: 'pillar', soft: ['#e0d6ae', '#aa9c6a'], softPat: 'pot', border: ['#2f2742', '#1a1428'], bg: '#1a1428', particle: '#e0d6ae' },
+    { id: 10, name: '火山', floorA: '#6a4440', floorB: '#5d3a37', hard: ['#7a6a68', '#352a2a'], hardPat: 'stone', soft: ['#ff9a4a', '#c4501c'], softPat: 'brick', border: ['#8a2a1a', '#4a120a'], bg: '#2a0e0a', particle: '#ff9a4a' },
+    { id: 11, name: '聖誕小鎮', floorA: '#eaf6ee', floorB: '#dcefe3', hard: ['#e85a5a', '#a02424'], hardPat: 'stripes', soft: ['#4fb86a', '#2a7a40'], softPat: 'present', border: ['#1f7a45', '#124a2a'], bg: '#124a2a', particle: '#ffd24d' },
+    { id: 12, name: '遊樂園', floorA: '#fff4cc', floorB: '#ffe9ac', hard: ['#7fd0ff', '#2a8ad0'], hardPat: 'stripes', soft: ['#ff8fc4', '#d84a8b'], softPat: 'cake', border: ['#ff5a8a', '#b02060'], bg: '#b02060', particle: '#ffd24d' }
   ];
 
   /* 每個主題各有幾種「不能炸」與「能炸」的東西，一張地圖裡會混著出現（由 seed 與座標決定，連線雙方看到的一樣）。
@@ -539,7 +542,13 @@
     { hard: [{ pat: 'stone' }, { pat: 'rock', shape: 'round', c: ['#a9a39a', '#5f5a53'] }, { pat: 'logs', c: ['#a8805a', '#664a2c'] }],
       soft: [{ pat: 'crate' }, { pat: 'barrel', shape: 'round', c: ['#b0a090', '#6c5e50'] }, { pat: 'cargo', c: ['#f0b24a', '#b27a20'] }] },
     { hard: [{ pat: 'pillar' }, { pat: 'rock', shape: 'round', c: ['#8f8ca8', '#4a4764'] }, { pat: 'stone', c: ['#b0acc4', '#605c7a'] }],
-      soft: [{ pat: 'pot', shape: 'round' }, { pat: 'crate', c: ['#efe6c0', '#b8aa78'] }, { pat: 'barrel', shape: 'round', c: ['#8a6f5a', '#53402f'] }] }
+      soft: [{ pat: 'pot', shape: 'round' }, { pat: 'crate', c: ['#efe6c0', '#b8aa78'] }, { pat: 'barrel', shape: 'round', c: ['#8a6f5a', '#53402f'] }] },
+    { hard: [{ pat: 'stone' }, { pat: 'rock', shape: 'round', c: ['#8a7a78', '#3c3030'] }, { pat: 'pillar', c: ['#5a4e4e', '#251d1d'] }],
+      soft: [{ pat: 'brick' }, { pat: 'pot', shape: 'round', c: ['#ff8a4a', '#c4501c'] }, { pat: 'barrel', shape: 'round', c: ['#c04a2a', '#7a2a14'] }] },
+    { hard: [{ pat: 'stripes' }, { pat: 'igloo', shape: 'round', c: ['#ffffff', '#a8c8d8'] }, { pat: 'logs', c: ['#c08850', '#7a4a28'] }],
+      soft: [{ pat: 'present' }, { pat: 'present', c: ['#7fb8ff', '#3a70c8'] }, { pat: 'snowball', shape: 'round', c: ['#ffffff', '#bfdcec'] }] },
+    { hard: [{ pat: 'stripes' }, { pat: 'swirl', shape: 'round', c: ['#ffd24d', '#d99a00'] }, { pat: 'gumdrop', shape: 'round', c: ['#9be88a', '#3a9a3a'] }],
+      soft: [{ pat: 'cake' }, { pat: 'donut', shape: 'round', c: ['#ffc88a', '#d98a45'] }, { pat: 'present', c: ['#ffd24d', '#d9a000'] }] }
   ];
   const VARIANT_WEIGHTS = [4, 2, 2];
 

@@ -63,7 +63,7 @@
   const RANDOM_LAYOUTS = ['classic', 'open', 'dense'];
   const FAB_THEME = 7;          /* 日月光廠房主題：隨機版型時固定用「產線」版型 */
   const LAYOUT_NAMES = { classic: '經典', open: '空曠', dense: '密集', fab: '產線' };
-  const THEME_COUNT = 10;
+  const THEME_COUNT = 13;
   const SHAPES = ['circle', 'triangle', 'square', 'diamond', 'star', 'cross', 'heart', 'moon'];
   const SLOT_COLORS = ['#4aa8ff', '#ff6b6b', '#ffc83d', '#4cd08a', '#b47cff', '#ff8fc7', '#ff9a3c', '#3ed6d6'];
 
