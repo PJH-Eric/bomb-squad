@@ -28,6 +28,8 @@ node tests/server.js    # 伺服器防呆：靜態檔路徑、WebSocket 封包�
 node scripts/online-check.js
 ```
 
+電腦等級強度表：`node scripts/ai-power.js` 印出每一級每個參數的值、對強度的貢獻與總強度（0～100）、跟目標級距（ai.js 的 LEVEL_POWER：30／42／55／69／84）的差距；`node scripts/ai-power.js 60` 另外印出依目標強度算出的參數。權重是實測校準的（`node scripts/ai-weights.js`，很慢，平常不用跑）：決策間隔與逃生機率合起來佔 6 成。調難度的流程：改 LEVEL_POWER → scaleToPower 算參數 → 寫回 LEVELS → `npm test`。
+
 實機版面量測（選用，只需要本機 Chrome／Edge）：`npm run layout:check`，在各種裝置尺寸下開單機對局，量每格大小並截圖到 `shots/`。
 
 瀏覽器煙霧測試（選用，需自行安裝 playwright）：先啟動 server，再 `node scripts/browser-check.js`，會檢查各尺寸直橫向無水平溢出、單機開局、線上邀請／觀戰／自動關閉，並輸出截圖到 `shots/`。

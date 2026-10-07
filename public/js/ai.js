@@ -14,21 +14,89 @@
   const LEVEL_ORDER = ['toddler', 'easy', 'normal', 'hard', 'myth'];
   const LEVELS = {
     /* interval 決策間隔（秒，越大反應越慢）、hunt 追人機率、chase 追人最遠格數、react 發現危險時每次決策會逃的機率、notice 發現危險後要多久才反應得過來（秒）、
-       wander 發呆亂走機率、sloppy 放了炸彈卻沒先確認退路的機率、margin 走位避開火線時多留的安全餘裕（秒，預設 0.1） */
-    toddler: { name: '幼幼班', interval: 0.6, bombProb: 0.3, hunt: 0, chase: 0, chain: false, react: 0.55, itemRange: 3, itemProb: 0.4, wander: 0.45, sloppy: 0.4, curseOk: true },
-    easy:    { name: '簡單',   interval: 0.55, bombProb: 0.55, hunt: 0.18, chase: 3, chain: false, react: 0.65, notice: 0.1, itemRange: 4, itemProb: 0.48, wander: 0.28, sloppy: 0.23, curseOk: true },
-    normal:  { name: '普通',   interval: 0.4, bombProb: 0.73, hunt: 0.3, chase: 5, chain: true, react: 0.7, notice: 0.5, itemRange: 6, itemProb: 0.76, wander: 0.16, sloppy: 0.12, curseOk: false },
-    hard:    { name: '困難',   interval: 0.19, bombProb: 1, hunt: 1, chase: 9, chain: true, react: 0.78, notice: 0.26, itemRange: 14, itemProb: 0.84, wander: 0.08, sloppy: 0.09, curseOk: false, trap: true },
-    /* 神話：反應快到幾乎零延遲、發現危險一定逃、放炸彈前一定確認退路、不發呆，追人與撿道具不限距離，走位多留安全餘裕 */
-    myth:    { name: '神話',   interval: 0.05, bombProb: 1, hunt: 1, chase: 60, chain: true, react: 1, notice: 0, itemRange: 60, itemProb: 1, wander: 0, sloppy: 0, curseOk: false, trap: true, margin: 0.2 }
+       wander 發呆亂走機率、sloppy 放了炸彈卻沒先確認退路的機率。
+       （margin 走位安全餘裕：校準顯示留越多反而越保守越弱，所以所有等級都用預設 0.1，不列入強度權重） */
+    toddler: { name: '幼幼班', interval: 0.65, bombProb: 0.28, hunt: 0, chase: 0, chain: false, react: 0.42, notice: 0.23, itemRange: 2, itemProb: 0.31, wander: 0.48, sloppy: 0.42, curseOk: true },
+    easy:    { name: '簡單', interval: 0.58, bombProb: 0.51, hunt: 0.16, chase: 3, chain: false, react: 0.57, notice: 0.21, itemRange: 3, itemProb: 0.42, wander: 0.32, sloppy: 0.26, curseOk: true },
+    normal:  { name: '普通', interval: 0.4, bombProb: 0.72, hunt: 0.3, chase: 5, chain: true, react: 0.69, notice: 0.51, itemRange: 6, itemProb: 0.75, wander: 0.17, sloppy: 0.12, curseOk: false },
+    hard:    { name: '困難', interval: 0.26, bombProb: 0.9, hunt: 0.88, chase: 8, chain: true, react: 0.69, notice: 0.35, itemRange: 12, itemProb: 0.74, wander: 0.14, sloppy: 0.14, curseOk: false, trap: true },
+    /* 神話：決策最快、逃得最準、追人與撿道具距離最遠、很少發呆與失誤（參數由強度目標 84 算出） */
+    myth:    { name: '神話', interval: 0.17, bombProb: 0.88, hunt: 0.85, chase: 34, chain: true, react: 0.85, notice: 0.15, itemRange: 34, itemProb: 0.85, wander: 0.09, sloppy: 0.08, curseOk: false, trap: true }
   };
+
+  /* ---------- 等級權重表：把每個參數換算成「強度值」（0～100），用強度值來定級距與調數值 ----------
+   * 權重是實測校準出來的（scripts/ai-weights.js：逐一把每個參數調到最強／最弱，跟三個基準電腦各打 200 局，看成績差多少），
+   * 不是憑感覺：決策間隔與逃生機率合起來佔 6 成，追人距離、發呆、失誤機率影響都很小。
+   * 每一項：w 權重、worst 最弱的值、best 最強的值。把參數換成 0（最弱）～1（最強）後乘上權重再加總，權重總和 100，
+   * 所以強度值就是 0～100。調難度時不要憑感覺改單一數字，而是先決定這一級的目標強度（LEVEL_POWER，級距要平均），
+   * 再用 scaleToPower() 算出對應的參數；tests/verify.js 會檢查每一級的強度值都貼近目標、級距夠大。 */
+  const POWER_WEIGHTS = {
+    interval:  { w: 34, worst: 0.8, best: 0.04, label: '決策間隔（秒）' },
+    react:     { w: 28, worst: 0, best: 1, label: '發現危險時逃的機率' },
+    notice:    { w: 12, worst: 1.0, best: 0, label: '發現危險後的反應延遲（秒）' },
+    hunt:      { w: 6, worst: 0, best: 1, label: '追人機率' },
+    bombProb:  { w: 6, worst: 0.2, best: 1, label: '放炸彈意願' },
+    itemRange: { w: 5, worst: 0, best: 40, label: '撿道具最遠格數' },
+    sloppy:    { w: 3, worst: 0.5, best: 0, label: '放炸彈沒確認退路的機率' },
+    wander:    { w: 2, worst: 0.6, best: 0, label: '發呆亂走機率' },
+    chase:     { w: 2, worst: 0, best: 40, label: '追人最遠格數' },
+    itemProb:  { w: 1, worst: 0, best: 1, label: '撿道具意願' },
+    chain:     { w: 1, worst: 0, best: 1, label: '會算連鎖爆炸', flag: true }
+  };
+  const POWER_TOTAL = Object.keys(POWER_WEIGHTS).reduce((a, k) => a + POWER_WEIGHTS[k].w, 0);
+  /* 各等級的目標強度（30、42、55、69、84：級距 12、13、14、15，越高級略微拉開）；改這張表就能整體調整難度的級距 */
+  const LEVEL_POWER = { toddler: 30, easy: 42, normal: 55, hard: 69, myth: 84 };
+  const POWER_DEFAULT = { notice: 0 };
+
+  function paramValue(cfg, k) {
+    const v = POWER_WEIGHTS[k].flag ? (cfg[k] ? 1 : 0) : cfg[k];
+    return v == null ? POWER_DEFAULT[k] : v;
+  }
+  /** 0（最弱）～1（最強） */
+  function paramNorm(k, v) {
+    const { worst, best } = POWER_WEIGHTS[k];
+    return Math.max(0, Math.min(1, (v - worst) / (best - worst)));
+  }
+  /** 每個參數對強度值的貢獻（權重 × 正規化值），加總就是強度值 */
+  function powerBreakdown(cfg) {
+    const out = {};
+    for (const k of Object.keys(POWER_WEIGHTS)) out[k] = POWER_WEIGHTS[k].w * paramNorm(k, paramValue(cfg, k)) / POWER_TOTAL * 100;
+    return out;
+  }
+  function power(cfg) {
+    const b = powerBreakdown(cfg);
+    return Object.keys(b).reduce((a, k) => a + b[k], 0);
+  }
+  /**
+   * 依目標強度算出新的參數：所有數值參數一起往「最強」（a>0）或「最弱」（a<0）等比例移動，找出剛好等於目標強度的比例。
+   * 旗標（chain）與沒有權重的欄位（name、curseOk、trap）不動；追人距離與撿道具距離取整數。回傳新物件，不改原本的。
+   */
+  function scaleToPower(cfg, target) {
+    const make = a => {
+      const o = Object.assign({}, cfg);
+      for (const k of Object.keys(POWER_WEIGHTS)) {
+        if (POWER_WEIGHTS[k].flag) continue;
+        const n = paramNorm(k, paramValue(cfg, k));
+        const n2 = a >= 0 ? n + a * (1 - n) : n * (1 + a);
+        const { worst, best } = POWER_WEIGHTS[k];
+        let v = worst + (best - worst) * n2;
+        v = (k === 'chase' || k === 'itemRange') ? Math.round(v) : Math.round(v * 100) / 100;
+        o[k] = v;
+      }
+      return o;
+    };
+    let lo = -1, hi = 1;
+    for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (power(make(mid)) < target) lo = mid; else hi = mid; }
+    return make((lo + hi) / 2);
+  }
   const FOUR = [[1, 0], [-1, 0], [0, 1], [0, -1]];
   const DIR_OF = { '1,0': 'R', '-1,0': 'L', '0,1': 'D', '0,-1': 'U' };
 
-  function createBrain(level, seed) {
+  /** cfg 可選：直接給一組參數（校準工具用），沒給就用等級表 */
+  function createBrain(level, seed, cfg) {
     const lv = LEVELS[level] ? level : 'normal';
     return {
-      level: lv, cfg: LEVELS[lv], rnd: R.mulberry32((seed == null ? 7 : seed) >>> 0),
+      level: lv, cfg: cfg || LEVELS[lv], rnd: R.mulberry32((seed == null ? 7 : seed) >>> 0),
       next: 0, path: [], dir: null, bomb: false, stuck: 0
     };
   }
@@ -285,6 +353,6 @@
     return { dir, bomb: brain.bomb };
   }
 
-  root.AI = { LEVELS, LEVEL_ORDER, createBrain, think, dangerMap, bfs, escapePath };
+  root.AI = { LEVELS, LEVEL_ORDER, POWER_WEIGHTS, POWER_TOTAL, LEVEL_POWER, power, powerBreakdown, scaleToPower, createBrain, think, dangerMap, bfs, escapePath };
   if (typeof module !== 'undefined' && module.exports) module.exports = root.AI;
 })(typeof self !== 'undefined' ? self : (typeof globalThis !== 'undefined' ? globalThis : this));
