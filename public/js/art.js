@@ -512,8 +512,46 @@
     { id: 4, name: '沙漠', floorA: '#fdebb9', floorB: '#f7dea4', hard: ['#dd9f5e', '#a96d33'], hardPat: 'stone', soft: ['#f6c870', '#c88f3a'], softPat: 'brick', border: ['#b8763d', '#7f4b22'], bg: '#f3cf86', particle: '#f6c870' },
     { id: 5, name: '雪地', floorA: '#f3fcff', floorB: '#e3f5fb', hard: ['#a2def6', '#5ab2d7'], hardPat: 'ice', soft: ['#ffffff', '#b9d8e6'], softPat: 'snow', border: ['#6eacca', '#437d9b'], bg: '#cdeaf5', particle: '#ffffff' },
     { id: 6, name: '競技場', floorA: '#63b84a', floorB: '#4fa23c', hard: ['#c4cad6', '#6b7488'], hardPat: 'steel', soft: ['#e8794a', '#b84a28'], softPat: 'redbrick', border: ['#59627a', '#2a3042'], bg: '#2a3042', particle: '#ffd24d' },
-    { id: 7, name: '日月光廠房', floorA: '#f6f1df', floorB: '#ece6cc', hard: ['#2b3d73', '#16224a'], hardPat: 'machine', soft: ['#f07d5a', '#c4492c'], softPat: 'wafer', border: ['#12803f', '#0b4a2a'], bg: '#16224a', particle: '#ffd84d' }
+    { id: 7, name: '日月光廠房', floorA: '#f6f1df', floorB: '#ece6cc', hard: ['#2b3d73', '#16224a'], hardPat: 'machine', soft: ['#f07d5a', '#c4492c'], softPat: 'wafer', border: ['#12803f', '#0b4a2a'], bg: '#16224a', particle: '#ffd84d' },
+    { id: 8, name: '礦山', floorA: '#e0d0b8', floorB: '#d3c1a6', hard: ['#9a8d82', '#574d45'], hardPat: 'stone', soft: ['#d9964f', '#98602c'], softPat: 'crate', border: ['#7a5a3a', '#463220'], bg: '#463220', particle: '#d9964f' },
+    { id: 9, name: '地下墓穴', floorA: '#544866', floorB: '#4a3f5c', hard: ['#9a97b0', '#514e6a'], hardPat: 'pillar', soft: ['#e0d6ae', '#aa9c6a'], softPat: 'pot', border: ['#2f2742', '#1a1428'], bg: '#1a1428', particle: '#e0d6ae' }
   ];
+
+  /* 每個主題各有幾種「不能炸」與「能炸」的東西，一張地圖裡會混著出現（由 seed 與座標決定，連線雙方看到的一樣）。
+   * 前面的比較常見；shape: round 是圓形的東西；c 是這種東西自己的顏色。能不能炸只看第一眼的形狀與裂紋，規則不變。 */
+  const VARIANTS = [
+    { hard: [{ pat: 'stripes' }, { pat: 'gumdrop', shape: 'round', c: ['#b99bff', '#7a3fcf'] }, { pat: 'swirl', shape: 'round', c: ['#7fe3ff', '#2fa6d6'] }],
+      soft: [{ pat: 'cookie' }, { pat: 'cake', c: ['#ffe9f2', '#f2a0c8'] }, { pat: 'donut', shape: 'round', c: ['#ffc88a', '#d98a45'] }] },
+    { hard: [{ pat: 'coral' }, { pat: 'urchin', shape: 'round', c: ['#9a6fe0', '#5a3aa8'] }, { pat: 'wave', c: ['#4fd0c0', '#1f8f86'] }],
+      soft: [{ pat: 'shell' }, { pat: 'bubble', shape: 'round', c: ['#e2f8ff', '#7fcff0'] }, { pat: 'kelp', c: ['#a5ec92', '#4ea244'] }] },
+    { hard: [{ pat: 'rivet' }, { pat: 'solar', c: ['#5a78d8', '#2c3f94'] }, { pat: 'asteroid', shape: 'round', c: ['#8a8fa8', '#4a4e66'] }],
+      soft: [{ pat: 'crate' }, { pat: 'barrel', shape: 'round', c: ['#ffbf75', '#d98339'] }, { pat: 'cargo', c: ['#8fd6ff', '#3f95c9'] }] },
+    { hard: [{ pat: 'stump' }, { pat: 'rock', shape: 'round', c: ['#b5b8b0', '#6f736c'] }, { pat: 'logs', c: ['#b88650', '#7a5128'] }],
+      soft: [{ pat: 'bush' }, { pat: 'mushroom', shape: 'round', c: ['#ff8a8a', '#d94a4a'] }, { pat: 'hay', c: ['#f5dc7a', '#c9a43a'] }] },
+    { hard: [{ pat: 'stone' }, { pat: 'cactus', shape: 'round', c: ['#6fcf6a', '#3a8f3e'] }, { pat: 'pyramid', c: ['#f0c070', '#b9822c'] }],
+      soft: [{ pat: 'brick' }, { pat: 'pot', shape: 'round', c: ['#e8a070', '#b8643a'] }, { pat: 'crate', c: ['#e0b070', '#a8742c'] }] },
+    { hard: [{ pat: 'ice' }, { pat: 'icecrystal', c: ['#c8f0ff', '#6cc2e6'] }, { pat: 'igloo', shape: 'round', c: ['#ffffff', '#9ec9dc'] }],
+      soft: [{ pat: 'snow' }, { pat: 'present', c: ['#ff8aa0', '#d84a6a'] }, { pat: 'snowball', shape: 'round', c: ['#ffffff', '#bfdcec'] }] },
+    { hard: [{ pat: 'steel' }, { pat: 'pillar', c: ['#d9dce3', '#8a90a0'] }, { pat: 'tire', shape: 'round', c: ['#4a4f5c', '#1f2230'] }],
+      soft: [{ pat: 'redbrick' }, { pat: 'barrel', shape: 'round', c: ['#4aa0e8', '#2a68b0'] }, { pat: 'hay', c: ['#f5dc7a', '#c9a43a'] }] },
+    { hard: [{ pat: 'machine' }],   /* 廠房的硬牆是依相鄰格拼成的機台，另外畫 */
+      soft: [{ pat: 'wafer' }, { pat: 'carton', c: ['#e8c392', '#b08050'] }, { pat: 'foup', c: ['#d8ecf8', '#7fb0d0'] }] },
+    { hard: [{ pat: 'stone' }, { pat: 'rock', shape: 'round', c: ['#a9a39a', '#5f5a53'] }, { pat: 'logs', c: ['#a8805a', '#664a2c'] }],
+      soft: [{ pat: 'crate' }, { pat: 'barrel', shape: 'round', c: ['#b0a090', '#6c5e50'] }, { pat: 'cargo', c: ['#f0b24a', '#b27a20'] }] },
+    { hard: [{ pat: 'pillar' }, { pat: 'rock', shape: 'round', c: ['#8f8ca8', '#4a4764'] }, { pat: 'stone', c: ['#b0acc4', '#605c7a'] }],
+      soft: [{ pat: 'pot', shape: 'round' }, { pat: 'crate', c: ['#efe6c0', '#b8aa78'] }, { pat: 'barrel', shape: 'round', c: ['#8a6f5a', '#53402f'] }] }
+  ];
+  const VARIANT_WEIGHTS = [4, 2, 2];
+
+  /** 這一格用第幾種：座標加 seed 雜湊出來的，不用亂數，所以同一張圖永遠長一樣 */
+  function variantIndex(seed, x, y, count) {
+    if (count <= 1) return 0;
+    let n = (Math.imul(x + 1, 73856093) ^ Math.imul(y + 1, 19349663) ^ Math.imul((seed | 0) + 7, 83492791)) >>> 0;
+    n = Math.imul(n ^ (n >>> 15), 2246822519) >>> 0; n ^= n >>> 13;
+    let r = (n >>> 0) % VARIANT_WEIGHTS.slice(0, count).reduce((a, b) => a + b, 0);
+    for (let i = 0; i < count; i++) { r -= VARIANT_WEIGHTS[i]; if (r < 0) return i; }
+    return 0;
+  }
 
   function mkCanvas(w, h) {
     if (typeof document !== 'undefined') { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
@@ -529,17 +567,23 @@
   }
 
   /** 硬牆：厚實、深色粗框、有立體側面，絕對不會被誤認成可炸的軟磚 */
-  function drawHard(ctx, T, th) {
+  function blockPath(ctx, x, y, w, h, r, shape) {
+    if (shape === 'round') { ctx.beginPath(); ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, 7); } else rr(ctx, x, y, w, h, r);
+  }
+  function drawHard(ctx, T, th, v) {
+    v = v || { pat: th.hardPat };
+    const col = v.c || th.hard, shape = v.shape;
     const m = T * 0.06, h = T - m * 2, depth = T * 0.16;
     ctx.save();
-    rr(ctx, m, m + depth * 0.5, h, h - depth * 0.5, T * 0.16); ctx.fillStyle = th.hard[1]; ctx.fill();
-    rr(ctx, m, m, h, h - depth, T * 0.16);
-    ctx.fillStyle = lin(ctx, m, m + h, th.hard[0], th.hard[1]); ctx.fill();
+    blockPath(ctx, m, m + depth * 0.5, h, h - depth * 0.5, T * 0.16, shape); ctx.fillStyle = col[1]; ctx.fill();
+    blockPath(ctx, m, m, h, h - depth, T * 0.16, shape);
+    ctx.fillStyle = lin(ctx, m, m + h, col[0], col[1]); ctx.fill();
     ctx.lineWidth = Math.max(2, T * 0.06); ctx.strokeStyle = 'rgba(30,20,50,0.55)'; ctx.stroke();
     ctx.clip();
     const x0 = m, y0 = m, w = h, hh = h - depth;
     ctx.strokeStyle = 'rgba(255,255,255,0.65)'; ctx.fillStyle = 'rgba(255,255,255,0.65)'; ctx.lineWidth = Math.max(1.5, T * 0.04);
-    switch (th.hardPat) {
+    const dot = (px, py, r) => { ctx.beginPath(); ctx.arc(px, py, r, 0, 7); ctx.fill(); };
+    switch (v.pat) {
       case 'stripes':
         ctx.save(); ctx.lineWidth = T * 0.1;
         for (let i = -3; i < 6; i++) { ctx.beginPath(); ctx.moveTo(x0 + i * T * 0.22, y0 + hh); ctx.lineTo(x0 + i * T * 0.22 + hh, y0); ctx.stroke(); }
@@ -574,6 +618,53 @@
         break;
       case 'ice':
         ctx.beginPath(); ctx.moveTo(x0 + w * 0.15, y0 + hh * 0.55); ctx.lineTo(x0 + w * 0.5, y0 + hh * 0.15); ctx.moveTo(x0 + w * 0.3, y0 + hh * 0.8); ctx.lineTo(x0 + w * 0.85, y0 + hh * 0.2); ctx.stroke(); break;
+      case 'gumdrop':   /* 軟糖：白色糖粒 */
+        for (const [cx, cy] of [[0.28, 0.3], [0.62, 0.24], [0.74, 0.55], [0.4, 0.58], [0.25, 0.78], [0.62, 0.8]]) dot(x0 + cx * w, y0 + cy * hh, T * 0.04);
+        break;
+      case 'swirl':     /* 棒棒糖：螺旋 */
+        ctx.lineWidth = T * 0.07; ctx.beginPath();
+        for (let i = 0; i <= 40; i++) { const a = i * 0.45, r = i * w * 0.0105; ctx[i ? 'lineTo' : 'moveTo'](x0 + w / 2 + Math.cos(a) * r, y0 + hh / 2 + Math.sin(a) * r); }
+        ctx.stroke(); break;
+      case 'urchin':    /* 海膽：放射刺 */
+        ctx.beginPath(); for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6; ctx.moveTo(x0 + w / 2 + Math.cos(a) * w * 0.14, y0 + hh / 2 + Math.sin(a) * hh * 0.14); ctx.lineTo(x0 + w / 2 + Math.cos(a) * w * 0.42, y0 + hh / 2 + Math.sin(a) * hh * 0.42); }
+        ctx.stroke(); dot(x0 + w / 2, y0 + hh / 2, T * 0.07); break;
+      case 'wave':      /* 海浪岩：波紋 */
+        for (let r = 0; r < 3; r++) { ctx.beginPath(); for (let i = 0; i <= 8; i++) { const px = x0 + w * i / 8, py = y0 + hh * (0.3 + r * 0.22) + Math.sin(i * 1.6) * hh * 0.05; ctx[i ? 'lineTo' : 'moveTo'](px, py); } ctx.stroke(); }
+        break;
+      case 'solar':     /* 太陽能板：格線 */
+        ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.strokeRect(x0 + w * 0.1, y0 + hh * 0.18, w * 0.8, hh * 0.64);
+        ctx.beginPath(); for (let i = 1; i < 3; i++) { ctx.moveTo(x0 + w * (0.1 + i * 0.8 / 3), y0 + hh * 0.18); ctx.lineTo(x0 + w * (0.1 + i * 0.8 / 3), y0 + hh * 0.82); }
+        ctx.moveTo(x0 + w * 0.1, y0 + hh * 0.5); ctx.lineTo(x0 + w * 0.9, y0 + hh * 0.5); ctx.stroke(); break;
+      case 'asteroid':  /* 隕石：坑洞 */
+        ctx.fillStyle = 'rgba(30,30,60,0.35)';
+        for (const [cx, cy, r] of [[0.34, 0.34, 0.11], [0.64, 0.5, 0.14], [0.38, 0.68, 0.08], [0.68, 0.24, 0.06]]) dot(x0 + cx * w, y0 + cy * hh, r * T);
+        break;
+      case 'rock':      /* 大石頭：裂痕與苔蘚 */
+        ctx.beginPath(); ctx.moveTo(x0 + w * 0.25, y0 + hh * 0.3); ctx.lineTo(x0 + w * 0.45, y0 + hh * 0.5); ctx.lineTo(x0 + w * 0.38, y0 + hh * 0.78); ctx.moveTo(x0 + w * 0.45, y0 + hh * 0.5); ctx.lineTo(x0 + w * 0.78, y0 + hh * 0.42); ctx.stroke();
+        ctx.fillStyle = 'rgba(90,170,80,0.55)'; dot(x0 + w * 0.72, y0 + hh * 0.72, T * 0.09); dot(x0 + w * 0.3, y0 + hh * 0.18, T * 0.06); break;
+      case 'logs':      /* 疊木頭：三根橫木與年輪端面 */
+        ctx.beginPath(); for (let r = 1; r < 3; r++) { ctx.moveTo(x0, y0 + hh * r / 3); ctx.lineTo(x0 + w, y0 + hh * r / 3); } ctx.stroke();
+        for (let r = 0; r < 3; r++) { ctx.beginPath(); ctx.arc(x0 + w * 0.2, y0 + hh * (r + 0.5) / 3, hh * 0.1, 0, 7); ctx.stroke(); }
+        break;
+      case 'cactus':    /* 仙人掌：直條紋與刺 */
+        ctx.beginPath(); for (const cx of [0.3, 0.5, 0.7]) { ctx.moveTo(x0 + w * cx, y0 + hh * 0.12); ctx.lineTo(x0 + w * cx, y0 + hh * 0.9); } ctx.stroke();
+        ctx.lineWidth = T * 0.03; ctx.beginPath(); for (const [cx, cy] of [[0.4, 0.3], [0.6, 0.5], [0.4, 0.7], [0.6, 0.25]]) { ctx.moveTo(x0 + w * cx - T * 0.04, y0 + hh * cy - T * 0.03); ctx.lineTo(x0 + w * cx + T * 0.04, y0 + hh * cy + T * 0.03); } ctx.stroke(); break;
+      case 'pyramid':   /* 金字塔石階 */
+        ctx.beginPath(); ctx.moveTo(x0 + w * 0.5, y0 + hh * 0.12); ctx.lineTo(x0 + w * 0.9, y0 + hh * 0.88); ctx.lineTo(x0 + w * 0.1, y0 + hh * 0.88); ctx.closePath();
+        ctx.moveTo(x0 + w * 0.4, y0 + hh * 0.32); ctx.lineTo(x0 + w * 0.6, y0 + hh * 0.32); ctx.moveTo(x0 + w * 0.3, y0 + hh * 0.52); ctx.lineTo(x0 + w * 0.7, y0 + hh * 0.52); ctx.moveTo(x0 + w * 0.2, y0 + hh * 0.7); ctx.lineTo(x0 + w * 0.8, y0 + hh * 0.7); ctx.stroke(); break;
+      case 'icecrystal': /* 冰晶：雪花 */
+        ctx.beginPath(); for (let i = 0; i < 3; i++) { const a = i * Math.PI / 3; ctx.moveTo(x0 + w / 2 + Math.cos(a) * w * 0.36, y0 + hh / 2 + Math.sin(a) * hh * 0.36); ctx.lineTo(x0 + w / 2 - Math.cos(a) * w * 0.36, y0 + hh / 2 - Math.sin(a) * hh * 0.36); }
+        ctx.stroke(); break;
+      case 'igloo':     /* 冰屋：磚縫 */
+        ctx.beginPath(); for (let r = 1; r < 4; r++) { ctx.moveTo(x0, y0 + hh * r / 4); ctx.lineTo(x0 + w, y0 + hh * r / 4); }
+        for (let r = 0; r < 4; r++) for (let c = 1; c < 3; c++) { const px = x0 + w * (c / 3 + (r % 2 ? 0.16 : -0.1)); ctx.moveTo(px, y0 + hh * r / 4); ctx.lineTo(px, y0 + hh * (r + 1) / 4); }
+        ctx.stroke(); break;
+      case 'pillar':    /* 水泥柱：直槽與上下箍 */
+        ctx.beginPath(); for (const cx of [0.3, 0.5, 0.7]) { ctx.moveTo(x0 + w * cx, y0 + hh * 0.22); ctx.lineTo(x0 + w * cx, y0 + hh * 0.82); } ctx.stroke();
+        ctx.fillStyle = 'rgba(40,50,70,0.4)'; ctx.fillRect(x0, y0 + hh * 0.12, w, hh * 0.08); ctx.fillRect(x0, y0 + hh * 0.82, w, hh * 0.08); break;
+      case 'tire':      /* 輪胎堆：同心圈 */
+        ctx.strokeStyle = 'rgba(255,255,255,0.4)'; for (const r of [0.36, 0.24]) { ctx.beginPath(); ctx.arc(x0 + w / 2, y0 + hh / 2, r * w, 0, 7); ctx.stroke(); }
+        ctx.fillStyle = 'rgba(0,0,0,0.5)'; dot(x0 + w / 2, y0 + hh / 2, w * 0.12); break;
     }
     ctx.fillStyle = 'rgba(255,255,255,0.28)';
     ctx.fillRect(x0, y0, w, hh * 0.22);
@@ -581,17 +672,20 @@
   }
 
   /** 軟磚：淺色、圓潤、有裂紋與小點，一看就是「可以炸」 */
-  function drawSoft(ctx, T, th) {
+  function drawSoft(ctx, T, th, v) {
+    v = v || { pat: th.softPat };
+    const col = v.c || th.soft, shape = v.shape;
     const m = T * 0.1, s = T - m * 2;
     ctx.save();
-    rr(ctx, m, m + T * 0.05, s, s, T * 0.2); ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fill();
-    rr(ctx, m, m, s, s, T * 0.2);
-    ctx.fillStyle = lin(ctx, m, m + s, th.soft[0], th.soft[1]); ctx.fill();
-    ctx.lineWidth = Math.max(1.5, T * 0.04); ctx.strokeStyle = th.soft[1]; ctx.stroke();
+    blockPath(ctx, m, m + T * 0.05, s, s, T * 0.2, shape); ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fill();
+    blockPath(ctx, m, m, s, s, T * 0.2, shape);
+    ctx.fillStyle = lin(ctx, m, m + s, col[0], col[1]); ctx.fill();
+    ctx.lineWidth = Math.max(1.5, T * 0.04); ctx.strokeStyle = col[1]; ctx.stroke();
     ctx.clip();
     ctx.strokeStyle = 'rgba(120,70,30,0.45)'; ctx.fillStyle = 'rgba(120,70,30,0.45)'; ctx.lineWidth = Math.max(1.2, T * 0.035);
     const x0 = m, y0 = m;
-    switch (th.softPat) {
+    const sdot = (px, py, r) => { ctx.beginPath(); ctx.arc(px, py, r, 0, 7); ctx.fill(); };
+    switch (v.pat) {
       case 'cookie':
         for (const [cx, cy] of [[0.3, 0.3], [0.65, 0.4], [0.42, 0.68], [0.72, 0.72], [0.25, 0.62]]) { ctx.beginPath(); ctx.arc(x0 + cx * s, y0 + cy * s, T * 0.05, 0, 7); ctx.fillStyle = '#7a4a2a'; ctx.fill(); }
         break;
@@ -632,6 +726,47 @@
         ctx.strokeStyle = 'rgba(80,130,160,0.45)';
         for (const [cx, cy, r] of [[0.3, 0.55, 0.2], [0.62, 0.42, 0.22], [0.52, 0.72, 0.16]]) { ctx.beginPath(); ctx.arc(x0 + cx * s, y0 + cy * s, r * s, Math.PI, 0); ctx.stroke(); }
         break;
+      case 'cake':      /* 蛋糕：奶油滴落、櫻桃 */
+        ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x0 + s, y0);
+        for (let i = 5; i >= 0; i--) ctx.lineTo(x0 + s * (i / 5), y0 + s * (i % 2 ? 0.3 : 0.4));
+        ctx.fill(); ctx.fillStyle = '#e8384f'; sdot(x0 + s * 0.5, y0 + s * 0.22, T * 0.07); ctx.fillStyle = 'rgba(160,80,110,0.5)'; ctx.fillRect(x0, y0 + s * 0.62, s, T * 0.035); break;
+      case 'donut':     /* 甜甜圈：中間的洞與糖珠 */
+        ctx.fillStyle = 'rgba(120,70,30,0.55)'; sdot(x0 + s / 2, y0 + s / 2, s * 0.16);
+        for (const [cx, cy, c] of [[0.3, 0.3, '#ff6b9a'], [0.7, 0.34, '#4aa8ff'], [0.34, 0.72, '#ffe03d'], [0.72, 0.7, '#7be0a0']]) { ctx.fillStyle = c; sdot(x0 + s * cx, y0 + s * cy, T * 0.035); }
+        break;
+      case 'bubble':    /* 泡泡：高光與小泡 */
+        ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.beginPath(); ctx.arc(x0 + s / 2, y0 + s / 2, s * 0.3, Math.PI * 1.1, Math.PI * 1.6); ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,255,0.6)'; sdot(x0 + s * 0.7, y0 + s * 0.7, T * 0.05); sdot(x0 + s * 0.3, y0 + s * 0.74, T * 0.03); break;
+      case 'kelp':      /* 海帶：彎曲的葉脈 */
+        ctx.strokeStyle = 'rgba(20,90,50,0.5)'; for (const cx of [0.3, 0.55, 0.78]) { ctx.beginPath(); for (let i = 0; i <= 6; i++) { const py = y0 + s * i / 6, px = x0 + s * cx + Math.sin(i * 1.4 + cx * 9) * s * 0.07; ctx[i ? 'lineTo' : 'moveTo'](px, py); } ctx.stroke(); }
+        break;
+      case 'barrel':    /* 木桶／油桶：上下箍 */
+        ctx.fillStyle = 'rgba(40,30,20,0.45)'; ctx.fillRect(x0, y0 + s * 0.22, s, s * 0.09); ctx.fillRect(x0, y0 + s * 0.69, s, s * 0.09);
+        ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.beginPath(); ctx.moveTo(x0 + s * 0.3, y0 + s * 0.34); ctx.lineTo(x0 + s * 0.3, y0 + s * 0.66); ctx.stroke(); break;
+      case 'cargo':     /* 貨櫃：斜紋警示 */
+        ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = T * 0.07; ctx.beginPath(); for (let i = -2; i < 5; i++) { ctx.moveTo(x0 + i * s * 0.3, y0 + s); ctx.lineTo(x0 + i * s * 0.3 + s, y0); } ctx.stroke(); break;
+      case 'mushroom':  /* 紅菇：白點 */
+        ctx.fillStyle = '#fff'; for (const [cx, cy, r] of [[0.3, 0.32, 0.09], [0.62, 0.26, 0.07], [0.7, 0.58, 0.1], [0.36, 0.64, 0.07]]) sdot(x0 + s * cx, y0 + s * cy, r * s); break;
+      case 'hay':       /* 乾草捆：橫向草紋與綑繩 */
+        ctx.strokeStyle = 'rgba(150,110,30,0.55)'; ctx.beginPath(); for (let r = 1; r < 6; r++) { ctx.moveTo(x0 + s * 0.05, y0 + s * r / 6); ctx.lineTo(x0 + s * 0.95, y0 + s * (r / 6 + (r % 2 ? 0.02 : -0.02))); } ctx.stroke();
+        ctx.strokeStyle = 'rgba(120,70,30,0.7)'; ctx.lineWidth = T * 0.05; ctx.beginPath(); ctx.moveTo(x0 + s * 0.3, y0); ctx.lineTo(x0 + s * 0.3, y0 + s); ctx.moveTo(x0 + s * 0.7, y0); ctx.lineTo(x0 + s * 0.7, y0 + s); ctx.stroke(); break;
+      case 'pot':       /* 陶罐：兩圈花紋 */
+        ctx.strokeStyle = 'rgba(90,40,20,0.55)'; ctx.beginPath(); ctx.moveTo(x0 + s * 0.12, y0 + s * 0.3); ctx.lineTo(x0 + s * 0.88, y0 + s * 0.3); ctx.moveTo(x0 + s * 0.12, y0 + s * 0.7); ctx.lineTo(x0 + s * 0.88, y0 + s * 0.7);
+        for (let i = 0; i < 6; i++) { ctx.moveTo(x0 + s * (0.2 + i * 0.12), y0 + s * 0.5); ctx.lineTo(x0 + s * (0.26 + i * 0.12), y0 + s * 0.42); ctx.lineTo(x0 + s * (0.32 + i * 0.12), y0 + s * 0.5); }
+        ctx.stroke(); break;
+      case 'present':   /* 禮物盒：十字緞帶與蝴蝶結 */
+        ctx.fillStyle = '#ffe03d'; ctx.fillRect(x0 + s * 0.42, y0, s * 0.16, s); ctx.fillRect(x0, y0 + s * 0.42, s, s * 0.16);
+        ctx.strokeStyle = '#d9a900'; ctx.lineWidth = T * 0.04; ctx.beginPath(); ctx.arc(x0 + s * 0.4, y0 + s * 0.36, s * 0.1, 0, 7); ctx.arc(x0 + s * 0.6, y0 + s * 0.36, s * 0.1, 0, 7); ctx.stroke(); break;
+      case 'snowball':  /* 雪球：疊起來的雪團陰影 */
+        ctx.strokeStyle = 'rgba(80,130,160,0.4)'; ctx.beginPath(); ctx.arc(x0 + s * 0.4, y0 + s * 0.35, s * 0.2, Math.PI * 0.9, Math.PI * 1.9); ctx.stroke();
+        ctx.fillStyle = 'rgba(80,130,160,0.25)'; sdot(x0 + s * 0.68, y0 + s * 0.68, s * 0.1); break;
+      case 'carton':    /* 紙箱：封箱膠帶與箭頭 */
+        ctx.fillStyle = 'rgba(255,230,160,0.75)'; ctx.fillRect(x0 + s * 0.4, y0, s * 0.2, s * 0.42);
+        ctx.strokeStyle = 'rgba(90,50,20,0.6)'; ctx.beginPath(); ctx.moveTo(x0 + s * 0.25, y0 + s * 0.78); ctx.lineTo(x0 + s * 0.25, y0 + s * 0.58); ctx.moveTo(x0 + s * 0.17, y0 + s * 0.65); ctx.lineTo(x0 + s * 0.25, y0 + s * 0.57); ctx.lineTo(x0 + s * 0.33, y0 + s * 0.65); ctx.stroke(); break;
+      case 'foup':      /* 晶圓傳送盒：透明視窗與把手 */
+        ctx.fillStyle = 'rgba(30,60,100,0.3)'; ctx.fillRect(x0 + s * 0.14, y0 + s * 0.3, s * 0.72, s * 0.42);
+        ctx.strokeStyle = 'rgba(30,60,100,0.6)'; ctx.beginPath(); for (let i = 1; i < 4; i++) { ctx.moveTo(x0 + s * 0.14, y0 + s * (0.3 + i * 0.105)); ctx.lineTo(x0 + s * 0.86, y0 + s * (0.3 + i * 0.105)); } ctx.stroke();
+        ctx.fillStyle = '#17a35a'; ctx.fillRect(x0 + s * 0.34, y0 + s * 0.12, s * 0.32, s * 0.08); break;
     }
     /* 裂紋：軟磚共通記號 */
     ctx.strokeStyle = 'rgba(80,40,20,0.4)'; ctx.lineWidth = Math.max(1.2, T * 0.03);
@@ -766,6 +901,8 @@
       floorB: make(x => drawFloor(x, T, th, true)),
       hard: make(x => drawHard(x, T, th)),
       soft: make(x => drawSoft(x, T, th)),
+      hardV: (VARIANTS[th.id] || VARIANTS[0]).hard.map(v => make(x => drawHard(x, T, th, v))),
+      softV: (VARIANTS[th.id] || VARIANTS[0]).soft.map(v => make(x => drawSoft(x, T, th, v))),
       border: make(x => drawBorder(x, T, th))
     };
   }
@@ -780,7 +917,7 @@
   function svgUrl(svg) { return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg); }
 
   root.Art = {
-    ANIMALS, ANIMAL_IDS, THEMES, ITEM_NAMES, ITEM_DESC,
-    animalSVG, itemSVG, bombSVG, planeSVG, icon, buildTileset, drawFabHard, drawFabFloor, svgImage, svgUrl, rr
+    ANIMALS, ANIMAL_IDS, THEMES, VARIANTS, variantIndex, ITEM_NAMES, ITEM_DESC,
+    animalSVG, itemSVG, bombSVG, planeSVG, icon, buildTileset, drawHard, drawSoft, drawFloor, drawBorder, drawFabHard, drawFabFloor, svgImage, svgUrl, rr
   };
 })(typeof self !== 'undefined' ? self : this);

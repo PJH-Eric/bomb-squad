@@ -205,16 +205,11 @@
   const itemPatch = v => ({ items: v !== 'none', curses: v === 'curses' });
   function rulesPanel(rules, set) {
     const f = (label, ctl) => h('div', { class: 'field' }, h('span', { class: 'label' }, label), h('div', { class: 'ctl' }, ctl));
-    const more = h('div', { class: 'more-box', hidden: !App.moreOpen },
-      f('地圖版型', root.UI.dropdown({ label: '地圖版型', options: LAYOUT_OPTS, value: rules.layout, onChange: v => set({ layout: v }) })));
-    const moreBtn = h('button', { type: 'button', class: 'more-btn', 'aria-expanded': App.moreOpen ? 'true' : 'false', onClick: () => {
-      App.moreOpen = !App.moreOpen; more.hidden = !App.moreOpen; moreBtn.setAttribute('aria-expanded', App.moreOpen ? 'true' : 'false'); moreBtn.firstChild.textContent = App.moreOpen ? '收起' : '更多設定';
-    } }, h('span', null, App.moreOpen ? '收起' : '更多設定'), h('i', { 'aria-hidden': 'true' }));
     return h('div', { class: 'rules-panel' },
       f('時間', seg({ label: '時間限制', options: TIME_OPTS, value: rules.timeLimit, onChange: v => set({ timeLimit: v }) })),
       f('道具', seg({ label: '道具', options: ITEM_MODE_OPTS, value: itemMode(rules), onChange: v => set(itemPatch(v)) })),
-      f('主題', root.UI.dropdown({ label: '地圖主題', options: THEME_DD, value: rules.theme, onChange: v => set({ theme: v }) })),
-      moreBtn, more);
+      h('div', { class: 'field field-map' }, h('span', { class: 'label' }, '地圖'),
+        h('div', { class: 'ctl' }, root.MapPick.mapButton({ theme: rules.theme, layout: rules.layout, onChange: set }))));
   }
   function rulesSummary(r) {
     const pick = (opts, v) => { const o = opts.find(x => x.v === v); return o ? o.label : ''; };

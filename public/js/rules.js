@@ -63,7 +63,7 @@
   const RANDOM_LAYOUTS = ['classic', 'open', 'dense'];
   const FAB_THEME = 7;          /* 日月光廠房主題：隨機版型時固定用「產線」版型 */
   const LAYOUT_NAMES = { classic: '經典', open: '空曠', dense: '密集', fab: '產線' };
-  const THEME_COUNT = 8;
+  const THEME_COUNT = 10;
   const SHAPES = ['circle', 'triangle', 'square', 'diamond', 'star', 'cross', 'heart', 'moon'];
   const SLOT_COLORS = ['#4aa8ff', '#ff6b6b', '#ffc83d', '#4cd08a', '#b47cff', '#ff8fc7', '#ff9a3c', '#3ed6d6'];
 
@@ -112,11 +112,23 @@
     return n === free;
   }
 
+  /* 各版型的硬牆設定：rate＝硬牆佔左上四分之一空間的比例，len＝一組硬牆最長幾格，horiz＝只排橫條（機台） */
+  const HARD_STYLE = {
+    classic: { rate: 0.17, len: 3 },
+    open: { rate: 0.08, len: 2 },
+    dense: { rate: 0.27, len: 3 },
+    fab: { rate: 0.17, len: 3, minLen: 2, horiz: true }
+  };
+  const SOFTEN_RATE = 0.5;      /* 約一半的地圖會把中央區的硬牆全換成軟磚 */
+  const SOFTEN_REACH = 0.55;    /* 中央區範圍：離中心不超過半徑的這個比例 */
+
   /**
-   * 產生地圖：左上四分之一隨機，再左右上下鏡射，所以每個出生點的處境都一樣公平。
-   * layout：classic 經典立柱／open 空曠（立柱減半）／dense 密集（多一些隨機硬牆，保證全連通）
+   * 產生地圖：左上四分之一隨機撒一組組長短不一的硬牆，再左右上下鏡射，所以每個出生點的處境都一樣公平，
+   * 但每張圖的硬牆位置、長度、方向都不固定，沒有任何規則排列。每放一組都檢查全圖連通，擋死路就撤回。
+   * layout：classic 經典／open 空曠（硬牆少）／dense 密集（硬牆多）／fab 產線（橫向機台，一組 2～3 格）
+   * soften：true／false 強制中央硬牆是否改軟磚；不給就由 seed 決定（約一半的地圖會改）
    */
-  function generateMap(seed, w, h, layout, density) {
+  function generateMap(seed, w, h, layout, density, soften) {
     const rnd = mulberry32(seed >>> 0);
     const grid = new Array(w * h).fill(0);
     const cx = (w - 1) / 2, cy = (h - 1) / 2;
@@ -128,38 +140,51 @@
     for (let x = 0; x < w; x++) { grid[at(x, 0)] = 1; grid[at(x, h - 1)] = 1; }
     for (let y = 0; y < h; y++) { grid[at(0, y)] = 1; grid[at(w - 1, y)] = 1; }
 
-    /* 出生點安全區：曼哈頓距離 3 以內不放軟磚（15×13 清四個角、17×15 清八個點，地圖才對稱） */
-    const safe = new Uint8Array(w * h);
+    /* 出生點安全區：曼哈頓距離 3 以內不放軟磚（15×13 清四個角、17×15 清八個點，地圖才對稱）；距離 1 以內連硬牆也不放，免得一出生就被卡住 */
+    const safe = new Uint8Array(w * h), nearSpawn = new Uint8Array(w * h);
     for (const [sx, sy] of spawnPoints(w, h).slice(0, w <= 15 ? 4 : 8)) {
       for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
-        if (Math.abs(x - sx) + Math.abs(y - sy) <= 3) safe[at(x, y)] = 1;
+        const d = Math.abs(x - sx) + Math.abs(y - sy);
+        if (d <= 3) safe[at(x, y)] = 1;
+        if (d <= 1) nearSpawn[at(x, y)] = 1;
       }
     }
 
-    for (let y = 1; y <= cy; y++) for (let x = 1; x <= cx; x++) {
-      if (layout === 'fab') {
-        /* 產線（仿無塵室）：十字主走道貫穿全場；兩排 2 格寬的機台隔著一條維修走道，機台之間留直向走道；
-           機台排從外往內是 [2,3]、[5,6]，主走道旁多留一格當緩衝 */
-        const aisle = x === cx || y === cy;
-        if (y % 2 === 0 && (x === 2 || x === 3 || x === 5 || x === 6) && !aisle) set4(x, y, 1);
-      } else if (x % 2 === 0 && y % 2 === 0) {
-        const k = (x / 2) + (y / 2);
-        if (layout === 'open') { if (k % 3 === 0) set4(x, y, 1); }          /* 空曠：每 3 顆留 1 顆 */
-        else if (layout === 'dense') set4(x, y, 1);
-        else if (k % 3 !== 0) set4(x, y, 1);                                  /* 經典：硬牆比傳統少 1/3，多留些空間給軟磚 */
-      }
-    }
-    if (layout === 'dense') {
-      for (let y = 1; y <= cy; y++) for (let x = 1; x <= cx; x++) {
-        if (grid[at(x, y)] !== 0 || safe[at(x, y)]) continue;
-        if (rnd() < 0.06) {
-          const keep = grid.slice();
-          set4(x, y, 1);
-          if (!connected(grid, w, h)) for (let i = 0; i < grid.length; i++) grid[i] = keep[i];
+    const st = HARD_STYLE[layout] || HARD_STYLE.classic;
+    const target = Math.round(st.rate * cx * cy);
+    let placed = 0;
+    for (let tries = 0; tries < 600 && placed < target; tries++) {
+      const x0 = 1 + Math.floor(rnd() * cx), y0 = 1 + Math.floor(rnd() * cy);
+      const horiz = st.horiz || rnd() < 0.5;
+      const lo = st.minLen || 1;
+      const len = lo + Math.floor(rnd() * (st.len - lo + 1));
+      const cells = [];
+      for (let k = 0; k < len; k++) cells.push(horiz ? [x0 + k, y0] : [x0, y0 + k]);
+      /* 整組都要落在左上四分之一、是空格、不貼著出生點，也不能和別組硬牆上下左右相連（才會一組一組分開） */
+      const ok = cells.every(([x, y]) => {
+        if (x > cx || y > cy || grid[at(x, y)] !== 0 || nearSpawn[at(x, y)]) return false;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = x + dx, ny = y + dy;
+          if (cells.some(c => c[0] === nx && c[1] === ny)) continue;
+          if (nx < 1 || ny < 1 || nx > w - 2 || ny > h - 2) continue;
+          if (grid[at(nx, ny)] === 1) return false;
         }
+        return true;
+      });
+      if (!ok) continue;
+      const keep = grid.slice();
+      for (const [x, y] of cells) set4(x, y, 1);
+      if (!connected(grid, w, h)) { for (let i = 0; i < grid.length; i++) grid[i] = keep[i]; continue; }
+      placed += cells.length;
+    }
+
+    /* 約一半的地圖：中央區的硬牆全部換成軟磚，中間更好打、操作空間更大（出生點安全區裡的不動，那裡不放軟磚） */
+    const centerSoft = soften == null ? mulberry32((seed ^ 0x2f6b9d1) >>> 0)() < SOFTEN_RATE : !!soften;
+    if (centerSoft) {
+      for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+        if (grid[at(x, y)] === 1 && !safe[at(x, y)] && Math.abs(x - cx) <= cx * SOFTEN_REACH && Math.abs(y - cy) <= cy * SOFTEN_REACH) grid[at(x, y)] = 2;
       }
     }
-    if (layout === 'fab' && !connected(grid, w, h)) { for (let i = 0; i < grid.length; i++) if (grid[i] === 1 && i % w !== 0 && i % w !== w - 1 && ((i / w) | 0) !== 0 && ((i / w) | 0) !== h - 1) grid[i] = 0; }
     const d = density == null ? (layout === 'fab' ? 0.82 : 0.88) : density;
     for (let y = 1; y <= cy; y++) for (let x = 1; x <= cx; x++) {
       if (grid[at(x, y)] !== 0 || safe[at(x, y)]) continue;
@@ -170,7 +195,7 @@
 
   /* ---------- 建立一局 ---------- */
   /**
-   * opts：{ seed, players:[{slot,name,animal,kind,level}], layout, themeId, timeLimit, items, curses, countdown }
+   * opts：{ seed, players:[{slot,name,animal,kind,level}], layout, themeId, timeLimit, items, curses, countdown, soften }
    * layout 可填 'random'（由 seed 決定）；themeId 填 -1 也是隨機。
    */
   function createGame(opts) {
@@ -182,7 +207,7 @@
     if (themeId == null || themeId < 0) themeId = Math.floor(pick() * THEME_COUNT);
     let layout = opts.layout;
     if (!layout || layout === 'random') layout = themeId === FAB_THEME ? 'fab' : RANDOM_LAYOUTS[Math.floor(pick() * RANDOM_LAYOUTS.length)];
-    const grid = generateMap(seed, w, h, layout, opts.density);
+    const grid = generateMap(seed, w, h, layout, opts.density, opts.soften);
     /* 每局隨機分配出生點：只在「已清出安全區」的點之間洗牌，所以每個位置一樣公平；同一個 seed 洗出來一樣（連線雙方一致） */
     const spawns = spawnPoints(w, h).slice(0, w <= 15 ? 4 : 8);
     { const sr = mulberry32((seed ^ 0x51ed270b) >>> 0); for (let i = spawns.length - 1; i > 0; i--) { const j = Math.floor(sr() * (i + 1)); const t = spawns[i]; spawns[i] = spawns[j]; spawns[j] = t; } }

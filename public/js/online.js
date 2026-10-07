@@ -264,14 +264,15 @@
       }
       const isAi = s.kind === 'ai', mine = s.i === you.seat;
       if (isAi) {
-        /* 電腦席位：頭像、名字、難度下拉、移除鈕全部排成一行 */
-        box.appendChild(h('div', { class: 'seat ai' + '' },
+        /* 電腦席位：第一行頭像、名字、移除鈕；角色與難度兩個下拉各佔一半排在第二行，窄欄也不會擠出去 */
+        const canEdit = host && lobby;
+        box.appendChild(h('div', { class: 'seat ai' },
           h('div', { class: 'seat-line' }, avatar(s.animal, 38), h('span', { class: 'seat-name' }, s.name),
-            host && lobby
-              ? [root.UI.dropdown({ label: s.name + ' 角色', cls: 'lvl sm', options: U.animalOptions(r.seats.filter(o => o.kind === 'human').map(o => o.animal)), value: s.animal, onChange: v => Net.send({ type: 'aiAnimal', seat: s.i, animal: v }) }),
-                root.UI.dropdown({ label: s.name + ' 難度', cls: 'lvl sm', options: U.LEVEL_DD, value: s.level, onChange: v => Net.send({ type: 'aiLevel', seat: s.i, level: v }) }),
-                root.UI.iconBtn('trash', '移除 ' + s.name, () => Net.send({ type: 'removeai', seat: s.i }), 'sm')]
-              : h('span', { class: 'pill gray' }, AI.LEVELS[s.level] ? AI.LEVELS[s.level].name : '電腦'))));
+            canEdit ? root.UI.iconBtn('trash', '移除 ' + s.name, () => Net.send({ type: 'removeai', seat: s.i }), 'sm')
+              : h('span', { class: 'pill gray' }, AI.LEVELS[s.level] ? AI.LEVELS[s.level].name : '電腦')),
+          canEdit ? h('div', { class: 'seat-pick' },
+            root.UI.dropdown({ label: s.name + ' 角色', cls: 'lvl sm', options: U.animalOptions(r.seats.filter(o => o.kind === 'human').map(o => o.animal)), value: s.animal, onChange: v => Net.send({ type: 'aiAnimal', seat: s.i, animal: v }) }),
+            root.UI.dropdown({ label: s.name + ' 難度', cls: 'lvl sm', options: U.LEVEL_DD, value: s.level, onChange: v => Net.send({ type: 'aiLevel', seat: s.i, level: v }) })) : null));
         continue;
       }
       const tags = h('div', { class: 'seat-tags' });

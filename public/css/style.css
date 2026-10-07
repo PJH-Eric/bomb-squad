@@ -638,3 +638,43 @@ body {
 .dialog-body, .dialog-body > *, .link-box { min-width: 0; max-width: 100%; box-sizing: border-box; }
 .hero-cast { flex-wrap: wrap; justify-content: center; max-width: 100%; }
 .hero-cast .avatar { margin: 0 -2px; }
+
+/* 電腦席位：角色與難度兩個下拉各佔一半，排在第二行 */
+.seat-pick { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px; width: 100%; }
+.seat-pick .dd { width: 100%; min-width: 0; }
+.seat-pick .dd-cur { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 地圖選擇：設定面板上的按鈕與彈出視窗 */
+.field-map > .ctl { flex: 1 1 0; }
+.map-btn { display: flex; align-items: center; gap: 10px; width: 100%; min-width: 0; padding: 6px 12px 6px 6px; font: inherit; color: #17122b; text-align: left; background: #fffdf3; border: 3px solid #17122b; border-radius: 14px; box-shadow: 3px 3px 0 #17122b; cursor: pointer; }
+.map-btn:hover:not(:disabled) { background: #fff6bd; }
+.map-btn:active:not(:disabled) { transform: translate(3px, 3px); box-shadow: none; }
+.map-thumb { width: 64px; height: auto; aspect-ratio: 15 / 13; border-radius: 8px; border: 2px solid #17122b; flex: 0 0 auto; image-rendering: auto; }
+.map-btn-txt { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
+.map-btn-txt b { font-weight: 900; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.map-btn-txt small { color: #5b5378; font-weight: 700; font-size: .78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.map-btn-go { width: 9px; height: 9px; border-right: 3px solid #17122b; border-top: 3px solid #17122b; transform: rotate(45deg); flex: 0 0 auto; }
+.dialog.map-dialog { width: min(760px, 100%); }
+.map-pick { display: grid; gap: 10px; min-width: 0; }
+.map-preview { display: grid; gap: 8px; justify-items: center; padding: 10px; background: #f3edff; border: 3px solid #17122b; border-radius: 16px; }
+.map-big { width: min(100%, 420px); height: auto; aspect-ratio: 15 / 13; border: 3px solid #17122b; border-radius: 10px; box-shadow: 3px 3px 0 #17122b; }
+.map-preview-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; min-width: 0; }
+.map-preview-bar .btn { flex: 0 0 auto; }
+.map-h { margin: 4px 0 0; font-size: 1rem; font-weight: 900; }
+.map-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px; }
+.map-card { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 4px; padding: 5px; font: inherit; color: #17122b; background: #fff; border: 3px solid #17122b; border-radius: 12px; box-shadow: 2px 2px 0 #17122b; cursor: pointer; min-width: 0; }
+.map-card:hover { background: #fff6bd; }
+.map-card-cv { width: 100%; height: auto; aspect-ratio: 15 / 13; border-radius: 7px; border: 2px solid #17122b; }
+.map-card-name { font-weight: 900; font-size: .9rem; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.map-card-ok { display: none; position: absolute; top: -8px; right: -8px; width: 24px; height: 24px; border-radius: 50%; background: #ffe03d; border: 3px solid #17122b; }
+.map-card-ok::after { content: ""; position: absolute; left: 6px; top: 2px; width: 5px; height: 10px; border-right: 3px solid #17122b; border-bottom: 3px solid #17122b; transform: rotate(45deg); }
+.map-card[aria-checked="true"] { background: #ffe86a; box-shadow: 0 0 0 3px #8b5cff, 2px 2px 0 3px #17122b; }
+.map-card[aria-checked="true"] .map-card-ok { display: block; }
+.map-lays { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+.map-lay { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; font: inherit; color: #17122b; text-align: left; background: #fff; border: 3px solid #17122b; border-radius: 12px; box-shadow: 2px 2px 0 #17122b; cursor: pointer; min-width: 0; }
+.map-lay small { color: #5b5378; font-weight: 700; font-size: .76rem; }
+.map-lay:hover { background: #fff6bd; }
+.map-lay[aria-checked="true"] { background: #17122b; color: #ffe03d; }
+.map-lay[aria-checked="true"] small { color: #e8e4f7; }
+.map-card:focus-visible, .map-lay:focus-visible, .map-btn:focus-visible { outline: 3px solid #8b5cff; outline-offset: 2px; }
+@media (max-width: 560px) { .map-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .map-card-name { font-size: .8rem; } .map-thumb { width: 52px; } }

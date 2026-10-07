@@ -138,8 +138,8 @@
             const fc = document.createElement('canvas'); fc.width = T; fc.height = T;
             Art.drawFabHard(fc.getContext('2d'), T, { l: at(x - 1, y) === 1 && x - 1 > 0, r: at(x + 1, y) === 1 && x + 1 < view.w - 1, u: at(x, y - 1) === 1 && y - 1 > 0, d: at(x, y + 1) === 1 && y + 1 < view.h - 1, alt: (x + y) % 2 === 1 });
             g.drawImage(fc, x * T, y * T);
-          } else if (v === 1) g.drawImage(this.tiles.hard, x * T, y * T);
-          else if (v === 2) g.drawImage(this.tiles.soft, x * T, y * T);
+          } else if (v === 1) { const hv = this.tiles.hardV; g.drawImage(hv[Art.variantIndex(view.seed, x, y, hv.length)], x * T, y * T); }
+          else if (v === 2) { const sv = this.tiles.softV; g.drawImage(sv[Art.variantIndex(view.seed + 5, x, y, sv.length)], x * T, y * T); }
         }
         this.statics = c; this.staticVer = view.gridVer;
       }
