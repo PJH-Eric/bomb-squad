@@ -123,7 +123,7 @@
     dense: { rate: 0.27, len: 3 },
     fab: { rate: 0.17, len: 3, minLen: 2, horiz: true }
   };
-  const SOFT_MIN = 0.75;        /* 可放軟磚的格子，每格至少 75% 機率放 */
+  const SOFT_MIN = 0.88;        /* 可放軟磚的格子，每格至少 88% 機率放 */
   const SOFTEN_RATE = 0.5;     /* 約一半的地圖會把中央區的硬牆全換成軟磚 */
   const SOFTEN_REACH = 0.55;    /* 中央區範圍：離中心不超過半徑的這個比例 */
 
@@ -195,16 +195,16 @@
       }
     }
     /* 軟磚：每張圖的整體疏密不同，再隨機放幾個「磚塊堆」和「空地」，分布成一塊一塊的而不是均勻鋪滿 */
-    const d = density == null ? 0.8 + rnd() * 0.15 : density;
+    const d = density == null ? 0.92 + rnd() * 0.06 : density;
     const spots = [];
     for (let i = 0, n = 3 + Math.floor(rnd() * 4); i < n; i++) spots.push({ x: 1 + rnd() * cx, y: 1 + rnd() * cy, r: 1.5 + rnd() * 2.5, k: rnd() < 0.5 ? 0.2 : -0.15 });
     for (let y = 1; y <= cy; y++) for (let x = 1; x <= cx; x++) {
       if (grid[at(x, y)] !== 0 || safe[at(x, y)]) continue;
       let p = d;
       if (density == null) for (const sp of spots) { const dist = Math.hypot(x - sp.x, y - sp.y); if (dist < sp.r) p += sp.k * (1 - dist / sp.r); }
-      if (rnd() < Math.max(SOFT_MIN, Math.min(1, p))) set4(x, y, 2);   /* 軟磚至少 75%，地圖盡量滿版 */
+      if (rnd() < Math.max(SOFT_MIN, Math.min(1, p))) set4(x, y, 2);   /* 軟磚至少 88%，地圖盡量滿版 */
     }
-    /* 保底：機率有運氣成分，填完還不到 75% 就把剩下的空格隨機補上（一樣四向對稱） */
+    /* 保底：機率有運氣成分，填完還不到 88% 就把剩下的空格隨機補上（一樣四向對稱） */
     if (density == null) {
       let eligible = 0, filled = 0;
       const rest = [];

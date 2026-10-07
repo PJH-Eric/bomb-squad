@@ -91,7 +91,7 @@ for (const n of [2, 8]) {
       }
     }
   });
-  test(`${w}×${h}：軟磚填充率至少 75%（排除出生點安全區），地圖開局不顯空，硬牆也不會多到沒路`, () => {
+  test(`${w}×${h}：軟磚填充率至少 88%（排除出生點安全區），地圖開局不顯空，硬牆也不會多到沒路`, () => {
     const sp = R.spawnPoints(w, h).slice(0, R.spawnCount(w, h));
     for (const layout of LAYOUTS) for (let seed = 1; seed <= SEEDS; seed++) {
       const g = R.generateMap(seed, w, h, layout);
@@ -102,7 +102,7 @@ for (const n of [2, 8]) {
         if (sp.some(([a, b]) => Math.abs(x - a) + Math.abs(y - b) <= 2)) continue;
         eligible++; if (v === 2) soft++;
       }
-      assert(soft / eligible >= 0.75, `${layout} seed ${seed} 軟磚只佔 ${(soft / eligible * 100).toFixed(0)}%`);
+      assert(soft / eligible >= 0.88, `${layout} seed ${seed} 軟磚只佔 ${(soft / eligible * 100).toFixed(0)}%`);
       assert(hard <= (w - 2) * (h - 2) * 0.45, `${layout} seed ${seed} 硬牆 ${hard} 太多`);
     }
   });
