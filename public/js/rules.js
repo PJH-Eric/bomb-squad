@@ -311,7 +311,8 @@
         cells.push({ x, y });
         if (g === 2) { softs.push({ x, y }); break; }
         const other = bombAt(s, x, y);
-        if (other && other !== b) { chain.push(other); break; }
+        /* 碰到別的炸彈：引爆它，但火焰不會被擋住，照樣噴完自己的射程（連鎖時每個方向以最長的那顆為準）；只有硬牆、軟磚才會擋 */
+        if (other && other !== b) chain.push(other);
       }
     }
     return { cells, softs, chain };

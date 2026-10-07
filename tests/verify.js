@@ -176,6 +176,37 @@ test('連鎖引爆：炸彈被火焰引爆，遠處的炸彈跟著炸', () => {
   assert.strictEqual(s.bombs.length, 0, '三顆應該一起炸 剩 ' + s.bombs.length);
   assert(R.flameAt(s, 5, 6) || R.flameAt(s, 5, 7));
 });
+test('連鎖時以最長火力為主：長火力的火焰穿過短火力的炸彈，噴完自己的射程', () => {
+  const s = mk(2); arena(s);
+  put(s.players[0], 1, 1); put(s.players[1], 1, 11);
+  s.bombs.push({ id: 1, owner: 0, cx: 3, cy: 5, t: 0, range: 5, pass: [], sl: null });      /* 長：往右能噴到 x=8 */
+  s.bombs.push({ id: 2, owner: 1, cx: 5, cy: 5, t: 2.5, range: 1, pass: [], sl: null });    /* 短：擋在路上，會被引爆 */
+  R.step(s, {}, R.DT);
+  assert.strictEqual(s.bombs.length, 0, '短炸彈應該被連鎖引爆');
+  for (let x = 4; x <= 8; x++) assert(R.flameAt(s, x, 5), `長火力應該一路噴到 x=${x}（不被短炸彈擋住）`);
+  assert(!R.flameAt(s, 9, 5), '超過長火力射程的格子沒有火');
+  assert(R.flameAt(s, 5, 4) && R.flameAt(s, 5, 6), '短炸彈自己的上下火焰照常有');
+});
+test('連鎖時火焰穿過炸彈後，仍被軟磚擋住；短炸彈引爆長炸彈也是以長的射程為準', () => {
+  const s = mk(2); arena(s);
+  put(s.players[0], 1, 1); put(s.players[1], 1, 11);
+  s.grid[5 * s.w + 7] = 2;                                                                    /* x=7 有軟磚 */
+  s.bombs.push({ id: 1, owner: 0, cx: 3, cy: 5, t: 0, range: 5, pass: [], sl: null });
+  s.bombs.push({ id: 2, owner: 1, cx: 5, cy: 5, t: 2.5, range: 1, pass: [], sl: null });
+  R.step(s, {}, R.DT);
+  assert(R.flameAt(s, 6, 5), '穿過短炸彈後繼續噴');
+  assert(R.flameAt(s, 7, 5), '軟磚那格有火花');
+  assert.strictEqual(s.grid[5 * s.w + 7], 0, '軟磚被炸掉');
+  assert(!R.flameAt(s, 8, 5), '軟磚後面不會有火（照樣被擋住）');
+  /* 反過來：短炸彈先炸，引爆後面的長炸彈，長炸彈照樣噴自己的完整射程 */
+  const t = mk(2); arena(t);
+  put(t.players[0], 1, 1); put(t.players[1], 1, 11);
+  t.bombs.push({ id: 1, owner: 0, cx: 3, cy: 5, t: 0, range: 1, pass: [], sl: null });
+  t.bombs.push({ id: 2, owner: 1, cx: 4, cy: 5, t: 2.5, range: 6, pass: [], sl: null });
+  R.step(t, {}, R.DT);
+  assert.strictEqual(t.bombs.length, 0);
+  for (let x = 5; x <= 10; x++) assert(R.flameAt(t, x, 5), `長炸彈被引爆後應該噴到 x=${x}`);
+});
 test('被火焰碰到淘汰，擊殺數記給放炸彈的人，自己炸自己不算擊殺', () => {
   const s = mk(3); arena(s);
   put(s.players[0], 1, 1); put(s.players[1], 3, 3); put(s.players[2], 9, 9);
