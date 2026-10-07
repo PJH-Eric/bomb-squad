@@ -151,15 +151,19 @@
     }
 
     const st = HARD_STYLE[layout] || HARD_STYLE.classic;
-    const target = Math.round(st.rate * cx * cy);
+    const target = Math.round(st.rate * cx * cy * (0.55 + rnd() * 1.0));   /* 每張圖的硬牆總量也不一樣 */
     let placed = 0;
     for (let tries = 0; tries < 600 && placed < target; tries++) {
       const x0 = 1 + Math.floor(rnd() * cx), y0 = 1 + Math.floor(rnd() * cy);
       const horiz = st.horiz || rnd() < 0.5;
       const lo = st.minLen || 1;
       const len = lo + Math.floor(rnd() * (st.len - lo + 1));
-      const cells = [];
+      let cells = [];
       for (let k = 0; k < len; k++) cells.push(horiz ? [x0 + k, y0] : [x0, y0 + k]);
+      /* 除了直條、橫條，也會出現 L 形與 2×2 方塊（產線只排橫向機台） */
+      const kind = rnd();
+      if (!st.horiz && kind < 0.25) { const fx = rnd() < 0.5 ? 1 : -1, fy = rnd() < 0.5 ? 1 : -1; cells = [[x0, y0], [x0 + fx, y0], [x0, y0 + fy]]; }
+      else if (!st.horiz && kind < 0.35 && layout !== 'open') cells = [[x0, y0], [x0 + 1, y0], [x0, y0 + 1], [x0 + 1, y0 + 1]];
       /* 整組都要落在左上四分之一、是空格、不貼著出生點，也不能和別組硬牆上下左右相連（才會一組一組分開） */
       const ok = cells.every(([x, y]) => {
         if (x > cx || y > cy || grid[at(x, y)] !== 0 || nearSpawn[at(x, y)]) return false;
@@ -185,10 +189,15 @@
         if (grid[at(x, y)] === 1 && !safe[at(x, y)] && Math.abs(x - cx) <= cx * SOFTEN_REACH && Math.abs(y - cy) <= cy * SOFTEN_REACH) grid[at(x, y)] = 2;
       }
     }
-    const d = density == null ? (layout === 'fab' ? 0.82 : 0.88) : density;
+    /* 軟磚：每張圖的整體疏密不同，再隨機放幾個「磚塊堆」和「空地」，分布成一塊一塊的而不是均勻鋪滿 */
+    const d = density == null ? 0.55 + rnd() * 0.37 : density;
+    const spots = [];
+    for (let i = 0, n = 3 + Math.floor(rnd() * 4); i < n; i++) spots.push({ x: 1 + rnd() * cx, y: 1 + rnd() * cy, r: 1.5 + rnd() * 2.5, k: rnd() < 0.5 ? 0.35 : -0.55 });
     for (let y = 1; y <= cy; y++) for (let x = 1; x <= cx; x++) {
       if (grid[at(x, y)] !== 0 || safe[at(x, y)]) continue;
-      if (rnd() < d) set4(x, y, 2);
+      let p = d;
+      if (density == null) for (const sp of spots) { const dist = Math.hypot(x - sp.x, y - sp.y); if (dist < sp.r) p += sp.k * (1 - dist / sp.r); }
+      if (rnd() < p) set4(x, y, 2);
     }
     return grid;
   }
