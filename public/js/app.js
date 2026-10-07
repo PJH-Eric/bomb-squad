@@ -138,7 +138,7 @@
         h('section', { class: 'card' }, h('h3', null, '目標'),
           h('p', null, '在方格地圖上放炸彈，炸開軟磚、撿道具、把對手炸出局。場上只剩你一個，就是勝利者！'),
           h('p', { class: 'muted small', style: { marginTop: '6px' } }, '時間到還有好幾人活著時，擊倒對手最多的人獲勝，同分就是平手。'),
-          h('p', { class: 'muted small', style: { marginTop: '6px' } }, '遊戲超過 2 分 30 秒會開始空襲：每秒都有炸彈從天上掉到隨機空格，3 秒後爆炸、火力橫掃到牆邊；每過 10 秒多掉 1 顆（2:40 起 2 顆、2:50 起 3 顆，最多 3 顆）。空襲炸死人不算擊倒。')),
+          h('p', { class: 'muted small', style: { marginTop: '6px' } }, '遊戲超過 2 分 30 秒會開始空襲：每 2 秒就有炸彈從天上掉到隨機空格，3 秒後爆炸、火力橫掃到牆邊；每過 10 秒每次多掉 1 顆（2:40 起 2 顆、2:50 起 3 顆，最多 3 顆）。空襲炸死人不算擊倒。')),
         h('section', { class: 'card' }, h('h3', null, '操作'),
           h('p', null, '電腦鍵盤：'),
           h('p', { style: { margin: '6px 0' } }, '移動　', keycap('W'), keycap('A'), keycap('S'), keycap('D'), ' 或 ', keycap('方向鍵', 'wide')),

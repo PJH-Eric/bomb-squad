@@ -398,8 +398,8 @@ test('新道具都有圖示、名稱、說明，掉落表有權重；關閉詛�
   }
   assert(seen.has('ghost') && seen.has('ultra') && !seen.has('c_flip') && !seen.has('c_slow'), '掉落：' + [...seen]);
 });
-test('空襲：150 秒前不掉炸彈；每秒掉的顆數 2:30→1、2:40→2、2:50 起 3，最多 3 顆', () => {
-  assert.deepStrictEqual([R.SKY_START, R.SKY_STEP, R.SKY_MAX, R.SKY_FUSE], [150, 10, 3, 3]);
+test('空襲：150 秒前不掉炸彈；每 2 秒掉一批，顆數 2:30→1、2:40→2、2:50 起 3，最多 3 顆', () => {
+  assert.deepStrictEqual([R.SKY_START, R.SKY_EVERY, R.SKY_STEP, R.SKY_MAX, R.SKY_FUSE], [150, 2, 10, 3, 3]);
   assert.deepStrictEqual([0, 100, 149.9, 150, 159.9, 160, 169.9, 170, 180, 300].map(R.skyCount), [0, 0, 0, 1, 1, 2, 2, 3, 3, 3]);
   const s = mk(2); arena(s); put(s.players[0], 1, 1); put(s.players[1], 15, 11);
   s.players.forEach(p => { p.invuln = 1e9; });                   /* 不讓空襲把人炸死，才能一路數下去 */
@@ -410,9 +410,10 @@ test('空襲：150 秒前不掉炸彈；每秒掉的顆數 2:30→1、2:40→2�
     for (const e of s.events) if (e.t === 'sky') { const k = Math.floor(s.time); bucket[k] = (bucket[k] || 0) + 1; }
   }
   for (let t = 140; t < 150; t++) assert.strictEqual(bucket[t] || 0, 0, t + ' 秒不該有空襲');
-  for (let t = 150; t < 160; t++) assert.strictEqual(bucket[t], 1, t + ' 秒應該 1 顆：' + bucket[t]);
-  for (let t = 160; t < 170; t++) assert.strictEqual(bucket[t], 2, t + ' 秒應該 2 顆：' + bucket[t]);
-  for (let t = 170; t < 200; t++) assert.strictEqual(bucket[t], 3, t + ' 秒應該 3 顆（上限）：' + bucket[t]);
+  const want = t => (t % 2 ? 0 : R.skyCount(t));                 /* 只有偶數秒（150、152、…）才掉，每批的顆數看時間 */
+  for (let t = 150; t < 200; t++) assert.strictEqual(bucket[t] || 0, want(t), t + ' 秒應該 ' + want(t) + ' 顆：' + (bucket[t] || 0));
+  const sum = (a, b) => { let n = 0; for (let t = a; t < b; t++) n += bucket[t] || 0; return n; };
+  assert.deepStrictEqual([sum(150, 160), sum(160, 170), sum(170, 200)], [5, 10, 45], '每 10 秒的總顆數：1×5、2×5、3×15');
 });
 test('空襲炸彈：不屬於任何人、引信 3 秒、火力橫掃到牆邊；落在空格上，不會掉在人腳下或磚塊裡', () => {
   const s = mk(2); arena(s); put(s.players[0], 1, 1); put(s.players[1], 15, 11);

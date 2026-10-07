@@ -16,9 +16,9 @@
   const DIRS = { U: [0, -1], D: [0, 1], L: [-1, 0], R: [1, 0] };
   const FUSE = 3;              /* 炸彈引爆秒數 */
   const AIR_EVERY = 45;        /* 每隔幾秒飛來一架空投機 */
-  /* 空襲（突然死亡）：遊戲進行超過 SKY_START 秒後，每秒從天上掉炸彈到隨機空格；每過 SKY_STEP 秒每次多 1 顆，最多 SKY_MAX 顆。
-     2:30 起每秒 1 顆、2:40 起 2 顆、2:50 起 3 顆，之後維持 3 顆。炸彈落地後 SKY_FUSE 秒爆炸，火力橫掃到牆（SKY_RANGE），不屬於任何玩家（不算擊倒） */
-  const SKY_START = 150, SKY_STEP = 10, SKY_MAX = 3, SKY_FUSE = 3, SKY_RANGE = 99;
+  /* 空襲（突然死亡）：遊戲進行超過 SKY_START 秒後，每 SKY_EVERY 秒從天上掉一批炸彈到隨機空格；每過 SKY_STEP 秒每批多 1 顆，最多 SKY_MAX 顆。
+     2:30 起每批 1 顆、2:40 起 2 顆、2:50 起 3 顆，之後維持 3 顆。炸彈落地後 SKY_FUSE 秒爆炸，火力橫掃到牆（SKY_RANGE），不屬於任何玩家（不算擊倒） */
+  const SKY_START = 150, SKY_EVERY = 2, SKY_STEP = 10, SKY_MAX = 3, SKY_FUSE = 3, SKY_RANGE = 99;
   const PLANE_SPEED = 5;       /* 空投機飛行速度（格／秒） */
   const FLAME_COOL_T = 0.3;    /* 磚塊格的無殺傷火花停留秒數 */
   const FLAME_T = 0.5;         /* 火焰停留秒數 */
@@ -456,14 +456,14 @@
     s.plane = { x: dir > 0 ? -2 : s.w + 2, row, dir, drops };
     s.events.push({ t: 'plane', row, dir });
   }
-  /** 這個時間點每秒要掉幾顆炸彈（150 秒前 0 顆） */
+  /** 這個時間點這一批要掉幾顆炸彈（150 秒前 0 顆） */
   function skyCount(time) { return time < SKY_START ? 0 : Math.min(SKY_MAX, 1 + Math.floor((time - SKY_START) / SKY_STEP)); }
-  /** 空襲：每到一個整秒，從天上掉 skyCount 顆炸彈到隨機空格（沒有磚、牆、炸彈、火焰，也沒有人站在上面的格子） */
+  /** 空襲：每隔 SKY_EVERY 秒，從天上掉 skyCount 顆炸彈到隨機空格（沒有磚、牆、炸彈、火焰，也沒有人站在上面的格子） */
   function stepSky(s) {
     if (s.phase !== 'play') return;
     while (s.time >= s.skyAt) {
       const n = skyCount(s.skyAt);
-      s.skyAt += 1;
+      s.skyAt += SKY_EVERY;
       for (let k = 0; k < n; k++) {
         const free = [];
         for (let y = 1; y < s.h - 1; y++) for (let x = 1; x < s.w - 1; x++) {
@@ -821,7 +821,7 @@
   }
 
   root.Rules = {
-    DT, DIRS, FUSE, AIR_EVERY, SKY_START, SKY_STEP, SKY_MAX, SKY_FUSE, SKY_RANGE, skyCount, PLANE_SPEED, FLAME_T, HALF, HIT_INSET, START, MAX, SPEED, ANIMAL_STATS, statsOf, CURSE_T, GHOST_T, SUPER_T, COUNTDOWN, SLIDE_SPEED,
+    DT, DIRS, FUSE, AIR_EVERY, SKY_START, SKY_EVERY, SKY_STEP, SKY_MAX, SKY_FUSE, SKY_RANGE, skyCount, PLANE_SPEED, FLAME_T, HALF, HIT_INSET, START, MAX, SPEED, ANIMAL_STATS, statsOf, CURSE_T, GHOST_T, SUPER_T, COUNTDOWN, SLIDE_SPEED,
     ITEM_TYPES, POSITIVE, CURSES, LAYOUTS, RANDOM_LAYOUTS, FAB_THEME, LAYOUT_NAMES, THEME_COUNT, SHAPES, SLOT_COLORS, DROP_WEIGHTS,
     mulberry32, rand, sizeFor, spawnCount, MAP_SMALL, MAP_LARGE, spawnPoints, generateMap, connected, createGame, step,
     blast, bombAt, itemAt, flameAt, cellOf, cellIdx, inside, speedOf, rangeOf, maxBombsOf, fireOf, speedLvlOf, flipDir, hideInSnapshot,
