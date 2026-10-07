@@ -20,6 +20,9 @@
     }
   }
 
+  /* 各種圖在畫面上的大小，都是「一格邊長」的倍數：格子放大，人物、道具、炸彈就跟著等比放大 */
+  const SPRITE = { animal: 1.12, item: 0.82, bomb: 0.96, plane: 2.1 };
+
   class Renderer {
     constructor(canvas) {
       this.canvas = canvas;
@@ -32,10 +35,13 @@
       this.last = 0; this.dirty = true; this.snapSeq = 0;
     }
 
+    /** 一格的 CSS 像素邊長：整張地圖剛好塞進可用空間的最大整數（至少 12），不設上限，格子數越少每格越大 */
+    static tileCss(availW, availH, w, h) { return Math.max(12, Math.floor(Math.min(availW / w, availH / h))); }
+
     /** 依可用空間算出格子大小並調整畫布；回傳實際 CSS 尺寸 */
     fit(availW, availH, w, h) {
       const dpr = Math.min(3, root.devicePixelRatio || 1);
-      const tCss = Math.max(12, Math.floor(Math.min(availW / w, availH / h)));
+      const tCss = Renderer.tileCss(availW, availH, w, h);
       const T = Math.round(tCss * dpr);
       if (T !== this.T || dpr !== this.dpr || this.canvas.width !== w * T) {
         this.T = T; this.dpr = dpr;
@@ -68,7 +74,7 @@
       return null;
     }
     animalSprite(animal, facing, frame) {
-      const got = this.loadSprite(animal + '|' + facing + '|' + frame, Art.animalSVG(animal, facing, frame), Math.round(this.T * 1.12));
+      const got = this.loadSprite(animal + '|' + facing + '|' + frame, Art.animalSVG(animal, facing, frame), Math.round(this.T * SPRITE.animal));
       if (got) return got;
       /* 還沒畫好時用同角色已有的圖頂著，避免人物整個消失造成閃爍 */
       for (const k of [animal + '|' + facing + '|0', animal + '|down|0', animal + '|left|0', animal + '|up|0']) { const c = this.sprites.get(k); if (c) return c; }
@@ -82,9 +88,9 @@
       this.bombSprite(); this.planeSprite();
       for (const t of R.ITEM_TYPES) this.itemSprite(t);
     }
-    itemSprite(type) { return this.loadSprite('item|' + type, Art.itemSVG(type), Math.round(this.T * 0.82)); }
-    planeSprite() { return this.loadSprite('plane', Art.planeSVG(), Math.round(this.T * 2.1)); }
-    bombSprite() { return this.loadSprite('bomb', Art.bombSVG(), Math.round(this.T * 0.96)); }
+    itemSprite(type) { return this.loadSprite('item|' + type, Art.itemSVG(type), Math.round(this.T * SPRITE.item)); }
+    planeSprite() { return this.loadSprite('plane', Art.planeSVG(), Math.round(this.T * SPRITE.plane)); }
+    bombSprite() { return this.loadSprite('bomb', Art.bombSVG(), Math.round(this.T * SPRITE.bomb)); }
 
     ensureStatic(view) {
       const T = this.T;
@@ -490,6 +496,7 @@
     }
   }
 
+  Renderer.SPRITE = SPRITE;
   root.Renderer = Renderer;
   root.RenderShapes = { shapePath };
 })(typeof self !== 'undefined' ? self : this);

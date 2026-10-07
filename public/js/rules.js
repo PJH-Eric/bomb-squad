@@ -85,7 +85,11 @@
   }
 
   /* ---------- 地圖 ---------- */
-  function sizeFor(count) { return count <= 4 ? { w: 15, h: 13 } : { w: 17, h: 15 }; }
+  /* 格子數刻意少：同一個畫面塞更少格，每格才畫得大，人物、道具、炸彈一眼就看得清楚 */
+  const MAP_SMALL = { w: 13, h: 11 }, MAP_LARGE = { w: 13, h: 13 };
+  function sizeFor(count) { return count <= 4 ? Object.assign({}, MAP_SMALL) : Object.assign({}, MAP_LARGE); }
+  /** 這種尺寸的地圖用幾個出生點：小圖只用四個角，大圖再加上四邊中點 */
+  function spawnCount(w, h) { return h <= MAP_SMALL.h ? 4 : 8; }
 
   function spawnPoints(w, h) {
     const mx = (w - 1) / 2, my = (h - 1) / 2;
@@ -141,9 +145,9 @@
     for (let x = 0; x < w; x++) { grid[at(x, 0)] = 1; grid[at(x, h - 1)] = 1; }
     for (let y = 0; y < h; y++) { grid[at(0, y)] = 1; grid[at(w - 1, y)] = 1; }
 
-    /* 出生點安全區：曼哈頓距離 2 以內不放軟磚（15×13 清四個角、17×15 清八個點，地圖才對稱）；距離 1 以內連硬牆也不放，免得一出生就被卡住 */
+    /* 出生點安全區：曼哈頓距離 2 以內不放軟磚（小圖清四個角、大圖清八個點，地圖才對稱）；距離 1 以內連硬牆也不放，免得一出生就被卡住 */
     const safe = new Uint8Array(w * h), nearSpawn = new Uint8Array(w * h);
-    for (const [sx, sy] of spawnPoints(w, h).slice(0, w <= 15 ? 4 : 8)) {
+    for (const [sx, sy] of spawnPoints(w, h).slice(0, spawnCount(w, h))) {
       for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
         const d = Math.abs(x - sx) + Math.abs(y - sy);
         if (d <= 2) safe[at(x, y)] = 1;
@@ -235,7 +239,7 @@
     if (!layout || layout === 'random') layout = themeId === FAB_THEME ? 'fab' : RANDOM_LAYOUTS[Math.floor(pick() * RANDOM_LAYOUTS.length)];
     const grid = generateMap(seed, w, h, layout, opts.density, opts.soften);
     /* 每局隨機分配出生點：只在「已清出安全區」的點之間洗牌，所以每個位置一樣公平；同一個 seed 洗出來一樣（連線雙方一致） */
-    const spawns = spawnPoints(w, h).slice(0, w <= 15 ? 4 : 8);
+    const spawns = spawnPoints(w, h).slice(0, spawnCount(w, h));
     { const sr = mulberry32((seed ^ 0x51ed270b) >>> 0); for (let i = spawns.length - 1; i > 0; i--) { const j = Math.floor(sr() * (i + 1)); const t = spawns[i]; spawns[i] = spawns[j]; spawns[j] = t; } }
     const state = {
       seed, rng: (seed ^ 0xa5a5a5a5) | 0, w, h, grid, layout, themeId,
@@ -785,7 +789,7 @@
   root.Rules = {
     DT, DIRS, FUSE, AIR_EVERY, PLANE_SPEED, FLAME_T, HALF, HIT_INSET, START, MAX, SPEED, ANIMAL_STATS, statsOf, CURSE_T, GHOST_T, SUPER_T, COUNTDOWN, SLIDE_SPEED,
     ITEM_TYPES, POSITIVE, CURSES, LAYOUTS, RANDOM_LAYOUTS, FAB_THEME, LAYOUT_NAMES, THEME_COUNT, SHAPES, SLOT_COLORS, DROP_WEIGHTS,
-    mulberry32, rand, sizeFor, spawnPoints, generateMap, connected, createGame, step,
+    mulberry32, rand, sizeFor, spawnCount, MAP_SMALL, MAP_LARGE, spawnPoints, generateMap, connected, createGame, step,
     blast, bombAt, itemAt, flameAt, cellOf, cellIdx, inside, speedOf, rangeOf, maxBombsOf, fireOf, speedLvlOf, flipDir, hideInSnapshot,
     canPlaceBomb, placeBomb, overlapsCell, movePlayer, slideFree, getPlayer, alivePlayers, collides, removePlayer, finish,
     snapshot, startInfo, viewFromStart, applySnapshot, gridString

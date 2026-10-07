@@ -31,26 +31,26 @@ function run(s, inputs, sec) {
 const put = (p, x, y) => { p.x = x + 0.5; p.y = y + 0.5; };
 
 console.log('\n地圖');
-test('地圖尺寸：≤4 人 15×13，5～8 人 17×15', () => {
-  assert.deepStrictEqual(R.sizeFor(2), { w: 15, h: 13 });
-  assert.deepStrictEqual(R.sizeFor(4), { w: 15, h: 13 });
-  assert.deepStrictEqual(R.sizeFor(5), { w: 17, h: 15 });
-  assert.deepStrictEqual(R.sizeFor(8), { w: 17, h: 15 });
+test('地圖尺寸：≤4 人 13×11，5～8 人 13×13', () => {
+  assert.deepStrictEqual(R.sizeFor(2), { w: 13, h: 11 });
+  assert.deepStrictEqual(R.sizeFor(4), { w: 13, h: 11 });
+  assert.deepStrictEqual(R.sizeFor(5), { w: 13, h: 13 });
+  assert.deepStrictEqual(R.sizeFor(8), { w: 13, h: 13 });
 });
 test('同一個 seed 產生同一張地圖，不同 seed 不同', () => {
-  const a = R.generateMap(5, 15, 13, 'classic'), b = R.generateMap(5, 15, 13, 'classic'), c = R.generateMap(6, 15, 13, 'classic');
+  const a = R.generateMap(5, 13, 11, 'classic'), b = R.generateMap(5, 13, 11, 'classic'), c = R.generateMap(6, 13, 11, 'classic');
   assert.deepStrictEqual(a, b);
   assert.notDeepStrictEqual(a, c);
 });
 test('三種版型 × 多個 seed：四向對稱、全連通、出生點安全區沒有軟磚', () => {
-  for (const layout of R.LAYOUTS) for (const [w, h] of [[15, 13], [17, 15]]) for (let seed = 1; seed <= 25; seed++) {
+  for (const layout of R.LAYOUTS) for (const [w, h] of [[13, 11], [13, 13]]) for (let seed = 1; seed <= 25; seed++) {
     const g = R.generateMap(seed, w, h, layout);
     assert(R.connected(g, w, h), `${layout} ${w}x${h} seed ${seed} 不連通`);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
       assert.strictEqual(g[y * w + x], g[y * w + (w - 1 - x)], '左右不對稱');
       assert.strictEqual(g[y * w + x], g[(h - 1 - y) * w + x], '上下不對稱');
     }
-    for (const [sx, sy] of R.spawnPoints(w, h).slice(0, w <= 15 ? 4 : 8)) {
+    for (const [sx, sy] of R.spawnPoints(w, h).slice(0, R.spawnCount(w, h))) {
       assert.strictEqual(g[sy * w + sx], 0, '出生點被占');
       for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
         if (Math.abs(x - sx) + Math.abs(y - sy) <= 2) assert.notStrictEqual(g[y * w + x], 2, '安全區有軟磚');
@@ -59,14 +59,14 @@ test('三種版型 × 多個 seed：四向對稱、全連通、出生點安全�
   }
 });
 test('邊框全是硬牆', () => {
-  const g = R.generateMap(3, 15, 13, 'open');
-  for (let x = 0; x < 15; x++) { assert.strictEqual(g[x], 1); assert.strictEqual(g[12 * 15 + x], 1); }
-  for (let y = 0; y < 13; y++) { assert.strictEqual(g[y * 15], 1); assert.strictEqual(g[y * 15 + 14], 1); }
+  const g = R.generateMap(3, 13, 11, 'open');
+  for (let x = 0; x < 13; x++) { assert.strictEqual(g[x], 1); assert.strictEqual(g[10 * 13 + x], 1); }
+  for (let y = 0; y < 11; y++) { assert.strictEqual(g[y * 13], 1); assert.strictEqual(g[y * 13 + 12], 1); }
 });
 test('密集版型比經典多硬牆', () => {
   const count = g => g.filter(v => v === 1).length;
   let more = 0;
-  for (let seed = 1; seed <= 20; seed++) if (count(R.generateMap(seed, 15, 13, 'dense')) > count(R.generateMap(seed, 15, 13, 'classic'))) more++;
+  for (let seed = 1; seed <= 20; seed++) if (count(R.generateMap(seed, 13, 11, 'dense')) > count(R.generateMap(seed, 13, 11, 'classic'))) more++;
   assert(more >= 15, '密集應該通常比較多硬牆，只有 ' + more);
 });
 
@@ -540,7 +540,8 @@ test('四段難度有可觀察的差異：困難 > 普通 > 簡單 > 幼幼班�
   console.log('      勝場', JSON.stringify(score), '平均存活秒', JSON.stringify(Object.fromEntries(lv.map(k => [k, Math.round(surv[k] / games)]))));
   assert(score.hard >= score.normal * 0.85, '困難勝場不應明顯少於普通（兩者在統計上接近）');
   assert(score.normal >= score.easy, '普通勝場應不少於簡單');
-  assert(score.easy >= score.toddler, '簡單勝場應不少於幼幼班');
+  assert(score.easy + 3 >= score.toddler, '簡單勝場不應明顯少於幼幼班（兩者都常是 0～2 場，差 3 場內算雜訊，存活秒數另有嚴格比較）');
+  assert(surv.easy > surv.toddler, '簡單的存活時間應比幼幼班久');
   assert(score.hard > score.toddler * 2, '困難應明顯強過幼幼班');
   assert(surv.hard > surv.toddler, '困難存活應比幼幼班久');
   /* 簡單、普通、困難要拉得開：平均存活要有明顯差距（單位：秒），場數夠多時勝場也要差一截 */

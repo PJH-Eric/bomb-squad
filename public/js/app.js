@@ -237,7 +237,7 @@
       App.aiDetail = !App.aiDetail; rows.hidden = !App.aiDetail; detailBtn.setAttribute('aria-expanded', App.aiDetail ? 'true' : 'false'); detailBtn.firstChild.textContent = App.aiDetail ? '收起' : '逐一調整角色與難度';
     } }, h('span', null, App.aiDetail ? '收起' : '逐一調整角色與難度'), h('i', { 'aria-hidden': 'true' }));
     function paintRows() {
-      sizeNote.textContent = (1 + so.levels.length) <= 4 ? '15×13' : '17×15';
+      { const z = R.sizeFor(1 + so.levels.length); sizeNote.textContent = z.w + '×' + z.h; }
       anim = aiAnimals();
       rows.textContent = ''; face.textContent = '';
       face.appendChild(h('span', { class: 'face me' }, avatar(st.animal, 40)));
