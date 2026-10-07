@@ -727,8 +727,9 @@
   }
 
   /**
-   * 隱身：把指定玩家的位置從快照裡藏起來（回傳淺拷貝，原本的快照不動）。
-   * 位置歸零、方向與移動狀態清掉，只留「還活著」和「被藏起來」兩個旗標（第 5 欄的 1 與 16）。
+   * 隱身：在快照裡把指定玩家標成「對這位觀看者來說是隱身」（第 5 欄的旗標 16），回傳淺拷貝，原本的快照不動。
+   * 位置、方向、移動狀態照送：隱身的人還是要讓人隱約看到身形（畫面上只剩約 17% 的淡淡輪廓），
+   * 不是完全消失；電腦對手另外在 ai.js 裡完全看不到隱身的人。
    */
   function hideInSnapshot(snap, slots) {
     if (!slots.length) return snap;
@@ -736,7 +737,7 @@
       p: snap.p.map(a => {
         if (slots.indexOf(a[0]) < 0) return a;
         const b = a.slice();
-        b[1] = 0; b[2] = 0; b[3] = 'D'; b[4] = (a[4] & 1) | 16;
+        b[4] = a[4] | 16;
         return b;
       })
     });
@@ -774,9 +775,9 @@
     for (const a of snap.p) {
       const p = v.players.find(q => q.slot === a[0]);
       if (!p) continue;
-      p.hidden = !!(a[4] & 16);
-      if (!p.hidden) { p.x = a[1] / 100; p.y = a[2] / 100; p.dir = a[3]; }   /* 被藏起來時沿用舊位置，反正不會畫 */
-      p.alive = !!(a[4] & 1); p.moving = !p.hidden && !!(a[4] & 2); p.shield = !!(a[4] & 4); p.left = !!(a[4] & 8);
+      p.hidden = !!(a[4] & 16);          /* 對這位觀看者是隱身：位置照送，畫面只畫淡淡的身形 */
+      p.x = a[1] / 100; p.y = a[2] / 100; p.dir = a[3];
+      p.alive = !!(a[4] & 1); p.moving = !!(a[4] & 2); p.shield = !!(a[4] & 4); p.left = !!(a[4] & 8);
       p.fire = a[5]; p.maxBombs = a[6]; p.speedLvl = a[7]; p.kick = !!a[8];
       p.curse = a[9] ? { type: CURSE_NAME[a[9]], t: a[10] / 10 } : null;
       p.kills = a[11]; p.invuln = a[12] / 10; p.bombsOut = a[13]; p.ghostT = (a[14] || 0) / 10; p.superT = (a[15] || 0) / 10;

@@ -318,18 +318,22 @@ test('隱身道具：8 秒後消失，電腦對手看不到隱身的人', () => 
   R.step(t, {}, R.DT);
   assert(!q.alive, '隱身不能擋爆炸');
 });
-test('隱身：快照裡別人看不到你的位置，自己、觀戰者看得到，還原後恢復', () => {
+test('隱身：快照把隱身的人標成「對你是隱身」但位置照送（畫面只畫淡淡身形），自己、觀戰者不被標，還原後恢復', () => {
   const s = mk(3); arena(s); put(s.players[0], 2, 1); put(s.players[1], 5, 5); put(s.players[2], 9, 9);
-  s.players[1].ghostT = 5;
+  s.players[1].ghostT = 5; s.players[1].dir = 'L'; s.players[1].moving = true;
   const snap = R.snapshot(s, false);
   const hid = R.hideInSnapshot(snap, [1]);
-  const e = hid.p.find(a => a[0] === 1);
-  assert(e[4] & 16, '要有被藏起來的旗標'); assert.strictEqual(e[1], 0); assert.strictEqual(e[2], 0);
-  assert.strictEqual(snap.p.find(a => a[0] === 1)[4] & 16, 0, '不能改到原本的快照');
-  assert.notStrictEqual(hid.p.find(a => a[0] === 0)[1], 0, '其他人不受影響');
+  const e = hid.p.find(a => a[0] === 1), orig = snap.p.find(a => a[0] === 1);
+  assert(e[4] & 16, '要有隱身旗標');
+  assert.strictEqual(e[1], orig[1], '位置要照送，對手才看得到淡淡的身形'); assert.strictEqual(e[2], orig[2]);
+  assert.strictEqual(e[3], 'L', '方向照送'); assert(e[4] & 2, '移動狀態照送'); assert(e[4] & 1, '還活著');
+  assert.strictEqual(orig[4] & 16, 0, '不能改到原本的快照');
+  assert.strictEqual(hid.p.find(a => a[0] === 0)[4] & 16, 0, '其他人不受影響');
   const v = R.viewFromStart(R.startInfo(s));
   R.applySnapshot(v, JSON.parse(JSON.stringify(hid)));
   assert(v.players[1].hidden && !v.players[0].hidden && v.players[1].ghostT > 4.9);
+  assert(Math.abs(v.players[1].x - 5.5) < 0.01 && Math.abs(v.players[1].y - 5.5) < 0.01, '客戶端拿得到隱身者的位置');
+  assert.strictEqual(v.players[1].dir, 'L');
   R.applySnapshot(v, snap);
   assert(!v.players[1].hidden && Math.abs(v.players[1].x - 5.5) < 0.01);
 });

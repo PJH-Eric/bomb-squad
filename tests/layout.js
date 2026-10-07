@@ -232,6 +232,7 @@ test('人物、道具、炸彈的大小是格子邊長的固定倍數，格子�
   assert(S && S.animal > 0 && S.item > 0 && S.bomb > 0 && S.plane > 0);
   assert(S.animal <= 1.2, '人物比一格大太多會蓋住隔壁格');
   assert(S.bombOverAlpha > 0 && S.bombOverAlpha <= 1, '炸彈疊在人物上的不透明度要在 0～1 之間');
+  assert(S.ghostFaint >= 0.1 && S.ghostFaint <= 0.3, '隱身的淡淡身形要看得出來（≥ 10%）又不搶眼（≤ 30%）：' + S.ghostFaint);
   /* 眼睛讀到的位置（腳下影子與光圈）要貼近火焰判定用的中心，不然上下與左右的「半身」感覺會不一致 */
   assert(S.foot >= -0.05 && S.foot <= 0.15, '腳下影子離判定中心 ' + S.foot + ' 格，太遠');
   assert(S.item < 1, '道具要比一格小，不然會跟牆重疊');

@@ -23,7 +23,7 @@
   /* 各種圖在畫面上的大小，都是「一格邊長」的倍數：格子放大，人物、道具、炸彈就跟著等比放大 */
   /* foot：人物腳下的影子與光圈（眼睛讀到的「位置」）離判定中心往下多少格。以前是 0.34，上下方向的位置感比判定低一截，
      左右卻沒有，所以火線的半身感覺上下左右不一致；現在整個人物往上提，讓腳落在判定中心附近（≤ 0.15），看到的位置就是判定的位置 */
-  const SPRITE = { animal: 1.12, item: 0.82, bomb: 1.1, plane: 2.1, bombOverAlpha: 0.25, foot: 0.08 };
+  const SPRITE = { animal: 1.12, item: 0.82, bomb: 1.1, plane: 2.1, bombOverAlpha: 0.25, foot: 0.08, ghostFaint: 0.17 };   /* ghostFaint：隱身的人在對手眼裡的淡淡身形（不透明度），要看得出來但不搶眼 */
   const SHADOW_DROP = 0.34;   /* 原本影子在判定中心下方的距離，人物圖本身的腳大約就在這裡 */   /* 炸彈要跟人物差不多大，人物站在同一格才不會把它整顆蓋住 */
 
   class Renderer {
@@ -426,7 +426,8 @@
       /* 隱身：還活著的玩家看不到別人的隱身玩家（線上時伺服器根本沒送位置）；自己、觀戰者、已淘汰的人看得到，畫成半透明 */
       const selfP = o.selfSlot != null ? view.players.find(q => q.slot === o.selfSlot) : null;
       const ghostOn = p.alive && p.ghostT > 0;
-      if (p.alive && (p.hidden || (ghostOn && p.slot !== o.selfSlot && selfP && selfP.alive))) return;
+      /* 隱身：還活著的對手只看得到淡淡的身形（沒有名牌、護盾等細節）；自己、觀戰者、淘汰者看到的是半透明 */
+      const faint = p.alive && (p.hidden || (ghostOn && p.slot !== o.selfSlot && selfP && selfP.alive));
 
       let death = 0;
       if (!p.alive) {
@@ -446,11 +447,12 @@
       const color = R.SLOT_COLORS[p.slot % 8];
       let alpha = p.alive && p.invuln > 0 && Math.floor(now * 12) % 2 === 0 ? 0.45 : 1;
       if (ghostOn) alpha = Math.min(alpha, 0.4);
+      if (faint) alpha = SPRITE.ghostFaint * (o.reduceMotion ? 1 : 0.82 + 0.18 * Math.sin(now * 5 + p.slot));   /* 微微閃爍，像空氣扭曲 */
 
       ctx.save();
       /* 影子與自己的光環 */
       if (p.alive) {
-        ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.beginPath(); ctx.ellipse(cx, cyHit + T * SPRITE.foot, T * 0.3, T * 0.1, 0, 0, 7); ctx.fill();
+        ctx.fillStyle = faint ? 'rgba(0,0,0,0.05)' : 'rgba(0,0,0,0.22)'; ctx.beginPath(); ctx.ellipse(cx, cyHit + T * SPRITE.foot, T * 0.3, T * 0.1, 0, 0, 7); ctx.fill();
         if (o.selfSlot === p.slot) {
           const pulse = o.reduceMotion ? 0 : Math.sin(now * 5) * 0.04;
           ctx.lineWidth = Math.max(2, T * 0.07); ctx.strokeStyle = color; ctx.globalAlpha = 0.95;
@@ -466,7 +468,7 @@
       if (spr) ctx.drawImage(spr, -spr.width / 2, -spr.height / 2);
       ctx.restore();
 
-      if (!p.alive) return;
+      if (!p.alive || faint) return;
       /* 護盾 */
       if (p.shield) {
         const g = ctx.createRadialGradient(cx - T * 0.1, cy - T * 0.25, T * 0.05, cx, cy - T * 0.05, T * 0.55);
