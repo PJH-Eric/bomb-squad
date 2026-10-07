@@ -141,12 +141,12 @@
     for (let x = 0; x < w; x++) { grid[at(x, 0)] = 1; grid[at(x, h - 1)] = 1; }
     for (let y = 0; y < h; y++) { grid[at(0, y)] = 1; grid[at(w - 1, y)] = 1; }
 
-    /* 出生點安全區：曼哈頓距離 3 以內不放軟磚（15×13 清四個角、17×15 清八個點，地圖才對稱）；距離 1 以內連硬牆也不放，免得一出生就被卡住 */
+    /* 出生點安全區：曼哈頓距離 2 以內不放軟磚（15×13 清四個角、17×15 清八個點，地圖才對稱）；距離 1 以內連硬牆也不放，免得一出生就被卡住 */
     const safe = new Uint8Array(w * h), nearSpawn = new Uint8Array(w * h);
     for (const [sx, sy] of spawnPoints(w, h).slice(0, w <= 15 ? 4 : 8)) {
       for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
         const d = Math.abs(x - sx) + Math.abs(y - sy);
-        if (d <= 3) safe[at(x, y)] = 1;
+        if (d <= 2) safe[at(x, y)] = 1;
         if (d <= 1) nearSpawn[at(x, y)] = 1;
       }
     }

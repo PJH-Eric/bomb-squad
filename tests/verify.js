@@ -53,7 +53,7 @@ test('三種版型 × 多個 seed：四向對稱、全連通、出生點安全�
     for (const [sx, sy] of R.spawnPoints(w, h).slice(0, w <= 15 ? 4 : 8)) {
       assert.strictEqual(g[sy * w + sx], 0, '出生點被占');
       for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
-        if (Math.abs(x - sx) + Math.abs(y - sy) <= 3) assert.notStrictEqual(g[y * w + x], 2, '安全區有軟磚');
+        if (Math.abs(x - sx) + Math.abs(y - sy) <= 2) assert.notStrictEqual(g[y * w + x], 2, '安全區有軟磚');
       }
     }
   }
