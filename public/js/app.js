@@ -312,7 +312,7 @@
       content: h('p', { class: 'dialog-text' }, online ? '線上對局不會暫停，其他人還在繼續。' : '遊戲已暫停。'),
       actions: online
         ? [btn('離開房間', { cls: 'btn-pink', onClick: () => { m.close(true); App.confirmLeave(); } }), btn('繼續', { cls: 'btn-mint', onClick: () => m.close() })]
-        : [btn('回首頁', { cls: 'btn-ghost', onClick: () => { m.close(true); go('home'); } }), btn('重新開始', { cls: 'btn-sun', onClick: () => { m.close(true); App.startSolo(); } }), btn('繼續', { cls: 'btn-mint', onClick: () => m.close() })]
+        : [btn('回房間', { cls: 'btn-ghost', onClick: () => { m.close(true); go('solo'); } }), btn('重新開始', { cls: 'btn-sun', onClick: () => { m.close(true); App.startSolo(); } }), btn('繼續', { cls: 'btn-mint', onClick: () => m.close() })]
     });
   };
   App.confirmLeave = function () {
@@ -352,7 +352,7 @@
       h('p', { class: 'muted small', style: { marginTop: '10px', textAlign: 'center' } }, '這局共 ' + mins + ' 分 ' + secs + ' 秒' + (o.statLine ? '　' + o.statLine : '')));
     let actions;
     if (o.kind === 'solo') {
-      actions = [btn('回首頁', { cls: 'btn-ghost', onClick: () => { m.close(true); go('home'); } }), btn('再來一局', { cls: 'btn-pink', onClick: () => { m.close(true); App.startSolo(); } })];
+      actions = [btn('回房間', { cls: 'btn-ghost', onClick: () => { m.close(true); go('solo'); } }), btn('再來一局', { cls: 'btn-pink', onClick: () => { m.close(true); App.startSolo(); } })];
     } else {
       const host = App.room && App.room.you && App.room.you.host;
       actions = [btn('離開房間', { cls: 'btn-ghost', onClick: () => { m.close(true); App.leaveRoom(); } }),
