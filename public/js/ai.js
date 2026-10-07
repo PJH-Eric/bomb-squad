@@ -15,8 +15,8 @@
   const LEVELS = {
     /* interval 決策間隔（秒，越大反應越慢）、hunt 追人機率、chase 追人最遠格數、react 發現危險時每次決策會逃的機率、notice 發現危險後要多久才反應得過來（秒）、
        wander 發呆亂走機率、sloppy 放了炸彈卻沒先確認退路的機率 */
-    toddler: { name: '幼幼班', interval: 0.65, bombProb: 0.3, hunt: 0, chase: 0, chain: false, react: 0.4, itemRange: 3, itemProb: 0.4, wander: 0.55, sloppy: 0.5, curseOk: true },
-    easy:    { name: '簡單',   interval: 0.55, bombProb: 0.55, hunt: 0.18, chase: 3, chain: false, react: 0.58, notice: 0.4, itemRange: 4, itemProb: 0.48, wander: 0.28, sloppy: 0.23, curseOk: true },
+    toddler: { name: '幼幼班', interval: 0.6, bombProb: 0.3, hunt: 0, chase: 0, chain: false, react: 0.55, itemRange: 3, itemProb: 0.4, wander: 0.45, sloppy: 0.4, curseOk: true },
+    easy:    { name: '簡單',   interval: 0.55, bombProb: 0.55, hunt: 0.18, chase: 3, chain: false, react: 0.65, notice: 0.1, itemRange: 4, itemProb: 0.48, wander: 0.28, sloppy: 0.23, curseOk: true },
     normal:  { name: '普通',   interval: 0.4, bombProb: 0.73, hunt: 0.3, chase: 5, chain: true, react: 0.74, notice: 0.45, itemRange: 6, itemProb: 0.76, wander: 0.16, sloppy: 0.12, curseOk: false },
     hard:    { name: '困難',   interval: 0.16, bombProb: 1, hunt: 1, chase: 10, chain: true, react: 0.82, notice: 0.2, itemRange: 16, itemProb: 0.88, wander: 0.06, sloppy: 0.06, curseOk: false, trap: true }
   };
