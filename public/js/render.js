@@ -21,7 +21,10 @@
   }
 
   /* 各種圖在畫面上的大小，都是「一格邊長」的倍數：格子放大，人物、道具、炸彈就跟著等比放大 */
-  const SPRITE = { animal: 1.12, item: 0.82, bomb: 1.1, plane: 2.1, bombOverAlpha: 0.25 };   /* 炸彈要跟人物差不多大，人物站在同一格才不會把它整顆蓋住 */
+  /* foot：人物腳下的影子與光圈（眼睛讀到的「位置」）離判定中心往下多少格。以前是 0.34，上下方向的位置感比判定低一截，
+     左右卻沒有，所以火線的半身感覺上下左右不一致；現在整個人物往上提，讓腳落在判定中心附近（≤ 0.15），看到的位置就是判定的位置 */
+  const SPRITE = { animal: 1.12, item: 0.82, bomb: 1.1, plane: 2.1, bombOverAlpha: 0.25, foot: 0.08 };
+  const SHADOW_DROP = 0.34;   /* 原本影子在判定中心下方的距離，人物圖本身的腳大約就在這裡 */   /* 炸彈要跟人物差不多大，人物站在同一格才不會把它整顆蓋住 */
 
   class Renderer {
     constructor(canvas) {
@@ -433,7 +436,9 @@
         if (death >= 1) return;
       } else if (this.deaths.has(p.slot)) this.deaths.delete(p.slot);
 
-      const cx = Math.round(st.x * T), cy = Math.round(st.y * T);
+      const cx = Math.round(st.x * T), cyHit = Math.round(st.y * T);
+      /* 人物圖往上提 lift，讓腳下的影子、光圈落在判定中心（cyHit）附近；身體、頭上的東西、名牌都跟著提，用 cy 當「身體中心」 */
+      const lift = T * (SHADOW_DROP - SPRITE.foot), cy = cyHit - lift;
       const facing = FACE[mine ? mine.dir : p.dir] || 'down';
       if (moving) st.ph = (st.ph || 0) + dt * 9; else st.ph = 0;
       const frame = moving ? [1, 0, 2, 0][Math.floor(st.ph) % 4] : 0;
@@ -445,11 +450,11 @@
       ctx.save();
       /* 影子與自己的光環 */
       if (p.alive) {
-        ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.beginPath(); ctx.ellipse(cx, cy + T * 0.34, T * 0.3, T * 0.1, 0, 0, 7); ctx.fill();
+        ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.beginPath(); ctx.ellipse(cx, cyHit + T * SPRITE.foot, T * 0.3, T * 0.1, 0, 0, 7); ctx.fill();
         if (o.selfSlot === p.slot) {
           const pulse = o.reduceMotion ? 0 : Math.sin(now * 5) * 0.04;
           ctx.lineWidth = Math.max(2, T * 0.07); ctx.strokeStyle = color; ctx.globalAlpha = 0.95;
-          ctx.beginPath(); ctx.ellipse(cx, cy + T * 0.33, T * (0.42 + pulse), T * (0.16 + pulse * 0.4), 0, 0, 7); ctx.stroke();
+          ctx.beginPath(); ctx.ellipse(cx, cyHit + T * (SPRITE.foot - 0.01), T * (0.42 + pulse), T * (0.16 + pulse * 0.4), 0, 0, 7); ctx.stroke();
           ctx.fillStyle = color; ctx.globalAlpha = 0.25; ctx.fill(); ctx.globalAlpha = 1;
         }
       }
@@ -486,7 +491,8 @@
       /* 倒數期間：在自己頭上標一個往下的箭頭（出生點每局隨機，開局先認出自己） */
       if (view.phase === 'countdown' && o.selfSlot != null && p.slot === o.selfSlot && p.alive) {
         const bob = o.reduceMotion ? 0 : Math.abs(Math.sin(now * 6)) * T * 0.1;
-        const ax = cx, tip = cy - T * 0.58 - bob, aw = T * 0.6, ah = T * 0.5, sh = T * 0.26;
+        const aw = T * 0.6, ah = T * 0.5, sh = T * 0.26;
+        const ax = cx, tip = Math.max(cy - T * 0.58 - bob, ah + sh + T * 0.04);      /* 人物往上提之後，上排出生點的箭頭不要被畫面上緣切掉 */
         this._arrow = { ax, tip, aw, ah, sh };
       }
       /* 暱稱（倒數時自己頭上改放箭頭，避免上排出生點被畫面邊緣切掉） */
