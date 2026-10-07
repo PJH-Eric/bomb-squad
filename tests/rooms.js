@@ -180,6 +180,9 @@ test('電腦席位：房主可加、可調難度、可移除；單人加電腦�
   x.hub.handle('aaaaaaaa1', { type: 'addai', level: 'toddler' });
   let v = x.room('aaaaaaaa1');
   assert.deepStrictEqual(v.seats.filter(s => s.kind === 'ai').map(s => s.level), ['hard', 'toddler']);
+  x.hub.handle('aaaaaaaa1', { type: 'aiLevel', seat: 1, level: 'myth' });
+  v = x.room('aaaaaaaa1');
+  assert.strictEqual(v.seats.filter(s => s.kind === 'ai')[0].level, 'myth', '房間可以把電腦調成神話');
   x.hub.handle('aaaaaaaa1', { type: 'aiLevel', seat: 1, level: 'easy' });
   x.hub.handle('aaaaaaaa1', { type: 'removeai', seat: 2 });
   v = x.room('aaaaaaaa1');

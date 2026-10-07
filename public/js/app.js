@@ -9,7 +9,7 @@
   const TIME_OPTS = [{ v: 120, label: '2 分' }, { v: 180, label: '3 分' }, { v: 300, label: '5 分' }, { v: 0, label: '不限時' }];
   const THEME_OPTS = [{ v: -1, label: '隨機' }].concat(Art.THEMES.map(t => ({ v: t.id, label: t.name })));
   const LEVEL_OPTS = AI.LEVEL_ORDER.map(k => ({ v: k, label: AI.LEVELS[k].name }));
-  const LEVEL_HINT = { toddler: '亂走、很少放炸彈', easy: '會躲炸彈、偶爾追人', normal: '會追人、會連鎖', hard: '會設陷阱、反應最快' };
+  const LEVEL_HINT = { toddler: '亂走、很少放炸彈', easy: '會躲炸彈、偶爾追人', normal: '會追人、會連鎖', hard: '會設陷阱、反應最快', myth: '幾乎不失誤、追得最緊' };
   const LEVEL_DD = AI.LEVEL_ORDER.map(k => ({ v: k, label: AI.LEVELS[k].name, hint: LEVEL_HINT[k] }));
   /** 角色下拉選項；exclude 是別人（真人）已經在用、不能選的角色 */
   const animalOptions = exclude => Art.ANIMAL_IDS.filter(id => !(exclude || []).includes(id)).map(id => ({ v: id, label: Art.ANIMALS[id].name, hint: Art.ANIMALS[id].role }));

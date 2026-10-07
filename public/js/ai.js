@@ -11,14 +11,16 @@
   'use strict';
   const R = root.Rules || (typeof require !== 'undefined' ? require('./rules.js') : null);
 
-  const LEVEL_ORDER = ['toddler', 'easy', 'normal', 'hard'];
+  const LEVEL_ORDER = ['toddler', 'easy', 'normal', 'hard', 'myth'];
   const LEVELS = {
     /* interval 決策間隔（秒，越大反應越慢）、hunt 追人機率、chase 追人最遠格數、react 發現危險時每次決策會逃的機率、notice 發現危險後要多久才反應得過來（秒）、
-       wander 發呆亂走機率、sloppy 放了炸彈卻沒先確認退路的機率 */
+       wander 發呆亂走機率、sloppy 放了炸彈卻沒先確認退路的機率、margin 走位避開火線時多留的安全餘裕（秒，預設 0.1） */
     toddler: { name: '幼幼班', interval: 0.6, bombProb: 0.3, hunt: 0, chase: 0, chain: false, react: 0.55, itemRange: 3, itemProb: 0.4, wander: 0.45, sloppy: 0.4, curseOk: true },
     easy:    { name: '簡單',   interval: 0.55, bombProb: 0.55, hunt: 0.18, chase: 3, chain: false, react: 0.65, notice: 0.1, itemRange: 4, itemProb: 0.48, wander: 0.28, sloppy: 0.23, curseOk: true },
     normal:  { name: '普通',   interval: 0.4, bombProb: 0.73, hunt: 0.3, chase: 5, chain: true, react: 0.7, notice: 0.5, itemRange: 6, itemProb: 0.76, wander: 0.16, sloppy: 0.12, curseOk: false },
-    hard:    { name: '困難',   interval: 0.16, bombProb: 1, hunt: 1, chase: 10, chain: true, react: 0.82, notice: 0.2, itemRange: 16, itemProb: 0.88, wander: 0.06, sloppy: 0.06, curseOk: false, trap: true }
+    hard:    { name: '困難',   interval: 0.19, bombProb: 1, hunt: 1, chase: 9, chain: true, react: 0.78, notice: 0.26, itemRange: 14, itemProb: 0.84, wander: 0.08, sloppy: 0.09, curseOk: false, trap: true },
+    /* 神話：反應快到幾乎零延遲、發現危險一定逃、放炸彈前一定確認退路、不發呆，追人與撿道具不限距離，走位多留安全餘裕 */
+    myth:    { name: '神話',   interval: 0.05, bombProb: 1, hunt: 1, chase: 60, chain: true, react: 1, notice: 0, itemRange: 60, itemProb: 1, wander: 0, sloppy: 0, curseOk: false, trap: true, margin: 0.2 }
   };
   const FOUR = [[1, 0], [-1, 0], [0, 1], [0, -1]];
   const DIR_OF = { '1,0': 'R', '-1,0': 'L', '0,1': 'D', '0,-1': 'U' };
@@ -32,7 +34,7 @@
   }
 
   /* ---------- 危險地圖 ---------- */
-  function dangerMap(s, chain) {
+  function dangerMap(s, chain, margin) {
     const n = s.w * s.h;
     const danger = new Float32Array(n).fill(Infinity);
     const burn = new Float32Array(n);
@@ -52,14 +54,15 @@
       if (e.t < danger[i]) danger[i] = e.t;
     }
     for (const f of s.flames) if (!f.cool) burn[f.cy * s.w + f.cx] = Math.max(burn[f.cy * s.w + f.cx], f.t);
-    return { danger, burn };
+    return { danger, burn, margin: margin == null ? 0.1 : margin };
   }
 
   /** 走第 k 步進入的格子，玩家的中心點會停留在 [Tin, Tout] 這段時間；跟爆炸或餘燼重疊就算不安全 */
   function unsafeAt(dm, i, k, tile) {
-    const tin = (k - 0.5) * tile - 0.1, tout = (k + 0.5) * tile + 0.1;
+    const m = dm.margin;
+    const tin = (k - 0.5) * tile - m, tout = (k + 0.5) * tile + m;
     const d = dm.danger[i];
-    if (d < Infinity && tin < d + R.FLAME_T + 0.05 && tout > d - 0.1) return true;
+    if (d < Infinity && tin < d + R.FLAME_T + 0.05 && tout > d - m) return true;
     return dm.burn[i] > 0 && tin < dm.burn[i] + 0.05;
   }
 
@@ -128,7 +131,7 @@
     const skip = brain.rnd() < cfg.sloppy;
     if (skip) return true;
     return withBomb(s, virt, () => {
-      const dm2 = dangerMap(s, cfg.chain);
+      const dm2 = dangerMap(s, cfg.chain, cfg.margin);
       return !!escapePath(s, me, dm2, p);
     });
   }
@@ -149,7 +152,7 @@
     const cfg = brain.cfg;
     const c = R.cellOf(p);
     const me = c.y * s.w + c.x;
-    const dm = dangerMap(s, cfg.chain);
+    const dm = dangerMap(s, cfg.chain, cfg.margin);
     const inDanger = dm.danger[me] < Infinity || dm.burn[me] > 0;
 
     if (!inDanger) brain.noticeAt = null;
