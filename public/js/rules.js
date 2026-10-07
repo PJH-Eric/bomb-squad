@@ -22,23 +22,23 @@
   const HIT_INSET = 0.1;       /* 火焰判定：人物中心要深入格子才算被炸（離格線 0.1 內算擦邊，安全） */
   const HALF = 0.36;           /* 玩家碰撞半寬（比格子小，轉角才好過） */
   const START = { fire: 2, bomb: 1 };
-  const MAX = { fire: 8, bomb: 6, speed: 5 };
+  const MAX = { fire: 11, bomb: 8, speed: 6 };
   const SPEED = { base: 3.5, step: 0.5, slow: 1.7, trait: 0.8 };
   /* 各角色的能力（兩層平衡）：
    *   初始：火力、炸彈數 1～2；跑速 1～2（1.5 是標準 3.5 格／秒，2 是 3.9、1 是 3.1）。
    *         四種組合（九隻分在這四組），火力＋炸彈每多 1，跑速就少 0.5（火力＋炸彈＋2×跑速 都是 6）。
-   *   上限：撿道具最多能升到的火力格數／炸彈顆數／加速次數，三項加起來每隻都是 19，
+   *   上限：撿道具最多能升到的火力格數／炸彈顆數／加速次數，三項加起來每隻都是 25（地圖變大後，比原本的 19 多給火力 3、炸彈 2、加速 1），
    *         同一種初始組合的幾隻靠上限走不同路線，所以 9 隻都不一樣，也沒有哪隻全面比別隻強。 */
   const ANIMAL_STATS = {
-    cat:     { fire: 1, bomb: 1, speed: 2,   max: { fire: 7, bomb: 7, speed: 5 } },
-    dog:     { fire: 1, bomb: 2, speed: 1.5, max: { fire: 6, bomb: 8, speed: 5 } },
-    bunny:   { fire: 1, bomb: 1, speed: 2,   max: { fire: 6, bomb: 6, speed: 7 } },
-    bear:    { fire: 2, bomb: 1, speed: 1.5, max: { fire: 9, bomb: 5, speed: 5 } },
-    panda:   { fire: 2, bomb: 2, speed: 1,   max: { fire: 8, bomb: 7, speed: 4 } },
-    fox:     { fire: 1, bomb: 2, speed: 1.5, max: { fire: 7, bomb: 6, speed: 6 } },
-    frog:    { fire: 2, bomb: 1, speed: 1.5, max: { fire: 8, bomb: 5, speed: 6 } },
-    penguin: { fire: 2, bomb: 2, speed: 1,   max: { fire: 7, bomb: 8, speed: 4 } },
-    chick:   { fire: 1, bomb: 1, speed: 2,   max: { fire: 5, bomb: 8, speed: 6 } }
+    cat:     { fire: 1, bomb: 1, speed: 2,   max: { fire: 10, bomb: 9, speed: 6 } },
+    dog:     { fire: 1, bomb: 2, speed: 1.5, max: { fire: 9, bomb: 10, speed: 6 } },
+    bunny:   { fire: 1, bomb: 1, speed: 2,   max: { fire: 9, bomb: 8, speed: 8 } },
+    bear:    { fire: 2, bomb: 1, speed: 1.5, max: { fire: 12, bomb: 7, speed: 6 } },
+    panda:   { fire: 2, bomb: 2, speed: 1,   max: { fire: 11, bomb: 9, speed: 5 } },
+    fox:     { fire: 1, bomb: 2, speed: 1.5, max: { fire: 10, bomb: 8, speed: 7 } },
+    frog:    { fire: 2, bomb: 1, speed: 1.5, max: { fire: 11, bomb: 7, speed: 7 } },
+    penguin: { fire: 2, bomb: 2, speed: 1,   max: { fire: 10, bomb: 10, speed: 5 } },
+    chick:   { fire: 1, bomb: 1, speed: 2,   max: { fire: 8, bomb: 10, speed: 7 } }
   };
   const START_STATS = { fire: START.fire, bomb: START.bomb, speed: 1.5, max: MAX };
   const statsOf = animal => ANIMAL_STATS[animal] || START_STATS;

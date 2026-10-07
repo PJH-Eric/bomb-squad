@@ -11,15 +11,15 @@
 
   /* 每隻動物的頭型、身材、配色都不同，縮小在格子裡也能靠輪廓分辨；accent 是領巾（隊伍色） */
   const ANIMALS = {
-    cat:     { name: '小貓', role: '均衡型', intro: '身手靈巧、貓步輕快，火力和炸彈都能練到 7，樣樣都不差。', body: '#b8bfd3', dark: '#7f88a6', belly: '#f4f5fb', stripe: '#5f6884', earIn: '#ffa8c3', nose: '#ff7f9f', accent: '#ff4f8b', head: [17, 15, 24], bw: 22 },
-    dog:     { name: '小狗', role: '炸彈型', intro: '最愛挖洞埋東西，開場就有 2 顆炸彈，最多能帶 8 顆。', body: '#f6d9a8', dark: '#d9a86a', belly: '#fffaf0', earCol: '#8a5530', spot: '#b9773f', nose: '#2a1f2a', accent: '#2f86e6', head: [17, 15, 24], bw: 24 },
-    bunny:   { name: '小兔', role: '速度型', intro: '跑得飛快，還能加速 7 次越跑越快！但火力和炸彈上限只有 6。', body: '#ffe6f1', dark: '#e9b7cf', belly: '#ffffff', earIn: '#ff9cc4', nose: '#ff6f9a', accent: '#a35cff', head: [15.5, 14.5, 27], bw: 22 },
-    bear:    { name: '小熊', role: '火力型', intro: '力氣大，開場火力就有 2 格，最遠能噴到 9 格！', body: '#a8703f', dark: '#7a4b25', belly: '#f1d3a6', earIn: '#e3b582', nose: '#2a1f2a', accent: '#2fbf63', head: [18.5, 16, 24], bw: 28 },
-    panda:   { name: '熊貓', role: '力量型', intro: '圓滾滾的實力派，開場火力、炸彈都是 2，火力能練到 8，可惜跑不太動。', body: '#ffffff', dark: '#d6d6e2', belly: '#ffffff', limb: '#2d2d36', nose: '#2d2d36', accent: '#ff9a1f', head: [18, 15.5, 24], bw: 26 },
+    cat:     { name: '小貓', role: '均衡型', intro: '身手靈巧、貓步輕快，火力能練到 10、炸彈能帶 9 顆，樣樣都不差。', body: '#b8bfd3', dark: '#7f88a6', belly: '#f4f5fb', stripe: '#5f6884', earIn: '#ffa8c3', nose: '#ff7f9f', accent: '#ff4f8b', head: [17, 15, 24], bw: 22 },
+    dog:     { name: '小狗', role: '炸彈型', intro: '最愛挖洞埋東西，開場就有 2 顆炸彈，最多能帶 10 顆。', body: '#f6d9a8', dark: '#d9a86a', belly: '#fffaf0', earCol: '#8a5530', spot: '#b9773f', nose: '#2a1f2a', accent: '#2f86e6', head: [17, 15, 24], bw: 24 },
+    bunny:   { name: '小兔', role: '速度型', intro: '跑得飛快，還能加速 8 次越跑越快！但火力和炸彈的上限比別隻低一些。', body: '#ffe6f1', dark: '#e9b7cf', belly: '#ffffff', earIn: '#ff9cc4', nose: '#ff6f9a', accent: '#a35cff', head: [15.5, 14.5, 27], bw: 22 },
+    bear:    { name: '小熊', role: '火力型', intro: '力氣大，開場火力就有 2 格，最遠能噴到 12 格！', body: '#a8703f', dark: '#7a4b25', belly: '#f1d3a6', earIn: '#e3b582', nose: '#2a1f2a', accent: '#2fbf63', head: [18.5, 16, 24], bw: 28 },
+    panda:   { name: '熊貓', role: '力量型', intro: '圓滾滾的實力派，開場火力、炸彈都是 2，火力能練到 11，可惜跑不太動。', body: '#ffffff', dark: '#d6d6e2', belly: '#ffffff', limb: '#2d2d36', nose: '#2d2d36', accent: '#ff9a1f', head: [18, 15.5, 24], bw: 26 },
     fox:     { name: '狐狸', role: '陷阱型', intro: '狡猾愛佈陷阱，開場 2 顆炸彈，腳程也還能練得很快。', body: '#ff8a3a', dark: '#d9601c', belly: '#fff6ea', earIn: '#3a2a2a', nose: '#2a1f2a', accent: '#18b9d6', head: [17, 14.5, 25], bw: 22 },
-    frog:    { name: '青蛙', role: '遠攻型', intro: '舌頭長長，火力 2 格起跳，蹦蹦跳跳也能加速 6 次。', body: '#72d56c', dark: '#3fa847', belly: '#e6fbb8', nose: '#2f7a38', accent: '#ffcf2e', head: [21, 12.5, 30], bw: 30 },
-    penguin: { name: '企鵝', role: '重砲型', intro: '搖搖擺擺跑得慢，但開場火力、炸彈都是 2，炸彈能帶到 8 顆。', body: '#3f4a72', dark: '#232a48', belly: '#ffffff', beak: '#ffb43b', accent: '#ff5545' },
-    chick:   { name: '小雞', role: '游擊型', intro: '小小一隻跑得飛快，炸彈能帶到 8 顆到處丟，可惜火力上限只有 5。', body: '#ffdc4a', dark: '#eaa51c', belly: '#fff6c4', paw: '#ff9a2e', beak: '#ff9a2e', accent: '#3d47c9', head: [16, 14.5, 25], bw: 24 }
+    frog:    { name: '青蛙', role: '遠攻型', intro: '舌頭長長，火力 2 格起跳，蹦蹦跳跳也能加速 7 次。', body: '#72d56c', dark: '#3fa847', belly: '#e6fbb8', nose: '#2f7a38', accent: '#ffcf2e', head: [21, 12.5, 30], bw: 30 },
+    penguin: { name: '企鵝', role: '重砲型', intro: '搖搖擺擺跑得慢，但開場火力、炸彈都是 2，炸彈能帶到 10 顆。', body: '#3f4a72', dark: '#232a48', belly: '#ffffff', beak: '#ffb43b', accent: '#ff5545' },
+    chick:   { name: '小雞', role: '游擊型', intro: '小小一隻跑得飛快，炸彈能帶到 10 顆到處丟，可惜火力上限只有 8。', body: '#ffdc4a', dark: '#eaa51c', belly: '#fff6c4', paw: '#ff9a2e', beak: '#ff9a2e', accent: '#3d47c9', head: [16, 14.5, 25], bw: 24 }
   };
   const ANIMAL_IDS = Object.keys(ANIMALS);
 
@@ -388,9 +388,9 @@
     ghost: '隱身', super: '超人標誌', ultra: '大力藥丸', c_flip: '方向顛倒詛咒'
   };
   const ITEM_DESC = {
-    fire: '爆炸往外多延伸 1 格（上限 5～9 格，看角色）',
-    bomb: '可以同時放的炸彈多 1 顆（上限 5～8 顆，看角色）',
-    speed: '跑得更快（能加速 4～7 次，看角色）',
+    fire: '爆炸往外多延伸 1 格（上限 8～12 格，看角色）',
+    bomb: '可以同時放的炸彈多 1 顆（上限 7～10 顆，看角色）',
+    speed: '跑得更快（能加速 5～8 次，看角色）',
     kick: '走向炸彈就能把它踢著滑走，直到撞到東西',
     shield: '擋掉一次爆炸，之後有 1 秒無敵',
     c_slow: '8 秒內只能慢慢走',

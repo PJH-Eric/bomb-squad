@@ -103,14 +103,14 @@
         avatar(id, 64),
         h('div', null, h('h3', null, a.name, h('span', { class: 'pill gray' }, a.role)), h('p', { class: 'muted small' }, a.intro)),
         h('div', { class: 'cast-stats' },
-          stat('fire', '火力', st.fire, mx.fire, 9, st.fire + '→' + mx.fire + ' 格'),
-          stat('bomb', '炸彈', st.bomb, mx.bomb, 8, st.bomb + '→' + mx.bomb + ' 顆'),
-          stat('speed', '跑速', v0, v1, 7.4, SPD[st.speed] + ' +' + mx.speed + ' 次')));
+          stat('fire', '火力', st.fire, mx.fire, 12, st.fire + '→' + mx.fire + ' 格'),
+          stat('bomb', '炸彈', st.bomb, mx.bomb, 10, st.bomb + '→' + mx.bomb + ' 顆'),
+          stat('speed', '跑速', v0, v1, 8, SPD[st.speed] + ' +' + mx.speed + ' 次')));
     });
     return screenBox('', h('div', { class: 'wrap' },
       topbar('角色介紹', () => go('home')),
       h('section', { class: 'card' },
-        h('p', { class: 'muted small cast-note' }, '每隻的開場能力都在 1～2 之間：火力或炸彈多的，跑得就慢一點。撿道具能升級，但每隻的上限不一樣（深色是開場、淺色是最多能升到哪；跑速的「+5 次」是最多能加速幾次），三項上限加起來每隻都一樣多，沒有誰全面比較強，挑喜歡的玩法就好。'),
+        h('p', { class: 'muted small cast-note' }, '每隻的開場能力都在 1～2 之間：火力或炸彈多的，跑得就慢一點。撿道具能升級，但每隻的上限不一樣（深色是開場、淺色是最多能升到哪；跑速的「+6 次」是最多能加速幾次），三項上限加起來每隻都一樣多，沒有誰全面比較強，挑喜歡的玩法就好。'),
         h('div', { class: 'cast-grid' }, cards)),
       h('div', { class: 'row', style: { justifyContent: 'center' } },
         btn('開始單機練習', { cls: 'btn-pink btn-lg', onClick: () => go('solo') }),

@@ -90,7 +90,7 @@ test('角色初始能力都在 1～2 之間，而且彼此平衡（沒有哪隻�
     assert.strictEqual(p.fire, st.fire); assert.strictEqual(p.maxBombs, st.bomb);
     for (const k of ['fire', 'bomb', 'speed']) assert(st[k] >= 1 && st[k] <= 2, p.animal + ' 的 ' + k + ' 超出 1～2');
     assert.strictEqual(st.fire + st.bomb + 2 * st.speed, 6, p.animal + ' 的開場總強度跟別隻不一樣');
-    assert.strictEqual(st.max.fire + st.max.bomb + st.max.speed, 19, p.animal + ' 的上限總和跟別隻不一樣');
+    assert.strictEqual(st.max.fire + st.max.bomb + st.max.speed, 25, p.animal + ' 的上限總和跟別隻不一樣');
   }
   /* 把開場＋上限當成六個數字：每隻都不一樣，而且沒有哪隻六項全都不輸另一隻 */
   const vec = a => { const t = R.ANIMAL_STATS[a]; return [t.fire, t.bomb, t.speed, t.max.fire, t.max.bomb, t.max.speed]; };
