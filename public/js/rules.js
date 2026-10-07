@@ -463,7 +463,6 @@
     if (s.phase !== 'play') return;
     while (s.time >= s.skyAt) {
       const n = skyCount(s.skyAt);
-      if (s.skyAt === SKY_START) s.events.push({ t: 'skyStart' });
       s.skyAt += 1;
       for (let k = 0; k < n; k++) {
         const free = [];
