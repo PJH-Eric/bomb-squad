@@ -8,7 +8,6 @@
   const LAYOUT_OPTS = [{ v: 'random', label: '隨機' }, { v: 'classic', label: '經典' }, { v: 'open', label: '空曠' }, { v: 'dense', label: '密集' }, { v: 'fab', label: '產線' }];
   const TIME_OPTS = [{ v: 120, label: '2 分' }, { v: 180, label: '3 分' }, { v: 300, label: '5 分' }, { v: 0, label: '不限時' }];
   const THEME_OPTS = [{ v: -1, label: '隨機' }].concat(Art.THEMES.map(t => ({ v: t.id, label: t.name })));
-  const THEME_DD = [{ v: -1, label: '隨機', swatch: 'linear-gradient(135deg,#ff8fc4,#7fe3ff,#ffe03d)' }].concat(Art.THEMES.map(t => ({ v: t.id, label: t.name, swatch: 'linear-gradient(135deg,' + t.floorA + ' 0 50%,' + t.hard[1] + ' 50% 100%)' })));
   const LEVEL_OPTS = AI.LEVEL_ORDER.map(k => ({ v: k, label: AI.LEVELS[k].name }));
   const LEVEL_HINT = { toddler: '亂走、很少放炸彈', easy: '會躲炸彈、偶爾追人', normal: '會追人、會連鎖', hard: '會設陷阱、反應最快' };
   const LEVEL_DD = AI.LEVEL_ORDER.map(k => ({ v: k, label: AI.LEVELS[k].name, hint: LEVEL_HINT[k] }));
