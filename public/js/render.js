@@ -21,7 +21,7 @@
   }
 
   /* 各種圖在畫面上的大小，都是「一格邊長」的倍數：格子放大，人物、道具、炸彈就跟著等比放大 */
-  const SPRITE = { animal: 1.12, item: 0.82, bomb: 0.96, plane: 2.1 };
+  const SPRITE = { animal: 1.12, item: 0.82, bomb: 1.1, plane: 2.1 };   /* 炸彈要跟人物差不多大，人物站在同一格才不會把它整顆蓋住 */
 
   class Renderer {
     constructor(canvas) {
@@ -287,6 +287,22 @@
       this._arrow = null;
       const list = view.players.slice().sort((a, b) => (a.ry != null ? a.ry : a.y) - (b.ry != null ? b.ry : b.y));
       for (const p of list) this.drawPlayer(ctx, view, p, now, dt, o);
+
+      /* 人物站在炸彈上（剛放下還沒走開）時，再把炸彈半透明疊在人物上面，炸彈一定看得到，不會被人物藏起來 */
+      if (bombImg) {
+        for (const b of view.bombs) {
+          const bx = b.cx + 0.5, by = b.cy + 0.5;
+          if (!view.players.some(p => p.alive && !p.hidden && Math.abs(p.x - bx) < 0.7 && Math.abs(p.y - by) < 0.7)) continue;
+          let px = bx, py = by;
+          if (b.sl) { px -= b.sl.dx * (1 - b.sl.prog); py -= b.sl.dy * (1 - b.sl.prog); }
+          const pulse = 1 + (o.reduceMotion ? 0.03 : 0.07) * Math.sin(now * (5 + (R.FUSE - Math.max(0, b.t)) * 5));
+          const s = bombImg.width * pulse, cx = px * T, cy = py * T;
+          ctx.globalAlpha = 0.7;
+          ctx.drawImage(bombImg, cx - s / 2, cy - s / 2 - T * 0.02, s, s);
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = '#ffd54a'; ctx.beginPath(); ctx.arc(cx + s * 0.2, cy - s * 0.42, T * (0.06 + 0.03 * Math.sin(now * 30)), 0, 7); ctx.fill();
+        }
+      }
 
       /* 粒子 */
       for (let i = this.parts.length - 1; i >= 0; i--) {
