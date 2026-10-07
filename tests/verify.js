@@ -337,11 +337,11 @@ test('隱身：快照把隱身的人標成「對你是隱身」但位置照送�
   R.applySnapshot(v, snap);
   assert(!v.players[1].hidden && Math.abs(v.players[1].x - 5.5) < 0.01);
 });
-test('超人標誌：15 秒內火力、炸彈、跑速都是這隻角色的最高，結束後還原；詛咒仍壓過它', () => {
+test('超人標誌：8 秒內火力、炸彈、跑速都是這隻角色的最高，結束後還原；詛咒仍壓過它', () => {
   const s = mk(2); arena(s); const p = s.players[0]; put(p, 2, 1); put(s.players[1], 12, 11);
   const mx = R.ANIMAL_STATS.cat.max, base = { sp: R.speedOf(p), b: R.maxBombsOf(p), r: R.rangeOf(p) };
   give(s, p, 'super');
-  assert(p.superT > 14.9 && p.superT <= 15);
+  assert(p.superT > 7.9 && p.superT <= 8);
   assert.strictEqual(R.rangeOf(p), mx.fire); assert.strictEqual(R.maxBombsOf(p), mx.bomb);
   assert(Math.abs(R.speedOf(p) - (base.sp + R.SPEED.step * mx.speed)) < 1e-9, '跑速要加到最高級');
   assert.strictEqual(R.fireOf(p), mx.fire); assert.strictEqual(R.speedLvlOf(p), mx.speed);
@@ -353,7 +353,7 @@ test('超人標誌：15 秒內火力、炸彈、跑速都是這隻角色的最�
   for (let i = 0; i < mx.bomb; i++) { put(p, 3 + (i % 5), 2 + Math.floor(i / 5) * 2); R.placeBomb(s, p); }
   assert.strictEqual(s.bombs.length, mx.bomb); assert(s.bombs.every(b => b.range === mx.fire));
   s.bombs.length = 0; p.bombsOut = 0;
-  run(s, {}, 15.1);
+  run(s, {}, 8.1);
   assert.strictEqual(p.superT, 0);
   assert.strictEqual(R.rangeOf(p), base.r); assert.strictEqual(R.maxBombsOf(p), base.b); assert(Math.abs(R.speedOf(p) - base.sp) < 1e-9);
 });

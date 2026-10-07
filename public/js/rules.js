@@ -47,7 +47,7 @@
   const statsOf = animal => ANIMAL_STATS[animal] || START_STATS;
   const CURSE_T = 8;           /* 負面道具持續秒數 */
   const GHOST_T = 8;           /* 隱身持續秒數 */
-  const SUPER_T = 15;          /* 超人標誌持續秒數 */
+  const SUPER_T = 8;           /* 超人標誌持續秒數 */
   const SHIELD_T = 1.2;        /* 護盾破掉後的無敵秒數 */
   const COUNTDOWN = 3;
   const SLIDE_SPEED = 7;       /* 被踢的炸彈滑行格/秒 */
