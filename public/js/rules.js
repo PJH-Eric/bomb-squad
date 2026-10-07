@@ -18,7 +18,7 @@
   const AIR_EVERY = 45;        /* 每隔幾秒飛來一架空投機 */
   /* 空襲（突然死亡）：遊戲進行超過 SKY_START 秒後，每秒從天上掉炸彈到隨機空格；每過 SKY_STEP 秒每次多 1 顆，最多 SKY_MAX 顆。
      2:30 起每秒 1 顆、2:40 起 2 顆、2:50 起 3 顆，之後維持 3 顆。炸彈落地後 SKY_FUSE 秒爆炸，火力橫掃到牆（SKY_RANGE），不屬於任何玩家（不算擊倒） */
-  const SKY_START = 150, SKY_STEP = 10, SKY_MAX = 3, SKY_FUSE = 2, SKY_RANGE = 99;
+  const SKY_START = 150, SKY_STEP = 10, SKY_MAX = 3, SKY_FUSE = 3, SKY_RANGE = 99;
   const PLANE_SPEED = 5;       /* 空投機飛行速度（格／秒） */
   const FLAME_COOL_T = 0.3;    /* 磚塊格的無殺傷火花停留秒數 */
   const FLAME_T = 0.5;         /* 火焰停留秒數 */

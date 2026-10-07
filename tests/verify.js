@@ -399,7 +399,7 @@ test('新道具都有圖示、名稱、說明，掉落表有權重；關閉詛�
   assert(seen.has('ghost') && seen.has('ultra') && !seen.has('c_flip') && !seen.has('c_slow'), '掉落：' + [...seen]);
 });
 test('空襲：150 秒前不掉炸彈；每秒掉的顆數 2:30→1、2:40→2、2:50 起 3，最多 3 顆', () => {
-  assert.deepStrictEqual([R.SKY_START, R.SKY_STEP, R.SKY_MAX, R.SKY_FUSE], [150, 10, 3, 2]);
+  assert.deepStrictEqual([R.SKY_START, R.SKY_STEP, R.SKY_MAX, R.SKY_FUSE], [150, 10, 3, 3]);
   assert.deepStrictEqual([0, 100, 149.9, 150, 159.9, 160, 169.9, 170, 180, 300].map(R.skyCount), [0, 0, 0, 1, 1, 2, 2, 3, 3, 3]);
   const s = mk(2); arena(s); put(s.players[0], 1, 1); put(s.players[1], 15, 11);
   s.players.forEach(p => { p.invuln = 1e9; });                   /* 不讓空襲把人炸死，才能一路數下去 */
@@ -414,7 +414,7 @@ test('空襲：150 秒前不掉炸彈；每秒掉的顆數 2:30→1、2:40→2�
   for (let t = 160; t < 170; t++) assert.strictEqual(bucket[t], 2, t + ' 秒應該 2 顆：' + bucket[t]);
   for (let t = 170; t < 200; t++) assert.strictEqual(bucket[t], 3, t + ' 秒應該 3 顆（上限）：' + bucket[t]);
 });
-test('空襲炸彈：不屬於任何人、引信 2 秒、火力橫掃到牆邊；落在空格上，不會掉在人腳下或磚塊裡', () => {
+test('空襲炸彈：不屬於任何人、引信 3 秒、火力橫掃到牆邊；落在空格上，不會掉在人腳下或磚塊裡', () => {
   const s = mk(2); arena(s); put(s.players[0], 1, 1); put(s.players[1], 15, 11);
   s.players.forEach(p => { p.invuln = 1e9; });
   s.grid[6 * s.w + 8] = 2; s.grid[7 * s.w + 3] = 1;
@@ -433,8 +433,8 @@ test('空襲炸彈：不屬於任何人、引信 2 秒、火力橫掃到牆邊�
   assert(landed.x >= 1 && landed.y >= 1 && landed.x <= s.w - 2 && landed.y <= s.h - 2);
   /* 引爆瞬間：這一列、這一欄都被火焰燒到牆邊（軟磚擋住就停在磚，一樣的規則） */
   let boomed = false;
-  for (let i = 0; i < 60 * 3 && !boomed; i++) { R.step(s, {}, R.DT); boomed = s.events.some(x => x.t === 'boom' && x.x === landed.x && x.y === landed.y); }
-  assert(boomed, '2 秒後要爆炸');
+  for (let i = 0; i < 60 * 4 && !boomed; i++) { R.step(s, {}, R.DT); boomed = s.events.some(x => x.t === 'boom' && x.x === landed.x && x.y === landed.y); }
+  assert(boomed, '3 秒後要爆炸');
   const reach = (dx, dy) => { let n = 0; for (let x = landed.x + dx, y = landed.y + dy; ; x += dx, y += dy) { const g = s.grid[y * s.w + x]; if (x < 0 || y < 0 || x >= s.w || y >= s.h || g === 1) break; if (!R.flameAt(s, x, y)) break; n++; if (g === 2) break; } return n; };
   const wallDist = (dx, dy) => { let n = 0; for (let x = landed.x + dx, y = landed.y + dy; x > 0 && y > 0 && x < s.w - 1 && y < s.h - 1; x += dx, y += dy) n++; return n; };
   /* 沒有磚擋的方向，火焰一路燒到最外圈牆前一格 */
