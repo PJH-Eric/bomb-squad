@@ -25,7 +25,7 @@ const SHOTS = process.env.SHOTS || path.join(__dirname, '..', 'shots');
 fs.mkdirSync(SHOTS, { recursive: true });
 const VIEWS = [['phone-p', 390, 844], ['phone-l', 844, 390], ['tablet-p', 820, 1180], ['tablet-l', 1180, 820], ['desktop', 1440, 900]];
 const OLD = { 2: [15, 13], 8: [17, 15] };      /* 最初的格數，拿來比較每格縮了多少 */
-const NEW = { 2: [19, 15], 8: [21, 17] };
+const NEW = { 2: [17, 13], 8: [19, 15] };
 let fails = 0;
 const ok = (c, m) => { console.log((c ? '  ok  ' : ' FAIL ') + m); if (!c) fails++; };
 

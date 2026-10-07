@@ -85,8 +85,8 @@
   }
 
   /* ---------- 地圖 ---------- */
-  /* 格子數盡量多（比最初每邊各多 4 格、小圖 285 格／大圖 357 格），走位與佈局空間大；每格大小仍由「可用空間 ÷ 格數」自動算，人物、道具、炸彈跟著等比縮放 */
-  const MAP_SMALL = { w: 19, h: 15 }, MAP_LARGE = { w: 21, h: 17 };
+  /* 格子數盡量多（比最初每邊各多 2 格、小圖 221 格／大圖 285 格），走位與佈局空間大；每格大小仍由「可用空間 ÷ 格數」自動算，人物、道具、炸彈跟著等比縮放 */
+  const MAP_SMALL = { w: 17, h: 13 }, MAP_LARGE = { w: 19, h: 15 };
   function sizeFor(count) { return count <= 4 ? Object.assign({}, MAP_SMALL) : Object.assign({}, MAP_LARGE); }
   /** 這種尺寸的地圖用幾個出生點：小圖只用四個角，大圖再加上四邊中點 */
   function spawnCount(w, h) { return h <= MAP_SMALL.h ? 4 : 8; }
