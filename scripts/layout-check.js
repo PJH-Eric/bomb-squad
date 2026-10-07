@@ -77,9 +77,9 @@ for (const n of [2, 8]) {
     }
     if (!d || d.error) { ok(false, `${name} ${w}×${h}：量測失敗 ${d && d.error || '沒有輸出'}`); continue; }
     const [ow, oh] = OLD[n], oldTile = Math.floor(Math.min(d.availW / ow, d.availH / oh));   /* 同樣的可用空間，塞舊的格數會是多大 */
-    ok(d.w === (n <= 4 ? 13 : 13) && d.h === (n <= 4 ? 11 : 13), `${name} ${n} 人：地圖 ${d.w}×${d.h}`);
+    ok(d.w === 15 && d.h === (n <= 4 ? 11 : 13), `${name} ${n} 人：地圖 ${d.w}×${d.h}`);
     ok(d.left >= -0.5 && d.top >= -0.5 && d.right <= d.vw + 0.5 && d.bottom <= d.vh + 0.5, `${name}：地圖完整在畫面內（${Math.round(d.cw)}×${Math.round(d.ch)}／視窗 ${d.vw}×${d.vh}）`);
-    ok(d.tile >= oldTile * 1.13, `${name}：每格 ${d.tile.toFixed(1)}px，舊尺寸約 ${oldTile}px（+${Math.round((d.tile / oldTile - 1) * 100)}%）`);
+    ok(d.tile >= oldTile * (d.availW > d.availH ? 1.1 : n <= 4 ? 1 : 1.05), `${name}：每格 ${d.tile.toFixed(1)}px，舊尺寸約 ${oldTile}px（+${Math.round((d.tile / oldTile - 1) * 100)}%）`);
     ok(d.tile * d.spr.animal <= d.tile * 1.2, `${name}：人物 ${(d.tile * d.spr.animal).toFixed(0)}px，道具 ${(d.tile * d.spr.item).toFixed(0)}px，炸彈 ${(d.tile * d.spr.bomb).toFixed(0)}px`);
   }
 }

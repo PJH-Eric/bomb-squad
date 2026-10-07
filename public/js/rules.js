@@ -85,8 +85,8 @@
   }
 
   /* ---------- 地圖 ---------- */
-  /* 格子數刻意少：同一個畫面塞更少格，每格才畫得大，人物、道具、炸彈一眼就看得清楚 */
-  const MAP_SMALL = { w: 13, h: 11 }, MAP_LARGE = { w: 13, h: 13 };
+  /* 格子數比最初少、列數更少：橫向留寬一點好走位，直向少幾列，每格才畫得大，人物、道具、炸彈看得清楚 */
+  const MAP_SMALL = { w: 15, h: 11 }, MAP_LARGE = { w: 15, h: 13 };
   function sizeFor(count) { return count <= 4 ? Object.assign({}, MAP_SMALL) : Object.assign({}, MAP_LARGE); }
   /** 這種尺寸的地圖用幾個出生點：小圖只用四個角，大圖再加上四邊中點 */
   function spawnCount(w, h) { return h <= MAP_SMALL.h ? 4 : 8; }

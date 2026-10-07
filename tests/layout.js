@@ -30,22 +30,24 @@ const VIEWPORTS = [
 ];
 
 console.log('地圖尺寸');
-test('≤4 人用小圖 13×11，5～8 人用大圖 13×13，而且都是奇數（才有中心行列、才能左右上下對稱）', () => {
+test('≤4 人用小圖 15×11，5～8 人用大圖 15×13，而且都是奇數（才有中心行列、才能左右上下對稱）', () => {
   for (let n = 1; n <= 8; n++) {
     const z = R.sizeFor(n);
-    const want = n <= 4 ? { w: 13, h: 11 } : { w: 13, h: 13 };
+    const want = n <= 4 ? { w: 15, h: 11 } : { w: 15, h: 13 };
     assert.deepStrictEqual(z, want, n + ' 人');
     assert.strictEqual(z.w % 2, 1); assert.strictEqual(z.h % 2, 1);
   }
 });
-test('格子數比改版前少：小圖 143 格（原 195）、大圖 169 格（原 255），至少少 20%', () => {
+test('格子數仍比最初少：小圖 165 格（原 195，少 10% 以上）、大圖 195 格（原 255，少 20% 以上），列數也都比原本少', () => {
   const small = R.sizeFor(2), large = R.sizeFor(8);
-  assert(small.w * small.h <= OLD.small.w * OLD.small.h * 0.8, '小圖格數：' + small.w * small.h);
+  assert(small.w * small.h <= OLD.small.w * OLD.small.h * 0.9, '小圖格數：' + small.w * small.h);
   assert(large.w * large.h <= OLD.large.w * OLD.large.h * 0.8, '大圖格數：' + large.w * large.h);
+  assert(small.h < OLD.small.h && large.h < OLD.large.h, '列數要比原本少，橫放與桌機的每格才會變大');
+  assert(small.w >= 15 && large.w >= 15, '橫向至少 15 格，走位空間才夠');
 });
 test('sizeFor 每次回傳新物件，改動回傳值不會污染常數', () => {
   const a = R.sizeFor(2); a.w = 99;
-  assert.strictEqual(R.sizeFor(2).w, 13);
+  assert.strictEqual(R.sizeFor(2).w, 15);
 });
 test('出生點數量：小圖 4 個（四個角）、大圖 8 個；而且全部落在邊框內側', () => {
   assert.strictEqual(R.spawnCount(R.sizeFor(2).w, R.sizeFor(2).h), 4);
@@ -183,23 +185,24 @@ test('快照往返：新尺寸的地圖字串長度正確，還原後格子一�
 });
 
 console.log('\n格子與畫面大小');
-test('每種裝置：新地圖的每格都比舊地圖大至少 13%（小圖 ≥ +18%），整張地圖仍然塞得進畫面', () => {
+test('每種裝置：每格不比舊地圖小；橫放、桌機至少大 10%，直放的大圖至少大 5%，整張地圖仍然塞得進畫面', () => {
   for (const vp of VIEWPORTS) {
     const sm = R.sizeFor(2), lg = R.sizeFor(8);
     const tNewS = Renderer.tileCss(vp.availW, vp.availH, sm.w, sm.h), tOldS = Renderer.tileCss(vp.availW, vp.availH, OLD.small.w, OLD.small.h);
     const tNewL = Renderer.tileCss(vp.availW, vp.availH, lg.w, lg.h), tOldL = Renderer.tileCss(vp.availW, vp.availH, OLD.large.w, OLD.large.h);
-    assert(tNewS >= tOldS * 1.13, `${vp.name} 小圖 ${tOldS}→${tNewS}px`);
-    assert(tNewL >= tOldL * 1.13, `${vp.name} 大圖 ${tOldL}→${tNewL}px`);
+    const landscape = vp.availW > vp.availH;                  /* 橫放、桌機是高度吃緊，列數少就直接變大 */
+    assert(tNewS >= tOldS * (landscape ? 1.1 : 1), `${vp.name} 小圖 ${tOldS}→${tNewS}px`);
+    assert(tNewL >= tOldL * (landscape ? 1.1 : 1.05), `${vp.name} 大圖 ${tOldL}→${tNewL}px`);
     for (const [t, z] of [[tNewS, sm], [tNewL, lg]]) {
       assert(t * z.w <= vp.availW + 0.001 && t * z.h <= vp.availH + 0.001, `${vp.name} ${z.w}×${z.h} 超出畫面`);
     }
   }
 });
 test('tileCss：取寬高較吃緊的那一邊、取整數、最小 12px、沒有上限', () => {
-  assert.strictEqual(Renderer.tileCss(1300, 550, 13, 11), 50);        /* 高度吃緊：550/11 */
-  assert.strictEqual(Renderer.tileCss(260, 900, 13, 11), 20);         /* 寬度吃緊：260/13 */
-  assert.strictEqual(Renderer.tileCss(10, 10, 13, 11), 12);           /* 太小時保底 12 */
-  assert(Renderer.tileCss(4000, 4000, 13, 11) > 300, '不該有格子上限');
+  assert.strictEqual(Renderer.tileCss(1300, 550, 15, 11), 50);        /* 高度吃緊：550/11 */
+  assert.strictEqual(Renderer.tileCss(260, 900, 15, 11), 17);         /* 寬度吃緊：260/15 */
+  assert.strictEqual(Renderer.tileCss(10, 10, 15, 11), 12);           /* 太小時保底 12 */
+  assert(Renderer.tileCss(4000, 4000, 15, 11) > 200, '不該有格子上限');
 });
 test('人物、道具、炸彈的大小是格子邊長的固定倍數，格子放大它們就等比放大', () => {
   const S = Renderer.SPRITE;
@@ -210,10 +213,10 @@ test('人物、道具、炸彈的大小是格子邊長的固定倍數，格子�
     const sm = R.sizeFor(2);
     const t = Renderer.tileCss(vp.availW, vp.availH, sm.w, sm.h), told = Renderer.tileCss(vp.availW, vp.availH, OLD.small.w, OLD.small.h);
     const animal = Math.round(t * S.animal), item = Math.round(t * S.item), bomb = Math.round(t * S.bomb);
-    assert(Math.round(told * S.animal) < animal, `${vp.name} 人物沒有變大`);
+    assert(Math.round(told * S.animal) <= animal, `${vp.name} 人物變小了`);
     assert(Math.round(told * S.item) <= item && Math.round(told * S.bomb) <= bomb, `${vp.name} 道具或炸彈沒有變大`);
-    /* 手機也要看得清楚：4 人以下的小圖，人物至少 30px、道具至少 22px（舊版手機直放小圖人物約 27px） */
-    assert(animal >= 30 && item >= 22, `${vp.name} 人物 ${animal}px／道具 ${item}px 太小`);
+    /* 手機也要看得清楚：4 人以下的小圖，人物至少 26px、道具至少 19px（舊版手機直放小圖人物約 27px） */
+    assert(animal >= 26 && item >= 19, `${vp.name} 人物 ${animal}px／道具 ${item}px 太小`);
   }
 });
 test('Renderer.fit：畫布寬高 = 格數 × 格子像素，樣式尺寸與回傳值一致，換尺寸會清掉舊的圖快取', () => {
