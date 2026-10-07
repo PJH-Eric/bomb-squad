@@ -31,19 +31,19 @@ function run(s, inputs, sec) {
 const put = (p, x, y) => { p.x = x + 0.5; p.y = y + 0.5; };
 
 console.log('\n地圖');
-test('地圖尺寸：≤4 人 15×11，5～8 人 15×13', () => {
-  assert.deepStrictEqual(R.sizeFor(2), { w: 15, h: 11 });
-  assert.deepStrictEqual(R.sizeFor(4), { w: 15, h: 11 });
-  assert.deepStrictEqual(R.sizeFor(5), { w: 15, h: 13 });
-  assert.deepStrictEqual(R.sizeFor(8), { w: 15, h: 13 });
+test('地圖尺寸：≤4 人 19×15，5～8 人 21×17', () => {
+  assert.deepStrictEqual(R.sizeFor(2), { w: 19, h: 15 });
+  assert.deepStrictEqual(R.sizeFor(4), { w: 19, h: 15 });
+  assert.deepStrictEqual(R.sizeFor(5), { w: 21, h: 17 });
+  assert.deepStrictEqual(R.sizeFor(8), { w: 21, h: 17 });
 });
 test('同一個 seed 產生同一張地圖，不同 seed 不同', () => {
-  const a = R.generateMap(5, 15, 11, 'classic'), b = R.generateMap(5, 15, 11, 'classic'), c = R.generateMap(6, 15, 11, 'classic');
+  const a = R.generateMap(5, 19, 15, 'classic'), b = R.generateMap(5, 19, 15, 'classic'), c = R.generateMap(6, 19, 15, 'classic');
   assert.deepStrictEqual(a, b);
   assert.notDeepStrictEqual(a, c);
 });
 test('三種版型 × 多個 seed：四向對稱、全連通、出生點安全區沒有軟磚', () => {
-  for (const layout of R.LAYOUTS) for (const [w, h] of [[15, 11], [15, 13]]) for (let seed = 1; seed <= 25; seed++) {
+  for (const layout of R.LAYOUTS) for (const [w, h] of [[19, 15], [21, 17]]) for (let seed = 1; seed <= 25; seed++) {
     const g = R.generateMap(seed, w, h, layout);
     assert(R.connected(g, w, h), `${layout} ${w}x${h} seed ${seed} 不連通`);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -59,14 +59,14 @@ test('三種版型 × 多個 seed：四向對稱、全連通、出生點安全�
   }
 });
 test('邊框全是硬牆', () => {
-  const g = R.generateMap(3, 15, 11, 'open');
-  for (let x = 0; x < 15; x++) { assert.strictEqual(g[x], 1); assert.strictEqual(g[10 * 15 + x], 1); }
-  for (let y = 0; y < 11; y++) { assert.strictEqual(g[y * 15], 1); assert.strictEqual(g[y * 15 + 14], 1); }
+  const g = R.generateMap(3, 19, 15, 'open');
+  for (let x = 0; x < 19; x++) { assert.strictEqual(g[x], 1); assert.strictEqual(g[14 * 19 + x], 1); }
+  for (let y = 0; y < 15; y++) { assert.strictEqual(g[y * 19], 1); assert.strictEqual(g[y * 19 + 18], 1); }
 });
 test('密集版型比經典多硬牆', () => {
   const count = g => g.filter(v => v === 1).length;
   let more = 0;
-  for (let seed = 1; seed <= 20; seed++) if (count(R.generateMap(seed, 15, 11, 'dense')) > count(R.generateMap(seed, 15, 11, 'classic'))) more++;
+  for (let seed = 1; seed <= 20; seed++) if (count(R.generateMap(seed, 19, 15, 'dense')) > count(R.generateMap(seed, 19, 15, 'classic'))) more++;
   assert(more >= 15, '密集應該通常比較多硬牆，只有 ' + more);
 });
 

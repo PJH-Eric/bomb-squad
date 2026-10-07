@@ -249,8 +249,8 @@ body.calm *, body.calm *::before, body.calm *::after { animation: none !importan
 .side-keys .k-row { display: flex; align-items: center; flex-wrap: wrap; gap: 2px 4px; }
 .side-chat { display: flex; flex-direction: column; min-height: 0; flex: 1 1 0; margin-top: auto; }
 .side-chat .chat-log { max-height: none; flex: 1; min-height: 70px; }
-.game-main { position: relative; flex: 1 1 auto; min-width: 0; display: flex; align-items: center; justify-content: center; padding: calc(60px + var(--safe-t)) calc(8px + var(--safe-r)) calc(8px + var(--safe-b)) calc(8px + var(--safe-l)); }
-.game-main.has-touch.portrait { padding-bottom: calc(210px + var(--safe-b)); }
+.game { --stick: 150px; --knob: 64px; --bomb: 100px; }   /* 控制鈕大小由 game.js 依裝置設定（見 touchlayout.js） */
+.game-main { position: relative; flex: 1 1 auto; min-width: 0; display: flex; align-items: center; justify-content: center; padding: calc(60px + var(--safe-t)) calc(8px + var(--safe-r) + var(--gut, 0px)) calc(8px + var(--safe-b) + var(--gut-b, 0px)) calc(8px + var(--safe-l) + var(--gut, 0px)); }
 .board { position: relative; border-radius: 14px; overflow: hidden; box-shadow: 0 0 0 5px #fff, 0 12px 30px rgba(60, 30, 100, .3); line-height: 0; }
 .board canvas { display: block; touch-action: none; }
 .hud { position: absolute; z-index: 15; top: calc(8px + var(--safe-t)); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; max-width: calc(100% - 140px); flex-wrap: wrap; justify-content: center; pointer-events: none; }
@@ -268,18 +268,20 @@ body.calm *, body.calm *::before, body.calm *::after { animation: none !importan
 .ghost-msg { position: absolute; z-index: 15; bottom: calc(10px + var(--safe-b)); left: 50%; transform: translateX(-50%); background: rgba(255, 255, 255, .92); padding: 4px 16px; border-radius: 999px; font-weight: 800; box-shadow: 0 4px 0 var(--line); pointer-events: none; }
 
 /* 觸控按鍵 */
-.touch { position: absolute; z-index: 18; bottom: calc(16px + var(--safe-b)); left: 0; right: 0; display: flex; justify-content: space-between; align-items: flex-end; padding: 0 calc(20px + var(--safe-r)) 0 calc(20px + var(--safe-l)); pointer-events: none; }
+.touch { position: absolute; z-index: 18; bottom: calc(24px + var(--safe-b)); left: 0; right: 0; display: flex; justify-content: space-between; align-items: flex-end; padding: 0 calc(20px + var(--safe-r)) 0 calc(20px + var(--safe-l)); pointer-events: none; }
 .touch.flip { flex-direction: row-reverse; }
-.stick { position: relative; width: 156px; height: 156px; border-radius: 50%; pointer-events: auto; touch-action: none; background: radial-gradient(circle, rgba(255, 255, 255, .55) 0, rgba(255, 255, 255, .3) 70%); box-shadow: inset 0 0 0 4px rgba(255, 255, 255, .8), 0 8px 18px rgba(60, 30, 100, .22); opacity: .85; }
+.stick { position: relative; width: var(--stick); height: var(--stick); border-radius: 50%; pointer-events: auto; touch-action: none; background: radial-gradient(circle, rgba(255, 255, 255, .55) 0, rgba(255, 255, 255, .3) 70%); box-shadow: inset 0 0 0 4px rgba(255, 255, 255, .8), 0 8px 18px rgba(60, 30, 100, .22); opacity: .85; }
 .stick .arrow { position: absolute; width: 0; height: 0; border: 10px solid transparent; opacity: .75; }
 .stick .arrow.u { top: 6px; left: 50%; margin-left: -10px; border-bottom-color: var(--grape-d); border-top-width: 0; }
 .stick .arrow.d { bottom: 6px; left: 50%; margin-left: -10px; border-top-color: var(--grape-d); border-bottom-width: 0; }
 .stick .arrow.l { left: 6px; top: 50%; margin-top: -10px; border-right-color: var(--grape-d); border-left-width: 0; }
 .stick .arrow.r { right: 6px; top: 50%; margin-top: -10px; border-left-color: var(--grape-d); border-right-width: 0; }
-.stick .knob { position: absolute; left: 50%; top: 50%; width: 66px; height: 66px; margin: -33px 0 0 -33px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, var(--grape) 80%); box-shadow: 0 5px 0 var(--grape-d), 0 10px 16px rgba(60, 30, 100, .3); }
-.bomb-btn { pointer-events: auto; touch-action: none; width: 104px; height: 104px; border-radius: 50%; border: 0; display: grid; place-items: center; cursor: pointer; background: radial-gradient(circle at 35% 28%, #ffd0e4, var(--pink) 60%); box-shadow: 0 7px 0 var(--pink-d), 0 14px 22px rgba(60, 30, 100, .3), inset 0 3px 0 rgba(255, 255, 255, .5); opacity: .92; }
+.stick .knob { position: absolute; left: 50%; top: 50%; width: var(--knob); height: var(--knob); margin: calc(var(--knob) / -2) 0 0 calc(var(--knob) / -2); border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, var(--grape) 80%); box-shadow: 0 5px 0 var(--grape-d), 0 10px 16px rgba(60, 30, 100, .3); }
+.bomb-btn { pointer-events: auto; touch-action: none; width: var(--bomb); height: var(--bomb); border-radius: 50%; border: 0; display: grid; place-items: center; cursor: pointer; background: radial-gradient(circle at 35% 28%, #ffd0e4, var(--pink) 60%); box-shadow: 0 7px 0 var(--pink-d), 0 14px 22px rgba(60, 30, 100, .3), inset 0 3px 0 rgba(255, 255, 255, .5); opacity: .92; }
 .bomb-btn:active, .bomb-btn.down { transform: translateY(5px); box-shadow: 0 2px 0 var(--pink-d), 0 6px 10px rgba(60, 30, 100, .3); }
-.bomb-btn img { width: 62px; height: 62px; pointer-events: none; }
+.bomb-btn img { width: calc(var(--bomb) * .6); height: calc(var(--bomb) * .6); pointer-events: none; }
+/* 橫放而兩側空位不夠時，控制鈕疊在地圖邊緣：改半透明，少擋一點 */
+.touch.overlay .stick { opacity: .55; } .touch.overlay .bomb-btn { opacity: .7; }
 
 /* ---------- 彈窗 ---------- */
 .mask { position: fixed; inset: 0; z-index: 100; background: rgba(60, 30, 100, .45); display: flex; align-items: center; justify-content: center; padding: calc(12px + var(--safe-t)) calc(12px + var(--safe-r)) calc(12px + var(--safe-b)) calc(12px + var(--safe-l)); backdrop-filter: blur(3px); animation: fade .15s; }
@@ -335,8 +337,6 @@ body.calm *, body.calm *::before, body.calm *::after { animation: none !importan
   .hero-cast { display: none; }
   .hero-title { font-size: 2.4rem; }
   .btn-lg { min-height: 50px; }
-  .stick { width: 128px; height: 128px; } .stick .knob { width: 54px; height: 54px; margin: -27px 0 0 -27px; }
-  .bomb-btn { width: 88px; height: 88px; }
 }
 
 /* ===== 風格：夜間街機貼紙風（深色背景＋粗黑框＋硬陰影，和其他小遊戲的木紋／粉彩風區分） ===== */
@@ -494,7 +494,6 @@ body {
   .hud-chip { padding: 1px 6px 1px 1px; font-size: .74rem; gap: 2px; border-width: 2px; }
   .hud-chip .avatar { width: 20px !important; height: 20px !important; }
   .game-main { padding-top: calc(86px + var(--safe-t)); }
-  .game-main.has-touch.portrait { padding-bottom: calc(190px + var(--safe-b)); }
 }
 @media (max-width: 560px) and (orientation: landscape) { .game-main { padding-top: calc(60px + var(--safe-t)); } .hud { flex-direction: row; width: auto; } }
 @media (max-width: 400px) { .topbar h2 { font-size: 1.15rem; } .hero-sub { font-size: .92rem; } }

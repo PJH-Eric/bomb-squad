@@ -22,7 +22,7 @@ Windows 可雙擊 `start-game.bat`。同一個 Wi-Fi 的平板／手機開終端
 ```bash
 npm test                # 規則、AI、房間、真實 WebSocket 端對端
 node tests/verify.js    # 規則核心＋AI 完整對局＋AI 難度階梯
-node tests/layout.js    # 版面：地圖尺寸、對稱連通、出生點、軟磚填充率、格子與人物大小
+node tests/layout.js    # 版面：地圖尺寸、對稱連通、出生點、軟磚填充率、格子與人物大小、觸控操作版面（手機／平板 × 直放／橫放）
 node tests/rooms.js     # 房間生命週期（假時鐘）
 node tests/server.js    # 伺服器防呆：靜態檔路徑、WebSocket 封包上限、斷線放開按鍵
 node scripts/online-check.js
@@ -115,7 +115,8 @@ gcloud run deploy bomb-squad --source . --region asia-east1 --allow-unauthentica
 
 ## 假設與規則細節
 
-- 2～8 人混戰、無隊伍；≤4 人用 15×11 地圖，5～8 人用 15×13（橫向寬、直向列數少，每格畫得大）。
+- 2～8 人混戰、無隊伍；≤4 人用 19×15 地圖，5～8 人用 21×17（格子數多、走位空間大）。
+- 觸控操作版面（public/js/touchlayout.js）：依手機／平板、直放／橫放決定搖桿與炸彈鈕大小；直放放在地圖下方，橫放放在地圖左右兩側（只壓到最外圈邊牆，不擋格子），兩側不夠放時控制鈕會先縮小，實在放不下才半透明疊在地圖邊緣；觸控裝置預設收起資訊欄。
 - 斷線寬限 30 秒，超時視為離場，不做 AI 接管；觀戰上限 20 人。
 - 邀請 token 隨房間存在，最長 24 小時，可由房主撤銷；角色由 token 決定，改暱稱不會改變權限。
 - 房間以「真人玩家」為準：真人降到 0（只剩電腦或觀戰者）立即關閉並通知，已關閉的房間不會復活。

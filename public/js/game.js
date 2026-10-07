@@ -117,7 +117,8 @@
       this.root = h('div', { class: 'game' }, this.side, this.main, this.toggle, this.exitBtn, this.pingEl);
       /* 滑鼠／觸控點完按鈕就放掉焦點：不然暫停→繼續後焦點回到暫停鈕，按空白鍵會再開一次選單而不是放炸彈（鍵盤 Tab 過去的照常可按） */
       this.root.addEventListener('pointerup', e => { const b = e.target.closest && e.target.closest('button'); if (b) b.blur(); });
-      const narrow = root.innerWidth < 860 || root.innerHeight > root.innerWidth;
+      /* 窄螢幕、直放、或顯示觸控鈕的裝置（手機、平板）預設收起資訊欄，把空間留給地圖與控制鈕；要看再點左上角展開 */
+      const narrow = root.innerWidth < 860 || root.innerHeight > root.innerWidth || this.touchVisible();
       if (narrow) this.root.classList.add('side-closed');
       this.applyTheme();
     }
@@ -250,17 +251,27 @@
     }
     layout() {
       if (!this.main || !this.root.isConnected) return;
-      const cs = getComputedStyle(this.main);
-      const pad = (a) => parseFloat(cs[a]) || 0;
       const portrait = root.innerHeight > root.innerWidth;
       const showTouch = this.touchVisible();
       if (this.touchEl) this.touchEl.hidden = !showTouch;
       this.main.classList.toggle('has-touch', showTouch);
       this.main.classList.toggle('portrait', portrait);
       this.touchEl && this.touchEl.classList.toggle('flip', this.settings.stickSide === 'right');
-      const cs2 = getComputedStyle(this.main);
-      const availW = this.main.clientWidth - pad('paddingLeft') - pad('paddingRight');
-      const availH = this.main.clientHeight - parseFloat(cs2.paddingTop) - parseFloat(cs2.paddingBottom);
+      /* 控制鈕大小依裝置（手機／平板 × 直放／橫放）決定，位置見 touchlayout.js：直放留底部、橫放放兩側空位 */
+      const TL = root.TouchLayout;
+      this.main.style.setProperty('--gut', '0px'); this.main.style.setProperty('--gut-b', '0px');
+      const cs = getComputedStyle(this.main);
+      const pad = (a) => parseFloat(cs[a]) || 0;
+      const baseW = this.main.clientWidth - pad('paddingLeft') - pad('paddingRight');
+      const baseH = this.main.clientHeight - pad('paddingTop') - pad('paddingBottom');
+      if (baseW < 40 || baseH < 40) return;
+      const plan = TL.plan({ vw: root.innerWidth, vh: root.innerHeight, availW: baseW, availH: baseH, mapW: this.view.w, mapH: this.view.h, touch: showTouch, tile: root.Renderer.tileCss });
+      const rs = this.root.style;      /* 控制鈕實際大小以 plan 為準（橫放空位不夠時會縮小一點） */
+      rs.setProperty('--stick', plan.sizes.stick + 'px'); rs.setProperty('--knob', plan.sizes.knob + 'px'); rs.setProperty('--bomb', plan.sizes.bomb + 'px');
+      this.main.style.setProperty('--gut', plan.gutter + 'px'); this.main.style.setProperty('--gut-b', plan.bottom + 'px');
+      this.touchEl && this.touchEl.classList.toggle('overlay', plan.mode === 'overlay');
+      this.touchPlan = plan;
+      const availW = baseW - 2 * plan.gutter, availH = baseH - plan.bottom;
       if (availW < 40 || availH < 40) return;
       this.rend.fit(availW, availH, this.view.w, this.view.h);
       this.rend.dirty = true;
