@@ -56,7 +56,7 @@
   const POSITIVE = ['fire', 'bomb', 'speed', 'kick', 'shield', 'ghost', 'super', 'ultra'];
   const CURSES = ['c_slow', 'c_auto', 'c_short', 'c_flip'];
   /* 有秒數限制的（隱身、超人標誌、四種詛咒）權重都壓低；永久的大力藥丸比它們常見 */
-  const DROP_WEIGHTS = { fire: 24, bomb: 24, speed: 18, kick: 7, shield: 7, c_slow: 3, c_auto: 3, c_short: 3, ghost: 3, super: 2, ultra: 9, c_flip: 3 };
+  const DROP_WEIGHTS = { fire: 24, bomb: 24, speed: 18, kick: 2, shield: 4, c_slow: 3, c_auto: 3, c_short: 3, ghost: 3, super: 2, ultra: 9, c_flip: 3 };
   const ITEM_RATE = 0.4;       /* 軟磚被炸掉時掉寶機率 */
 
   const LAYOUTS = ['classic', 'open', 'dense', 'fab'];
