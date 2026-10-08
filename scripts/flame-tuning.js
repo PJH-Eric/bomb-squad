@@ -46,6 +46,6 @@ if (require.main === module) {
     const b = boundary(d);
     console.log('  ' + (names[d] + '：').padEnd(32, '　') + (b == null ? '掃描失敗' : b.toFixed(3) + ' 格'));
   }
-  console.log('參數：HALF_BODY=' + R.HALF_BODY + (R.SIDE_LEFT != null ? ' SIDE_LEFT=' + R.SIDE_LEFT + ' SIDE_RIGHT=' + R.SIDE_RIGHT : '') + ' FEET_REACH=' + R.FEET_REACH + ' FEET_HIT=' + R.FEET_HIT + ' BODY_UP=' + R.BODY_UP + ' BODY_DOWN=' + R.BODY_DOWN + ' HALF=' + R.HALF);
+  console.log('參數：HALF_BODY=' + R.HALF_BODY + ' UPPER_HIT=' + R.UPPER_HIT + (R.SIDE_LEFT != null ? ' SIDE_LEFT=' + R.SIDE_LEFT + ' SIDE_RIGHT=' + R.SIDE_RIGHT : '') + ' FEET_REACH=' + R.FEET_REACH + ' FEET_HIT=' + R.FEET_HIT + ' BODY_UP=' + R.BODY_UP + ' BODY_DOWN=' + R.BODY_DOWN + ' HALF=' + R.HALF);
 }
 module.exports = { hit, boundary };
