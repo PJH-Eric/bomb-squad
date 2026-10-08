@@ -39,7 +39,8 @@
       g.drawImage(edge ? ts.border : ((x + y) % 2 ? ts.floorB : ts.floorA), x * T, y * T);
       const v = grid[y * w + x], f = fx[y * w + x];
       if (f && v !== 1 && !edge) {      /* 地圖機關（預覽也畫出來，軟磚疊在上面） */
-        const img = f === R.FX_GRASS ? ts.fx.grassBack : f === R.FX_SLOW ? ts.fx.slow : f === R.FX_SPIKE ? ts.fx.spike : ts.fx.belt && ts.fx.belt[f - R.FX_BELT];
+        let img = f === R.FX_GRASS ? ts.fx.grassBack : f === R.FX_SLOW ? ts.fx.slow : f === R.FX_SPIKE ? ts.fx.spike : ts.fx.belt && ts.fx.belt[f - R.FX_BELT];
+        if (R.isBelt(f) && ts.fx.beltCorner) { const inC = R.beltIn(fx, w, x, y), turn = Art.beltTurn(f, inC); if (turn) img = ts.fx.beltCorner[turn < 0 ? 1 : 0][inC - R.FX_BELT]; }
         if (img) g.drawImage(img, x * T, y * T);
       }
       if (v === 1 && !edge) g.drawImage(ts.hardV[Art.variantIndex(seed, x, y, ts.hardV.length)], x * T, y * T);
@@ -68,7 +69,7 @@
   /* 各種機關的白話說明（選地圖時顯示）；數字跟 rules.js 的規則一致 */
   const FX_INFO = {
     grass: { name: '草叢', lines: [
-      '躲進草叢，其他人（電腦也一樣）就完全看不到你，連你放在草叢裡的炸彈也看不到（但炸彈的火力線警示還是看得到）；沒有例外，貼在旁邊、你自己、淘汰後或觀戰的人也都看不到。',
+      '躲進草叢，其他人（電腦也一樣）就完全看不到你，連你放在草叢裡的炸彈也看不到（但炸彈的火力線警示還是看得到；空襲的炸彈不受影響，永遠看得到）；沒有例外，貼在旁邊、你自己、淘汰後或觀戰的人也都看不到。',
       '草叢只放在走道格（左右都是硬牆，或上下都是硬牆），所以裡面的炸彈只會沿著一條直線炸。每張圖最多 2～8 格，草叢之間不會相連，開局就看得見，不蓋軟磚。'] },
     belt: { name: '輸送帶', lines: [
       '頭尾相連、形狀不規則的環形輸送帶：踩上去會被順著帶子一路繞圈帶走，停在上面的炸彈也會被載走。',

@@ -400,7 +400,7 @@ test('新道具都有圖示、名稱、說明，掉落表有權重；關閉詛�
 });
 test('空襲：150 秒前不掉炸彈；每 2 秒掉一批，顆數 2:30→1、2:40→2、2:50 起 3，最多 3 顆', () => {
   assert.deepStrictEqual([R.SKY_START, R.SKY_EVERY, R.SKY_STEP, R.SKY_MAX, R.SKY_FUSE], [150, 2, 10, 3, 3]);
-  assert.deepStrictEqual([0, 100, 149.9, 150, 159.9, 160, 169.9, 170, 180, 300].map(R.skyCount), [0, 0, 0, 1, 1, 2, 2, 3, 3, 3]);
+  assert.deepStrictEqual([0, 100, 149.9, 150, 159.9, 160, 169.9, 170, 180, 300].map(x => R.skyCount(x)), [0, 0, 0, 1, 1, 2, 2, 3, 3, 3]);
   const s = mk(2); arena(s); put(s.players[0], 1, 1); put(s.players[1], 15, 11);
   s.players.forEach(p => { p.invuln = 1e9; });                   /* 不讓空襲把人炸死，才能一路數下去 */
   s.time = 140;
@@ -414,6 +414,24 @@ test('空襲：150 秒前不掉炸彈；每 2 秒掉一批，顆數 2:30→1、2
   for (let t = 150; t < 200; t++) assert.strictEqual(bucket[t] || 0, want(t), t + ' 秒應該 ' + want(t) + ' 顆：' + (bucket[t] || 0));
   const sum = (a, b) => { let n = 0; for (let t = a; t < b; t++) n += bucket[t] || 0; return n; };
   assert.deepStrictEqual([sum(150, 160), sum(160, 170), sum(170, 200)], [5, 10, 45], '每 10 秒的總顆數：1×5、2×5、3×15');
+});
+test('空襲提前：2 分鐘的局最後 30 秒（1:30 起）也一定會空襲，3 分鐘以上維持 2:30，不限時也是 2:30；顆數照 1／2／3 排', () => {
+  assert.deepStrictEqual([0, 120, 180, 300, 60, 20].map(x => R.skyStartFor(x)), [150, 90, 150, 150, 30, 30]);
+  assert.deepStrictEqual([89, 90, 99, 100, 110, 119].map(x => R.skyCount(x, 90)), [0, 1, 1, 2, 3, 3]);
+  for (const [limit, start] of [[120, 90], [180, 150], [300, 150], [0, 150]]) {
+    const s = mk(2, { timeLimit: limit, fx: false }); arena(s);
+    assert.strictEqual(s.skyStart, start); assert.strictEqual(s.skyAt, start);
+    put(s.players[0], 1, 1); put(s.players[1], 15, 11);
+    let first = null;
+    const end = limit > 0 ? limit : start + 30;
+    while (s.time < end - 0.05 && s.phase === 'play') {
+      R.step(s, {}, R.DT);
+      for (const p of s.players) { p.alive = true; p.invuln = 9; put(p, p === s.players[0] ? 1 : 15, p === s.players[0] ? 1 : 11); }   /* 人不要被炸死，才好看整段空襲 */
+      if (first == null && s.events.some(e => e.t === 'sky')) first = s.time;
+    }
+    assert(first != null, limit + ' 秒的局沒有空襲');
+    assert(Math.abs(first - start) < 0.1, limit + ' 秒的局應該 ' + start + ' 秒開始空襲，實際 ' + first);
+  }
 });
 test('空襲炸彈：不屬於任何人、引信 3 秒、火力橫掃到牆邊；落在空格上，不會掉在人腳下或磚塊裡', () => {
   const s = mk(2); arena(s); put(s.players[0], 1, 1); put(s.players[1], 15, 11);
@@ -652,6 +670,21 @@ test('輸送帶：每一圈都頭尾相連（順著方向走一定繞回原點�
   assert(loops > 100, '環太少：' + loops);
   assert(irregular > loops * 0.4, '不規則的環太少：' + irregular + '/' + loops);
 });
+test('輸送帶：每格找得到前一格（進來的方向），環上有轉角、直的格子進出同方向', () => {
+  let corners = 0, straight = 0;
+  for (const themeId of [1, 2, 7, 12]) for (let seed = 1; seed <= 30; seed++) {
+    const w = 17, h = 13, fx = R.generateFx(seed, w, h, R.generateMap(seed, w, h, 'classic'), themeId);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const v = fx[y * w + x];
+      if (!R.isBelt(v)) continue;
+      const inC = R.beltIn(fx, w, x, y), [dx, dy] = R.BELT_VEC[inC];
+      assert(R.isBelt(inC) && R.isBelt(fx[(y - dy) * w + (x - dx)]) && fx[(y - dy) * w + (x - dx)] === inC, '前一格要是指向這格的輸送帶');
+      if (inC === v) straight++; else { corners++; assert.notStrictEqual(R.BELT_VEC[inC][0] * R.BELT_VEC[v][0] + R.BELT_VEC[inC][1] * R.BELT_VEC[v][1], -1, '不會有 180 度迴轉'); }
+    }
+  }
+  assert(corners > 0 && straight > 0, '轉角：' + corners + '，直的：' + straight);
+  assert(corners % 4 === 0, '每圈至少 4 個轉角，四個角落各一圈');
+});
 test('輸送帶：炸彈放在上面也被載走（速度同人、沿路轉彎、繞圈回到原點、離開帶子就停、被擋住就等）', () => {
   const s = fxOn(2); arena(s); s.fx.fill(0);
   put(s.players[0], 1, 1); put(s.players[1], 15, 11);
@@ -798,7 +831,7 @@ test('草叢：裡面的活人與炸彈，任何人（貼在旁邊的、自己�
   b.alive = true; put(b, 12, 5);
   const bomb = { owner: 0, cx: 5, cy: 5 };
   assert(R.bombHiddenInGrass(s, bomb), '草叢裡的炸彈誰都看不到');
-  assert(R.bombHiddenInGrass(s, { owner: -1, cx: 5, cy: 5 }), '空襲炸彈掉進草叢也一樣');
+  assert(!R.bombHiddenInGrass(s, { owner: -1, cx: 5, cy: 5 }), '空襲炸彈永遠看得到，掉進草叢也不藏');
   assert(!R.bombHiddenInGrass(s, { owner: 0, cx: 6, cy: 6 }), '不在草叢的炸彈看得到');
   assert.deepStrictEqual(s.players.filter(q => q.alive && q.slot !== b.slot && !R.hiddenInGrass(s, q)).length, 0, '電腦的敵人清單要排除草叢裡的人');
   const brain = AI.createBrain('hard', 1);

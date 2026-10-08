@@ -142,7 +142,12 @@
             if (v === R.FX_GRASS) { if (fxT.grassBack) { g.drawImage(fxT.grassBack, x * T, y * T); this.fxList.grass.push({ x, y }); } }
             else if (v === R.FX_SLOW) { if (fxT.slow) g.drawImage(fxT.slow, x * T, y * T); }
             else if (v === R.FX_SPIKE) { if (fxT.spike) g.drawImage(fxT.spike, x * T, y * T); }
-            else if (R.isBelt(v) && fxT.belt) { g.drawImage(fxT.belt[v - R.FX_BELT], x * T, y * T); this.fxList.belt.push({ x, y, code: v }); }
+            else if (R.isBelt(v) && fxT.belt) {
+              /* 轉角（前一格的方向跟這一格不同）用彎曲的圖，直的用直的圖 */
+              const inCode = R.beltIn(view.fx, view.w, x, y), turn = Art.beltTurn(v, inCode);
+              g.drawImage(turn ? fxT.beltCorner[turn < 0 ? 1 : 0][inCode - R.FX_BELT] : fxT.belt[v - R.FX_BELT], x * T, y * T);
+              this.fxList.belt.push({ x, y, code: v, inCode });
+            }
           }
         }
         /* 第二層：牆體在地板上的投影（右下方光源）與外框內側陰影 */
@@ -216,7 +221,7 @@
         const ph = o.reduceMotion ? 0.3 : (now * R.BELT_SPEED * 2) % 1;
         for (const b of fxl.belt) {
           if (view.grid[b.y * view.w + b.x] !== 0) continue;
-          ctx.save(); ctx.translate(b.x * T, b.y * T); Art.drawBeltArrows(ctx, T, fxs.style.belt, b.code, ph); ctx.restore();
+          ctx.save(); ctx.translate(b.x * T, b.y * T); Art.drawBeltArrows(ctx, T, fxs.style.belt, b.code, ph, b.inCode); ctx.restore();
         }
       }
 

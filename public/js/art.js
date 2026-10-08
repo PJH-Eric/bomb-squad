@@ -1144,16 +1144,54 @@
   }
   const BELT_ANGLE = [-Math.PI / 2, Math.PI / 2, Math.PI, 0];     /* 輸送帶 4 上、5 下、6 左、7 右 */
   /** 輸送帶上流動的箭頭：phase 0～1 循環，相鄰格的箭頭接得起來；呼叫前 ctx 要已經 translate 到這一格的左上角 */
-  function drawBeltArrows(ctx, T, st, code, phase) {
+  /* 輸送帶的轉角：把往右流動的直線帶面沿著四分之一圓弧彎過去（圓心在左下角，進來的是左邊緣、出去的是下邊緣 = 右轉）。
+     一條一條細縫切開再轉到弧線上重疊畫，帶面的花紋（滾輪、軌道、斜紋…）就跟著彎曲；左轉是上下翻過來，再依進來的方向旋轉。 */
+  const BELT_VEC_ART = [[0, -1], [0, 1], [-1, 0], [1, 0]];     /* 4 上、5 下、6 左、7 右 */
+  function bendBelt(ctx, T, straight) {
+    const N = 48, kk = 1.6;
+    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, T, T); ctx.clip();
+    for (let i = 0; i < N; i++) {
+      const sx = i / N * T, sw = T / N, sxc = sx + sw / 2, ang = -Math.PI / 2 + (i + 0.5) / N * Math.PI / 2;
+      ctx.save(); ctx.translate(0, T); ctx.rotate(ang);
+      /* 原圖 (x, y) → 轉角上的 (半徑 = T − y, 沿弧線的位置 = (x − 這一條的中心) × kk) */
+      ctx.transform(0, kk, -1, 0, T, -kk * sxc);
+      ctx.drawImage(straight, sx, 0, sw, T, sx, 0, sw, T);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+  /** 這一格是不是轉角、往哪邊轉：inCode 是前一格的方向、code 是這一格的方向 */
+  function beltTurn(code, inCode) {
+    if (!inCode || inCode === code) return 0;
+    const i = BELT_VEC_ART[inCode - 4], o = BELT_VEC_ART[code - 4], cross = i[0] * o[1] - i[1] * o[0];
+    return cross < 0 ? -1 : 1;      /* 1 右轉、-1 左轉 */
+  }
+  /** 輸送帶上流動的箭頭：phase 0～1 循環，相鄰格的箭頭接得起來；呼叫前 ctx 要已經 translate 到這一格的左上角。
+      inCode 給了而且跟 code 不同就是轉角，箭頭沿著弧線走、方向跟著轉 */
+  function drawBeltArrows(ctx, T, st, code, phase, inCode) {
+    const turn = beltTurn(code, inCode);
     ctx.save();
-    ctx.translate(T / 2, T / 2); ctx.rotate(BELT_ANGLE[code - 4]); ctx.translate(-T / 2, -T / 2);
-    ctx.beginPath(); ctx.rect(0, T * 0.14, T, T * 0.72); ctx.clip();
+    ctx.translate(T / 2, T / 2);
+    if (turn) { ctx.rotate(BELT_ANGLE[inCode - 4]); if (turn < 0) ctx.scale(1, -1); } else ctx.rotate(BELT_ANGLE[code - 4]);
+    ctx.translate(-T / 2, -T / 2);
+    ctx.beginPath();
+    if (turn) { ctx.arc(0, T, T * 0.86, -Math.PI / 2, 0); ctx.arc(0, T, T * 0.14, 0, -Math.PI / 2, true); ctx.closePath(); } else ctx.rect(0, T * 0.14, T, T * 0.72);
+    ctx.clip();
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     for (let k = -1; k < 3; k++) {
       const x = (k + phase) * T * 0.5 + T * 0.1;
-      ctx.beginPath(); ctx.moveTo(x - T * 0.09, T * 0.34); ctx.lineTo(x + T * 0.06, T * 0.5); ctx.lineTo(x - T * 0.09, T * 0.66);
+      ctx.save();
+      if (turn) {
+        const u = x / T;
+        if (u < -0.1 || u > 1.1) { ctx.restore(); continue; }
+        const al = -Math.PI / 2 + u * Math.PI / 2;
+        ctx.translate(Math.cos(al) * T * 0.5, T + Math.sin(al) * T * 0.5); ctx.rotate(al + Math.PI / 2);
+      }
+      const cx0 = turn ? 0 : x, cy0 = turn ? 0 : T * 0.5;
+      ctx.beginPath(); ctx.moveTo(cx0 - T * 0.09, cy0 - T * 0.16); ctx.lineTo(cx0 + T * 0.06, cy0); ctx.lineTo(cx0 - T * 0.09, cy0 + T * 0.16);
       ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = Math.max(2.5, T * 0.1); ctx.stroke();
       ctx.strokeStyle = st.c[2]; ctx.lineWidth = Math.max(1.8, T * 0.06); ctx.stroke();
+      ctx.restore();
     }
     ctx.restore();
   }
@@ -1162,6 +1200,7 @@
     const th = THEMES[themeId] || THEMES[0];
     const make = fn => { const c = mkCanvas(T, T); const x = c.getContext('2d'); fn(x); return c; };
     const fxs = FX_STYLE[th.id] || {};
+    const beltStraight = fxs.belt ? make(x => drawBeltBase(x, T, fxs.belt)) : null;
     return {
       theme: th,
       fx: {
@@ -1170,6 +1209,7 @@
         grassFront: fxs.grass ? make(x => drawGrassFx(x, T, fxs.grass, true)) : null,
         slow: fxs.slow ? make(x => drawSlowFx(x, T, fxs.slow)) : null,
         spike: fxs.spike ? make(x => drawSpikeFx(x, T, fxs.spike)) : null,
+        beltCorner: fxs.belt ? [false, true].map(left => BELT_ANGLE.map(a => make(x => { x.translate(T / 2, T / 2); x.rotate(a); if (left) x.scale(1, -1); x.translate(-T / 2, -T / 2); bendBelt(x, T, beltStraight); }))) : null,
         belt: fxs.belt ? BELT_ANGLE.map(a => make(x => { x.translate(T / 2, T / 2); x.rotate(a); x.translate(-T / 2, -T / 2); drawBeltBase(x, T, fxs.belt); })) : null
       },
       floorA: make(x => drawFloor(x, T, th, false)),
@@ -1193,6 +1233,6 @@
 
   root.Art = {
     ANIMALS, ANIMAL_IDS, THEMES, VARIANTS, variantIndex, ITEM_NAMES, ITEM_DESC,
-    FX_STYLE, drawBeltArrows, animalSVG, itemSVG, bombSVG, planeSVG, icon, buildTileset, drawHard, drawSoft, drawFloor, drawBorder, drawFabHard, drawFabFloor, svgImage, svgUrl, rr
+    FX_STYLE, drawBeltArrows, beltTurn, animalSVG, itemSVG, bombSVG, planeSVG, icon, buildTileset, drawHard, drawSoft, drawFloor, drawBorder, drawFabHard, drawFabFloor, svgImage, svgUrl, rr
   };
 })(typeof self !== 'undefined' ? self : this);
