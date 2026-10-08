@@ -679,27 +679,23 @@ test('輸送帶：炸彈放在上面也被載走（速度同人、沿路轉彎�
   const snap = R.snapshot(s), v = R.applySnapshot(R.viewFromStart(R.startInfo(s)), JSON.parse(JSON.stringify(snap)));
   assert(v.bombs.every((vb, i) => !!vb.sl === !!s.bombs[i].sl));
 });
-test('草叢：只放死路格（四邊有三邊是硬牆，炸彈只會往一個方向炸），開局沒有軟磚；補牆後地圖仍對稱、連通；數量不超過尖刺的規則', () => {
+test('草叢：只放走道格（左右都是硬牆，或上下都是硬牆），開局沒有軟磚，數量不超過尖刺的規則；地圖不被動到牆', () => {
   let seen = 0, maps = 0;
   for (const themeId of [3, 11]) for (const [w, h] of [[17, 13], [19, 15]]) for (const layout of R.LAYOUTS) for (let seed = 1; seed <= 40; seed++) {
-    const grid = R.generateMap(seed, w, h, layout), fx = R.generateFx(seed, w, h, grid, themeId);
+    const orig = R.generateMap(seed, w, h, layout), grid = orig.slice(), fx = R.generateFx(seed, w, h, grid, themeId);
     let n = 0; maps++;
+    for (let i = 0; i < grid.length; i++) if (grid[i] !== orig[i]) assert(fx[i] === R.FX_GRASS && orig[i] === 2 && grid[i] === 0, '只有草叢格的軟磚會被拿掉，不能動硬牆');
     for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
       if (fx[y * w + x] !== R.FX_GRASS) continue;
       n++;
       const wl = (a, b) => grid[b * w + a] === 1;
-      assert.strictEqual([wl(x - 1, y), wl(x + 1, y), wl(x, y - 1), wl(x, y + 1)].filter(Boolean).length, 3, `草叢不是死路格：${x},${y}`);
+      assert((wl(x - 1, y) && wl(x + 1, y)) || (wl(x, y - 1) && wl(x, y + 1)), `草叢不在走道上：${x},${y}`);
       assert.notStrictEqual(grid[y * w + x], 2, '草叢上有軟磚');
     }
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      assert.strictEqual(grid[y * w + x], grid[y * w + (w - 1 - x)], '補牆後左右不對稱');
-      assert.strictEqual(grid[y * w + x], grid[(h - 1 - y) * w + x], '補牆後上下不對稱');
-    }
-    assert(R.connected(grid, w, h), '補牆後不連通');
     assert(n <= (h > 13 ? 8 : 6) && n % 2 === 0, '草叢數量 ' + n);
     if (n) seen++;
   }
-  assert(seen > maps * 0.6, '草叢太少出現：' + seen + '／' + maps);
+  assert(seen > maps * 0.3, '草叢太少出現：' + seen + '／' + maps);
 });
 test('機關：各主題的機關種類符合風格（草叢、輸送帶、緩速、尖刺都有主題用得到），沒有機關的選項不會產生', () => {
   const has = k => R.THEME_FX.filter(a => a.indexOf(k) >= 0).length;
