@@ -352,6 +352,21 @@ test('磚塊被炸掉後，那一格的火花不傷人（走進去不會被燒�
   assert(!R.flameAt(s, 5, 3), '火花很快消失');
 });
 
+test('磚塊被炸掉那一格的火花很短（約 0.15 秒）：比火線其他格（0.3 秒）早消失，期間不傷人', () => {
+  const s = mk(3); arena(s);
+  s.grid[3 * s.w + 5] = 2;                                       /* 炸彈 (3,3) 射程 3：4 空格、5 軟磚 */
+  put(s.players[0], 1, 1); put(s.players[1], 9, 9); put(s.players[2], 1, 11);
+  s.bombs.push({ id: 1, owner: 0, cx: 3, cy: 3, t: 0, range: 3, pass: [], sl: null });
+  R.step(s, {}, R.DT);
+  const spark = R.flameAt(s, 5, 3), line = R.flameAt(s, 4, 3);
+  assert(spark && spark.cool && line && !line.cool, '磚塊格是無殺傷火花、其他格是火線');
+  assert(spark.t <= 0.15 + 1e-9, '火花只有 0.15 秒：' + spark.t);
+  for (let i = 0; i < 12; i++) R.step(s, {}, R.DT);               /* 約 0.2 秒 */
+  assert(!R.flameAt(s, 5, 3), '火花約 0.2 秒後已經消失');
+  assert(R.flameAt(s, 4, 3), '火線其他格還在（0.3 秒）');
+  for (let i = 0; i < 25; i++) R.step(s, {}, R.DT);               /* 再過約 0.4 秒，總共約 0.6 秒（火線 0.3 秒早就消失） */
+  assert(!R.flameAt(s, 4, 3), '火線 0.3 秒後消失');
+});
 test('提早按轉彎：被擋住時沿還按著的方向走到路口再轉', () => {
   const mkCol = () => {
     const s = mk(2); arena(s);
@@ -634,8 +649,8 @@ test('踢炸彈：有踢炸彈能力才會滑，沒有就被擋住', () => {
   assert(mkKick(true).bombs[0].cx > 4, '炸彈沒被踢走');
   assert.strictEqual(mkKick(false).bombs[0].cx, 3, '沒能力卻推動了炸彈');
 });
-test('踢炸彈：被踢的炸彈滑行速度是 SLIDE_SPEED（15 格／秒），撞到牆就停', () => {
-  assert.strictEqual(R.SLIDE_SPEED, 15);
+test('踢炸彈：被踢的炸彈滑行速度是 SLIDE_SPEED（12.5 格／秒），撞到牆就停', () => {
+  assert.strictEqual(R.SLIDE_SPEED, 12.5);
   const s = mk(2); arena(s); const p = s.players[0]; p.kick = true; put(p, 2, 3); put(s.players[1], 1, 11);
   s.bombs.push({ id: 1, owner: 1, cx: 3, cy: 3, t: 9, range: 2, pass: [], sl: null });
   let kickedAt = null;
@@ -644,7 +659,7 @@ test('踢炸彈：被踢的炸彈滑行速度是 SLIDE_SPEED（15 格／秒）�
   const x0 = s.bombs[0].cx;
   for (let i = 0; i < 30; i++) R.step(s, {}, R.DT);      /* 0.5 秒 */
   const moved = s.bombs[0].cx - x0;
-  assert(moved >= 6 && moved <= 8, '0.5 秒應該滑約 7.5 格（15 格／秒），實際 ' + moved);
+  assert(moved >= 5 && moved <= 7, '0.5 秒應該滑約 6.25 格（12.5 格／秒），實際 ' + moved);
   for (let i = 0; i < 90; i++) R.step(s, {}, R.DT);
   assert.strictEqual(s.bombs[0].cx, s.w - 2, '最後停在牆邊');
   assert(!s.bombs[0].sl, '撞牆後不再滑');
@@ -1053,7 +1068,7 @@ test('等級權重表：權重總和 100，每一級的強度值貼近目標、�
   /* 實測校準：決策間隔與逃生機率最重要（scripts/ai-weights.js），這個比例不能被改回憑感覺 */
   assert(W.interval.w + W.react.w >= 55, '決策間隔＋逃生機率應佔大部分權重');
   const target = AI.LEVEL_ORDER.map(k => AI.LEVEL_POWER[k]), real = AI.LEVEL_ORDER.map(k => AI.power(AI.LEVELS[k]));
-  assert.deepStrictEqual(target, [33, 45, 58, 73, 92], '目標強度（級距）');
+  assert.deepStrictEqual(target, [33, 45, 58, 75, 92], '目標強度（級距）');
   real.forEach((v, i) => assert(Math.abs(v - target[i]) <= 1.5, AI.LEVEL_ORDER[i] + ' 強度 ' + v.toFixed(1) + ' 偏離目標 ' + target[i]));
   const gaps = target.slice(1).map((v, i) => v - target[i]);
   gaps.forEach((g, i) => assert(g >= 10, '第 ' + (i + 1) + ' 個級距只有 ' + g));

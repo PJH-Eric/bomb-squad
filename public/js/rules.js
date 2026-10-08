@@ -23,8 +23,8 @@
   /** 這一局的空襲從第幾秒開始：預設 SKY_START；有時間限制而且比 SKY_START + SKY_LAST 短，就提前到限制時間的最後 SKY_LAST 秒（再短的限制也不會早於第 SKY_LAST 秒，所以只有很短的測試局不會空襲） */
   const skyStartFor = timeLimit => (timeLimit > 0 ? Math.max(SKY_LAST, Math.min(SKY_START, timeLimit - SKY_LAST)) : SKY_START);
   const PLANE_SPEED = 5;       /* 空投機飛行速度（格／秒） */
-  const FLAME_COOL_T = 0.3;    /* 磚塊格的無殺傷火花停留秒數 */
-  const FLAME_T = 0.5;         /* 火焰停留秒數 */
+  const FLAME_COOL_T = 0.15;   /* 磚塊格的無殺傷火花停留秒數（原本 0.3，太久：看起來像那格還有火，連鎖的火焰也會在剛清掉的磚塊格上多停一下） */
+  const FLAME_T = 0.3;         /* 火焰停留秒數（原本 0.5，太久、走位被波及；磚塊格的火花另外是 FLAME_COOL_T） */
   /* 半身機制：身體站在「剛好一半在炸彈格、一半在旁邊那一格」（同一條左右或上下線上）時，不會被那顆炸彈波及——
      火焰是「一格一格」判定的：身體壓在某一個火線格裡的比例 ≥ HALF_BODY（60%）才算被炸，一半（50%）還是安全，留 10% 的容錯給手動站位；
      再深入一點才會被炸。歷史：最早是「中心要深入火線格 0.1 格」，換算約 64%；曾試過 50%、40%、55%，太容易被波及，現在取 60% 當平衡點。踢球另外用 KICK_OVERLAP（50%）：半個身體壓在炸彈線上就踢得到。
@@ -60,7 +60,7 @@
   const SUPER_T = 8;           /* 超人標誌持續秒數 */
   const SHIELD_T = 1.2;        /* 護盾破掉後的無敵秒數 */
   const COUNTDOWN = 3;
-  const SLIDE_SPEED = 15;      /* 被踢的炸彈滑行格/秒（原本 7，加快） */
+  const SLIDE_SPEED = 12.5;    /* 被踢的炸彈滑行格/秒（原本 7，加快） */
   const AUTO_BOMB_EVERY = 0.7; /* 手滑詛咒：自動放炸彈的間隔 */
   const END_HOLD = 2.2;        /* 分出勝負後，畫面多跑幾秒讓爆炸演完 */
 

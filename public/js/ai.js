@@ -19,7 +19,7 @@
     toddler: { name: '幼幼班', interval: 0.62, bombProb: 0.31, hunt: 0.04, chase: 2, chain: false, react: 0.45, notice: 0.23, itemRange: 4, itemProb: 0.34, wander: 0.46, sloppy: 0.4, curseOk: true },
     easy:    { name: '簡單', interval: 0.55, bombProb: 0.54, hunt: 0.21, chase: 5, chain: false, react: 0.59, notice: 0.21, itemRange: 5, itemProb: 0.45, wander: 0.3, sloppy: 0.24, curseOk: true },
     normal:  { name: '普通', interval: 0.38, bombProb: 0.74, hunt: 0.36, chase: 7, chain: true, react: 0.71, notice: 0.48, itemRange: 8, itemProb: 0.77, wander: 0.16, sloppy: 0.11, curseOk: false },
-    hard:    { name: '困難', interval: 0.23, bombProb: 0.91, hunt: 0.89, chase: 12, chain: true, react: 0.73, notice: 0.31, itemRange: 15, itemProb: 0.77, wander: 0.12, sloppy: 0.12, curseOk: false, trap: true },
+    hard:    { name: '困難', interval: 0.22, bombProb: 0.92, hunt: 0.9, chase: 14, chain: true, react: 0.75, notice: 0.29, itemRange: 17, itemProb: 0.79, wander: 0.11, sloppy: 0.11, curseOk: false, trap: true },
     /* 神話：決策最快、逃得最準、追人與撿道具距離最遠、很少發呆與失誤（參數由強度目標 84 算出） */
     myth:    { name: '神話', interval: 0.11, bombProb: 0.93, hunt: 0.93, chase: 37, chain: true, react: 0.93, notice: 0.07, itemRange: 37, itemProb: 0.93, wander: 0.04, sloppy: 0.04, curseOk: false, trap: true }
   };
@@ -44,9 +44,9 @@
     chain:     { w: 1, worst: 0, best: 1, label: '會算連鎖爆炸', flag: true }
   };
   const POWER_TOTAL = Object.keys(POWER_WEIGHTS).reduce((a, k) => a + POWER_WEIGHTS[k].w, 0);
-  /* 各等級的目標強度（33、45、58、73、92：級距 12、13、15、19，越高級略微拉開）；改這張表就能整體調整難度的級距。
+  /* 各等級的目標強度（33、45、58、75、92：級距 12、13、17、17，越高級略微拉開）；改這張表就能整體調整難度的級距。
      半身機制改成 40%（更容易被火波及）後，整體再加了 3 點，讓電腦稍微聰明一點 */
-  const LEVEL_POWER = { toddler: 33, easy: 45, normal: 58, hard: 73, myth: 92 };
+  const LEVEL_POWER = { toddler: 33, easy: 45, normal: 58, hard: 75, myth: 92 };
   const POWER_DEFAULT = { notice: 0 };
 
   function paramValue(cfg, k) {

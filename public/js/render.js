@@ -24,6 +24,8 @@
   /* foot：人物腳下的影子與光圈（眼睛讀到的「位置」）離判定中心往下多少格。以前是 0.34，上下方向的位置感比判定低一截，
      左右卻沒有，所以火線的半身感覺上下左右不一致；現在整個人物往上提，讓腳落在判定中心附近（≤ 0.15），看到的位置就是判定的位置 */
   const SPRITE = { animal: 1.12, item: 0.82, bomb: 1.1, plane: 2.1, bombOverAlpha: 0.25, foot: 0.08, ghostFaint: 0.17 };   /* ghostFaint：隱身的人在對手眼裡的淡淡身形（不透明度），要看得出來但不搶眼 */
+  const PLANE_LIFT = 2.4;      /* 空投機機身比它的影子（投下道具的那一列）高幾格，不擋住視線 */
+  const PLANE_ALPHA = 0.88;    /* 機身稍微透明，蓋到人物時還看得出底下 */
   const SHADOW_DROP = 0.34;   /* 原本影子在判定中心下方的距離，人物圖本身的腳大約就在這裡 */   /* 炸彈要跟人物差不多大，人物站在同一格才不會把它整顆蓋住 */
 
   class Renderer {
@@ -391,13 +393,19 @@
           const target = view.plane.x;
           if (!this.pl || this.pl.dir !== view.plane.dir || Math.abs(this.pl.x - target) > 2.5) this.pl = { x: target, dir: view.plane.dir };
           this.pl.x += (target + view.plane.dir * R.PLANE_SPEED * 0.04 - this.pl.x) * Math.min(1, dt * 12);
-          const px = this.pl.x * T, py = (view.plane.row + 0.5) * T, sw = pi.width, sh = pi.height;
+          const px = this.pl.x * T, gy = (view.plane.row + 0.5) * T, sw = pi.width, sh = pi.height;
+          /* 機身飛得高：比地上的影子（投下道具的那一列）高 PLANE_LIFT 格，才不會蓋住下面的人、炸彈與道具；上排的列不夠高就貼著畫面上緣 */
+          const by = Math.max(sh * 0.5, gy - PLANE_LIFT * T);
           ctx.save();
-          ctx.translate(px, py);
+          ctx.translate(px, gy);
           if (view.plane.dir < 0) ctx.scale(-1, 1);
-          ctx.globalAlpha = 0.22; ctx.fillStyle = '#000';
-          ctx.drawImage(pi, -sw / 2 + T * 0.35, -sh / 2 + T * 0.55, sw * 0.9, sh * 0.9);
-          ctx.globalAlpha = 1;
+          ctx.globalAlpha = 0.16; ctx.fillStyle = '#000';          /* 飛得高，地上的影子小一點、淡一點 */
+          ctx.drawImage(pi, -sw * 0.4, -sh * 0.4 + T * 0.1, sw * 0.8, sh * 0.8);
+          ctx.restore();
+          ctx.save();
+          ctx.translate(px, by);
+          if (view.plane.dir < 0) ctx.scale(-1, 1);
+          ctx.globalAlpha = PLANE_ALPHA;
           const bob = o.reduceMotion ? 0 : Math.sin(now * 9) * T * 0.03;
           ctx.drawImage(pi, -sw / 2, -sh / 2 + bob);
           ctx.restore();
