@@ -638,6 +638,27 @@ test('詛咒限時消失；縮短火力讓炸彈只剩 1 格；手滑會自動�
   run(t, { 0: { dir: 'R' } }, 1.5);
   assert(t.bombs.length >= 2, '手滑沒有自動放炸彈');
 });
+test('按住放炸彈（hold）：一直按著，站著只放一顆、走動就一路放，炸彈數用完就停；放開（hold=false）就不放了', () => {
+  const s = mk(2); arena(s); const p = s.players[0]; put(p, 3, 3); put(s.players[1], 15, 11);
+  p.maxBombs = 3;
+  const inp = { 0: { dir: null, bomb: false, hold: true } };
+  for (let i = 0; i < 30; i++) R.step(s, inp, R.DT);                         /* 站著按住 0.5 秒：這格只放得下一顆 */
+  assert.strictEqual(s.bombs.length, 1, '站著按住只放一顆');
+  assert.strictEqual(inp[0].hold, true, 'hold 不會被消耗');
+  inp[0].dir = 'R';
+  for (let i = 0; i < 60; i++) R.step(s, inp, R.DT);                         /* 邊走邊按住 1 秒：一路放到炸彈數用完 */
+  assert.strictEqual(s.bombs.length, 3, '走動時一路放，到炸彈數上限 3 顆為止');
+  const cells = new Set(s.bombs.map(b => b.cx + ',' + b.cy)); assert.strictEqual(cells.size, 3, '三顆在不同格子');
+  inp[0].hold = false; inp[0].dir = 'D';
+  const before = s.bombs.length;
+  for (let i = 0; i < 30; i++) R.step(s, inp, R.DT);
+  assert.strictEqual(s.bombs.length, before, '放開後不再放');
+  /* 一般按一下（邊緣）仍然只放一顆 */
+  const t2 = mk(2); arena(t2); put(t2.players[0], 3, 3); put(t2.players[1], 15, 11); t2.players[0].maxBombs = 3;
+  const i2 = { 0: { dir: null, bomb: true } };
+  R.step(t2, i2, R.DT); for (let i = 0; i < 30; i++) R.step(t2, i2, R.DT);
+  assert.strictEqual(t2.bombs.length, 1, '按一下只放一顆');
+});
 test('踢炸彈：有踢炸彈能力才會滑，沒有就被擋住', () => {
   const mkKick = kick => {
     const s = mk(2); arena(s); const p = s.players[0]; put(p, 2, 3); p.kick = kick;
@@ -649,8 +670,8 @@ test('踢炸彈：有踢炸彈能力才會滑，沒有就被擋住', () => {
   assert(mkKick(true).bombs[0].cx > 4, '炸彈沒被踢走');
   assert.strictEqual(mkKick(false).bombs[0].cx, 3, '沒能力卻推動了炸彈');
 });
-test('踢炸彈：被踢的炸彈滑行速度是 SLIDE_SPEED（12.5 格／秒），撞到牆就停', () => {
-  assert.strictEqual(R.SLIDE_SPEED, 12.5);
+test('踢炸彈：被踢的炸彈滑行速度是 SLIDE_SPEED（10 格／秒），撞到牆就停', () => {
+  assert.strictEqual(R.SLIDE_SPEED, 10);
   const s = mk(2); arena(s); const p = s.players[0]; p.kick = true; put(p, 2, 3); put(s.players[1], 1, 11);
   s.bombs.push({ id: 1, owner: 1, cx: 3, cy: 3, t: 9, range: 2, pass: [], sl: null });
   let kickedAt = null;
@@ -659,12 +680,12 @@ test('踢炸彈：被踢的炸彈滑行速度是 SLIDE_SPEED（12.5 格／秒）
   const x0 = s.bombs[0].cx;
   for (let i = 0; i < 30; i++) R.step(s, {}, R.DT);      /* 0.5 秒 */
   const moved = s.bombs[0].cx - x0;
-  assert(moved >= 5 && moved <= 7, '0.5 秒應該滑約 6.25 格（12.5 格／秒），實際 ' + moved);
+  assert(moved >= 4 && moved <= 6, '0.5 秒應該滑約 5 格（10 格／秒），實際 ' + moved);
   for (let i = 0; i < 90; i++) R.step(s, {}, R.DT);
   assert.strictEqual(s.bombs[0].cx, s.w - 2, '最後停在牆邊');
   assert(!s.bombs[0].sl, '撞牆後不再滑');
 });
-test('踢炸彈：身體有 30% 壓在炸彈線上就踢得到（偏 0.64 格以內，比半個身體寬鬆很多），偏太多就踢不到；同時碰到兩顆踢最對準的那顆', () => {
+test('踢炸彈：身體有 25% 壓在炸彈線上就踢得到（偏 0.68 格以內，比半個身體寬鬆很多），偏太多就踢不到；同時碰到兩顆踢最對準的那顆', () => {
   const kickAt = (off, extra) => {
     const s = mk(2); arena(s); const p = s.players[0]; p.kick = true; p.x = 2.5; p.y = 3.5 + off;
     s.bombs.push({ id: 1, owner: 1, cx: 3, cy: 3, t: 9, range: 2, pass: [], sl: null });
@@ -676,15 +697,18 @@ test('踢炸彈：身體有 30% 壓在炸彈線上就踢得到（偏 0.64 格以
   assert(kickAt(0).bombs[0].cx > 4, '正對要踢得到');
   assert(kickAt(0.45).bombs[0].cx > 4, '半個身體（偏 0.45）要踢得到');
   assert(kickAt(-0.5).bombs[0].cx > 4, '往另一邊偏半格也要踢得到');
-  assert.strictEqual(kickAt(0.7).bombs[0].cx, 3, '偏太多就踢不到');
-  assert(Math.abs(R.KICK_REACH - (0.5 + R.HALF - 2 * R.HALF * 0.3)) < 1e-9 && R.KICK_OVERLAP === 0.3, '30% 的身體壓在線上 ⇔ 中心離線 0.644 格');
+  assert.strictEqual(kickAt(0.75).bombs[0].cx, 3, '偏太多就踢不到');
+  assert(Math.abs(R.KICK_REACH - (0.5 + R.HALF - 2 * R.HALF * 0.25)) < 1e-9 && R.KICK_OVERLAP === 0.25, '25% 的身體壓在線上 ⇔ 中心離線 0.644 格');
   assert(kickAt(0.5).bombs[0].cx > 4, '剛好半個身體（50%，中心在邊線上）要踢得到');
   assert(kickAt(0.56).bombs[0].cx > 4, '約 42%：要踢得到');
   assert(kickAt(0.62).bombs[0].cx > 4, '約 33%：要踢得到');
-  assert.strictEqual(kickAt(0.68).bombs[0].cx, 3, '不到 30% 踢不到');
+  assert(kickAt(0.66).bombs[0].cx > 4, '約 28%：要踢得到');
+  assert.strictEqual(kickAt(0.72).bombs[0].cx, 3, '不到 25% 踢不到');
   /* 站在兩顆炸彈的交界（上下各壓一部分）：踢比較對準的那顆，另一顆不動 */
-  const s2 = kickAt(0.4, { id: 2, owner: 1, cx: 3, cy: 4, t: 9, range: 2, pass: [], sl: null });
-  assert(s2.bombs[0].cx > 4 && s2.bombs[1].cx === 3, '應該踢上面那顆（偏 0.4，離它比較近）');
+  const s2 = mk(2); arena(s2); const q2 = s2.players[0]; q2.kick = true; q2.x = 2.5; q2.y = 3.5 + 0.4; put(s2.players[1], 1, 11);
+  s2.bombs.push({ id: 1, owner: 1, cx: 3, cy: 3, t: 9, range: 2, pass: [], sl: null }, { id: 2, owner: 1, cx: 3, cy: 4, t: 9, range: 2, pass: [], sl: null });
+  for (let i = 0; i < 90 && !s2.bombs.some(b => b.sl); i++) R.step(s2, { 0: { dir: 'R' } }, R.DT);
+  assert(s2.bombs[0].sl && !s2.bombs[1].sl, '第一次踢出去的是上面那顆（偏 0.4，離它比較近），下面那顆這一下沒被踢');
   /* 往別的方向走也一樣（向上踢） */
   const s3 = mk(2); arena(s3); const q = s3.players[0]; q.kick = true; q.x = 5.5 + 0.45; q.y = 6.5;
   s3.bombs.push({ id: 1, owner: 1, cx: 5, cy: 5, t: 9, range: 2, pass: [], sl: null }); put(s3.players[1], 1, 11);

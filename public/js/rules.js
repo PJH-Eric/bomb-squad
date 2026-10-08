@@ -60,7 +60,7 @@
   const SUPER_T = 8;           /* 超人標誌持續秒數 */
   const SHIELD_T = 1.2;        /* 護盾破掉後的無敵秒數 */
   const COUNTDOWN = 3;
-  const SLIDE_SPEED = 12.5;    /* 被踢的炸彈滑行格/秒（原本 7，加快） */
+  const SLIDE_SPEED = 10;      /* 被踢的炸彈滑行格/秒（原本 7，加快） */
   const AUTO_BOMB_EVERY = 0.7; /* 手滑詛咒：自動放炸彈的間隔 */
   const END_HOLD = 2.2;        /* 分出勝負後，畫面多跑幾秒讓爆炸演完 */
 
@@ -545,9 +545,9 @@
     return false;
   }
   /* 踢炸彈：往 (dx, dy) 走會撞到、而且在前方的炸彈裡，選「身體最對準它那條線」的一顆（同時碰到兩顆時踢比較對準的，不是隨便一顆）；
-     身體至少有 KICK_OVERLAP（30%，比半個身體還少很多）壓在炸彈的線上就踢得到，不必對得很準。身體寬 2×HALF；中心離炸彈那條線的距離 o，壓在線上的寬度是 (0.5 + HALF − o)，
-     所以門檻是 o ≤ 0.5 + HALF − 2×HALF×KICK_OVERLAP（50% 時是 0.5：中心在炸彈格的邊線上；現在 30%，約 0.64：中心離線再多一點也踢得到） */
-  const KICK_OVERLAP = 0.3;     /* 比火焰的半身門檻（60%）寬鬆很多：踢球希望容易踢到，火焰希望一半站位安全 */
+     身體至少有 KICK_OVERLAP（25%，比半個身體還少很多）壓在炸彈的線上就踢得到，不必對得很準。身體寬 2×HALF；中心離炸彈那條線的距離 o，壓在線上的寬度是 (0.5 + HALF − o)，
+     所以門檻是 o ≤ 0.5 + HALF − 2×HALF×KICK_OVERLAP（50% 時是 0.5：中心在炸彈格的邊線上；現在 25%，約 0.68：中心離線再多一點也踢得到） */
+  const KICK_OVERLAP = 0.25;     /* 比火焰的半身門檻（60%）寬鬆很多：踢球希望容易踢到，火焰希望一半站位安全 */
   const KICK_REACH = 0.5 + HALF - 2 * HALF * KICK_OVERLAP;
   function kickTarget(s, p, nx, ny, dx, dy) {
     const x0 = Math.floor(nx - HALF), x1 = Math.floor(nx + HALF - 1e-9);
@@ -894,7 +894,7 @@
 
   /* ---------- 主迴圈 ---------- */
   /**
-   * inputs：{ [slot]: { dir: 'U'|'D'|'L'|'R'|null, dir2?: 同上, bomb: boolean } }；bomb 是「按下」的邊緣訊號，步進時會被消耗。
+   * inputs：{ [slot]: { dir: 'U'|'D'|'L'|'R'|null, dir2?: 同上, bomb: boolean, hold?: boolean } }；bomb 是「按下」的邊緣訊號，步進時會被消耗；hold 是「按住」的狀態，不會被消耗。
    * dir2 是「還按著的另一個方向」：dir 被擋住走不動時改走 dir2，提早按轉彎也會沿原方向走到路口再轉。
    */
   function step(s, inputs, dt) {
@@ -928,7 +928,7 @@
       movePlayer(s, p, inp ? inp.dir : null, dt);
       if (inp && inp.dir2 && inp.dir2 !== inp.dir && !p.moving) movePlayer(s, p, inp.dir2, dt);
       conveyPlayer(s, p, dt);
-      if (inp && inp.bomb) { placeBomb(s, p); }
+      if (inp && (inp.bomb || inp.hold)) { placeBomb(s, p); }      /* hold：一直按著放炸彈鍵，每一步只要這格放得下、炸彈數還夠就放（走動時會一路放） */
       if (inp) inp.bomb = false;
       if (playing && p.curse && p.curse.type === 'c_auto') {
         p.autoT -= dt;

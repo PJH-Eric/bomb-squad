@@ -268,6 +268,21 @@ test('放炸彈由伺服器處理，事件會夾在快照裡', () => {
   for (let i = 0; i < 10 && !seen; i++) { x.advance(17); seen = x.all('aaaaaaaa1', 'snap').some(m => (m.s.e || []).some(e => e.t === 'place')); }
   assert(seen, '沒有收到 place 事件');
 });
+test('按住放炸彈：伺服器收到 input.hold 就放（不用另外送 bomb），放開就不再放；觀戰者的 hold 會被忽略', () => {
+  const placed = x => x.all('aaaaaaaa1', 'snap').reduce((n, m) => n + (m.s.e || []).filter(e => e.t === 'place').length, 0);
+  const { x } = playing();
+  x.run(3300);
+  x.hub.handle('cccccccc3', { type: 'input', dir: null, hold: true });         /* 觀戰者：忽略 */
+  x.run(500);
+  assert.strictEqual(placed(x), 0, '觀戰者按住不該放炸彈');
+  x.hub.handle('aaaaaaaa1', { type: 'input', dir: null, hold: true });
+  x.run(500);
+  assert.strictEqual(placed(x), 1, '玩家按住（沒送 bomb）要放一顆，實際 ' + placed(x));
+  assert.strictEqual(x.last('aaaaaaaa1', 'snap').s.b.length, 1, '站著按住只放一顆（這格已經有炸彈）');
+  x.hub.handle('aaaaaaaa1', { type: 'input', dir: null, hold: false });        /* 放開 */
+  x.run(4500);                                                                   /* 炸彈炸掉後也不會再自己放 */
+  assert.strictEqual(placed(x), 1, '放開後不再放');
+});
 test('對局打完：發結算、房間進入 finished，房主可以再來一局', () => {
   const x = setup(); x.join('aaaaaaaa1', 'A');
   x.hub.handle('aaaaaaaa1', { type: 'create', name: 'A', animal: 'cat' });

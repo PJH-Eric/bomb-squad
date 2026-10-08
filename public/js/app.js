@@ -142,7 +142,7 @@
         h('section', { class: 'card' }, h('h3', null, '操作'),
           h('p', null, '電腦鍵盤：'),
           h('p', { style: { margin: '6px 0' } }, '移動　', keycap('W'), keycap('A'), keycap('S'), keycap('D'), ' 或 ', keycap('方向鍵', 'wide')),
-          h('p', { style: { margin: '6px 0' } }, '放炸彈 ', keycap('空白鍵', 'wide'), ' 或 ', keycap('Enter', 'wide')),
+          h('p', { style: { margin: '6px 0' } }, '放炸彈 ', keycap('空白鍵', 'wide'), ' 或 ', keycap('Enter', 'wide'), '（一直按住就會一直放）'),
           h('p', { class: 'muted' }, '平板與手機：左下角搖桿移動、右下角粉紅按鈕放炸彈（設定裡可以換左右手）。'))),
       h('section', { class: 'card' }, h('h3', null, '炸彈怎麼炸'),
         h('div', { class: 'row gap-lg' },
