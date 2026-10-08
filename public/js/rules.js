@@ -30,7 +30,11 @@
      再深入一點才會被炸。歷史：最早是「中心要深入火線格 0.1 格」，換算約 64%；曾試過 50%、40%、55%，太容易被波及，現在取 60% 當平衡點。踢球另外用 KICK_OVERLAP（50%）：半個身體壓在炸彈線上就踢得到。
      身體的範圍＝畫面上人物實際畫出來的範圍：左右 ±HALF；上下因為人物往上提（腳在判定點附近），頭在上方 BODY_UP 格、腳在下方 BODY_DOWN 格
      （數字來自人物圖實際畫出來的範圍，render.js 的 SPRITE／SHADOW_DROP）；不然站在火線下方、頭已經燒到了卻還是安全（上下比左右難被波及） */
-  const HALF_BODY = 0.6;
+  const HALF_BODY = 0.65;
+  /* 火線從左右兩側經過時各自的門檻：身體壓進那一格的比例 ≥ SIDE_LEFT／SIDE_RIGHT 才被炸（可以左右不同）。
+     0.7 ⇒ 直火中心離角色判定中心 ≤ 0.5 + HALF − 0.7×2×HALF ≈ 0.356 格就被炸（用 scripts/flame-tuning.js 量四個方向的實際邊界；
+     實測 14-18-17 那支影片離 0.4 格就被炸，使用者認為不該死，所以左右比上下嚴：上半身 60%、下半身 20%、左右 70%） */
+  const SIDE_LEFT = 0.65, SIDE_RIGHT = 0.65;
   const BODY_UP = 0.76, BODY_DOWN = 0.19;
   /* 上下半身要有明顯差異（左右維持 HALF_BODY 的 60%）：上半身（頭）一樣看整個身體的比例（HALF_BODY），
      下半身只允許壓到「一點點」不被波及——腳、影子圈與火焰光暈一起算「下半身」，從判定點往下 FEET_REACH 格，
@@ -464,7 +468,8 @@
       const ox = Math.min(x1, cx + 1) - Math.max(x0, cx), oy = Math.max(0, Math.min(y1, cy + 1) - Math.max(y0, cy));
       const feet = Math.max(0, Math.min(p.y + FEET_REACH, cy + 1) - Math.max(p.y, cy)) / FEET_REACH;
       /* 一格一格算：整個身體壓不到 60%、下半身也壓不到 20% 的格子都不算 */
-      if (ox / bw >= HALF_BODY - 1e-9 && (oy / bh >= HALF_BODY - 1e-9 || feet >= FEET_HIT - 1e-9)) out.push({ x: cx, y: cy });
+      const side = cx + 0.5 < p.x ? SIDE_LEFT : SIDE_RIGHT;      /* 這一格在角色的左邊還是右邊 */
+      if (ox / bw >= side - 1e-9 && (oy / bh >= HALF_BODY - 1e-9 || feet >= FEET_HIT - 1e-9)) out.push({ x: cx, y: cy });
     }
     return out;
   }
@@ -481,11 +486,11 @@
     for (let cy = Math.floor(y0); cy <= Math.floor(y2); cy++) for (let cx = Math.floor(x0); cx <= Math.floor(x1); cx++) {
       const f = flameAt(s, cx, cy);
       if (!f || f.cool) continue;
-      cells.push({ f, cx, cy, fx: (Math.min(x1, cx + 1) - Math.max(x0, cx)) / bw, fy: Math.max(0, Math.min(y1, cy + 1) - Math.max(y0, cy)) / bh,
+      cells.push({ f, cx, cy, side: cx + 0.5 < p.x ? SIDE_LEFT : SIDE_RIGHT, fx: (Math.min(x1, cx + 1) - Math.max(x0, cx)) / bw, fy: Math.max(0, Math.min(y1, cy + 1) - Math.max(y0, cy)) / bh,
         feet: Math.max(0, Math.min(p.y + FEET_REACH, cy + 1) - Math.max(p.y, cy)) / FEET_REACH });
     }
     const th = HALF_BODY - 1e-9;
-    for (const a of cells) if (a.fx >= th && (a.fy >= th || a.feet >= FEET_HIT - 1e-9)) return a.f;      /* 整個身體壓到 60%，或下半身壓到 20% */
+    for (const a of cells) if (a.fx >= a.side - 1e-9 && (a.fy >= th || a.feet >= FEET_HIT - 1e-9)) return a.f;      /* 整個身體壓到 60%，或下半身壓到 20% */
     /* 並排的火線：壓到的火焰格不是排在「同一條線」上（橫火都在同一排、或直火都在同一欄才算同一條線），
        就把壓到的面積全部加起來，達到門檻就被炸（含十字交叉的中心格、橫火直火混在一起、兩排／兩欄並排、2×2 區塊）；
        只有一條線（同一條線上各壓一半）不算並排，維持半身機制 */
@@ -1102,7 +1107,7 @@
   }
 
   root.Rules = {
-    DT, DIRS, FUSE, AIR_EVERY, SKY_START, SKY_EVERY, SKY_STEP, SKY_MAX, SKY_FUSE, SKY_RANGE, SKY_LAST, skyStartFor, skyCount, PLANE_SPEED, FLAME_T, HALF, HALF_BODY, BODY_UP, BODY_DOWN, FEET_REACH, FEET_HIT, HURT_LIFT, hurtCells, START, MAX, SPEED, ANIMAL_STATS, statsOf, CURSE_T, GHOST_T, SUPER_T, COUNTDOWN, SLIDE_SPEED,
+    DT, DIRS, FUSE, AIR_EVERY, SKY_START, SKY_EVERY, SKY_STEP, SKY_MAX, SKY_FUSE, SKY_RANGE, SKY_LAST, skyStartFor, skyCount, PLANE_SPEED, FLAME_T, HALF, HALF_BODY, SIDE_LEFT, SIDE_RIGHT, BODY_UP, BODY_DOWN, FEET_REACH, FEET_HIT, HURT_LIFT, hurtCells, START, MAX, SPEED, ANIMAL_STATS, statsOf, CURSE_T, GHOST_T, SUPER_T, COUNTDOWN, SLIDE_SPEED,
     KICK_OVERLAP, KICK_REACH, ITEM_TYPES, POSITIVE, CURSES, LAYOUTS, RANDOM_LAYOUTS, FAB_THEME, LAYOUT_NAMES, THEME_COUNT, SHAPES, SLOT_COLORS, DROP_WEIGHTS,
     mulberry32, rand, sizeFor, spawnCount, MAP_SMALL, MAP_LARGE, spawnPoints, generateMap, connected, createGame, step,
     blast, bombAt, itemAt, flameAt, cellOf, cellIdx, inside, speedOf, rangeOf, maxBombsOf, fireOf, speedLvlOf, flipDir, hideInSnapshot,
