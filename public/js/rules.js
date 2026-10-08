@@ -25,10 +25,12 @@
   const PLANE_SPEED = 5;       /* 空投機飛行速度（格／秒） */
   const FLAME_COOL_T = 0.3;    /* 磚塊格的無殺傷火花停留秒數 */
   const FLAME_T = 0.5;         /* 火焰停留秒數 */
-  /* 半身機制：身體壓在火線格（或炸彈那條線）裡的比例達到這個門檻就算。目前 40%（原本 50%，再下修一點，更容易被波及、也更容易踢到）。
+  /* 半身機制：身體站在「剛好一半在炸彈格、一半在旁邊那一格」（同一條左右或上下線上）時，不會被那顆炸彈波及——
+     火焰是「一格一格」判定的：身體壓在某一個火線格裡的比例 > HALF_BODY（55%）才算被炸，一半（50%）還是安全，留 5% 的容錯給手動站位；
+     再深入一點才會被炸。踢球另外用 KICK_OVERLAP（50%）：半個身體壓在炸彈線上就踢得到。
      身體的範圍＝畫面上人物實際畫出來的範圍：左右 ±HALF；上下因為人物往上提（腳在判定點附近），頭在上方 BODY_UP 格、腳在下方 BODY_DOWN 格
      （數字來自人物圖實際畫出來的範圍，render.js 的 SPRITE／SHADOW_DROP）；不然站在火線下方、頭已經燒到了卻還是安全（上下比左右難被波及） */
-  const HALF_BODY = 0.4;
+  const HALF_BODY = 0.55;
   const BODY_UP = 0.76, BODY_DOWN = 0.19;
   const HURT_LIFT = (BODY_UP - BODY_DOWN) / 2;     /* 身體中心比判定點高多少（約 0.285） */
   const HALF = 0.36;           /* 玩家碰撞半寬（比格子小，轉角才好過） */
@@ -442,7 +444,7 @@
     const x0 = p.x - HALF, x1 = p.x + HALF, y0 = p.y - BODY_UP, y1 = p.y + BODY_DOWN;
     for (let cy = Math.floor(y0); cy <= Math.floor(y1); cy++) for (let cx = Math.floor(x0); cx <= Math.floor(x1); cx++) {
       const ox = Math.min(x1, cx + 1) - Math.max(x0, cx), oy = Math.min(y1, cy + 1) - Math.max(y0, cy);
-      if (ox / bw >= HALF_BODY - 1e-9 && oy / bh >= HALF_BODY - 1e-9) out.push({ x: cx, y: cy });
+      if (ox / bw >= HALF_BODY - 1e-9 && oy / bh >= HALF_BODY - 1e-9) out.push({ x: cx, y: cy });     /* 一格一格算：各自壓不到 55% 的格子都不算 */
     }
     return out;
   }
@@ -513,9 +515,9 @@
     return false;
   }
   /* 踢炸彈：往 (dx, dy) 走會撞到、而且在前方的炸彈裡，選「身體最對準它那條線」的一顆（同時碰到兩顆時踢比較對準的，不是隨便一顆）；
-     身體至少有 KICK_OVERLAP（40%，跟火焰判定同一個半身門檻）壓在炸彈的線上就踢得到，不必對得很準。身體寬 2×HALF；中心離炸彈那條線的距離 o，壓在線上的寬度是 (0.5 + HALF − o)，
-     所以門檻是 o ≤ 0.5 + HALF − 2×HALF×KICK_OVERLAP（50% 時是 0.5：中心在炸彈格的邊線上；40% 時約 0.57） */
-  const KICK_OVERLAP = HALF_BODY;
+     身體至少有 KICK_OVERLAP（50%，半個身體）壓在炸彈的線上就踢得到，不必對得很準。身體寬 2×HALF；中心離炸彈那條線的距離 o，壓在線上的寬度是 (0.5 + HALF − o)，
+     所以門檻是 o ≤ 0.5 + HALF − 2×HALF×KICK_OVERLAP（50% 時剛好是 0.5：中心在炸彈格的邊線上） */
+  const KICK_OVERLAP = 0.5;
   const KICK_REACH = 0.5 + HALF - 2 * HALF * KICK_OVERLAP;
   function kickTarget(s, p, nx, ny, dx, dy) {
     const x0 = Math.floor(nx - HALF), x1 = Math.floor(nx + HALF - 1e-9);

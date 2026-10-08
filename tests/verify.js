@@ -224,25 +224,28 @@ test('被火焰碰到淘汰，擊殺數記給放炸彈的人，自己炸自己�
   R.step(t, {}, R.DT);
   assert(!t.players[0].alive); assert.strictEqual(t.players[0].kills, 0);
 });
-test('半身機制（左右）：身體有 40% 以上在火線格裡就被炸，不到就安全', () => {
+test('半身機制（左右）：剛好一半在火線格裡是安全的，再深入（>55%）才被炸；站在炸彈格與旁邊那格各一半，不會被這顆炸彈波及', () => {
   /* 炸彈在 (3,3)、射程 2：火線是 x∈[3,6)（格 3、4、5），y 在第 3 列。身體寬 0.72，中心離火線末端 6.0 越近，在火線裡的比例越低：比例 = (6.36 − x) / 0.72 */
-  const hit = x => {
+  const hit = (x, y) => {
     const s = mk(3); arena(s);
     put(s.players[0], 1, 1); put(s.players[2], 9, 11);
-    s.players[1].x = x; s.players[1].y = 3.5 + R.HURT_LIFT;      /* 身體中心剛好在火線這一列的正中間 */
+    s.players[1].x = x; s.players[1].y = y == null ? 3.5 + R.HURT_LIFT : y;      /* 預設：身體中心剛好在火線這一列的正中間 */
     s.bombs.push({ id: 1, owner: 0, cx: 3, cy: 3, t: 0, range: 2, pass: [], sl: null });
     R.step(s, {}, R.DT);
     return !s.players[1].alive;
   };
-  assert(R.HALF_BODY === 0.4);
+  assert(R.HALF_BODY === 0.55);
   assert(!hit(6.4), '身體只有一小角在火線裡：安全');
-  assert(!hit(6.1), '身體約 36% 在火線裡：安全');
-  assert(hit(6.05), '身體約 43% 在火線裡：被炸');
-  assert(hit(5.95), '身體約 57% 在火線裡：被炸');
+  assert(!hit(6.0), '剛好一半（50%）在最後一個火線格裡：安全 —— 這就是半身機制');
+  assert(!hit(5.97), '約 54%：還在容錯範圍，安全');
+  assert(hit(5.95), '約 57%：被炸');
   assert(hit(5.5), '站在火線正中間：被炸');
   assert(hit(3.5), '站在炸彈那一格：被炸');
+  /* 半身站在炸彈格（3）與旁邊的火線格（4）的交界上（x=4.0）：兩格各一半，都不到 55% → 這顆炸彈波及不到 */
+  assert(!hit(4.0), '站在炸彈格與旁邊那格各一半（同一條左右線上）：不會被這顆炸彈波及');
+  assert(!hit(3.0), '站在炸彈格與左邊那格各一半（左邊沒有火線格）：不會被波及');
 });
-test('半身機制（上下）：用身體實際的範圍判定（人物往上提，頭比腳高很多），上半身燒到 40% 以上就被炸，不再「頭在火裡卻不死」', () => {
+test('半身機制（上下）：剛好一半是安全的；站在炸彈格與上下相鄰格各一半，不會被這顆炸彈波及；人物往上提，頭比腳高很多，用身體實際範圍判定', () => {
   /* 火線是第 3 列 y∈[3,4]，玩家站在 x=5.5（火線上）。身體約從 y−0.76 到 y+0.19（高 0.95）；從下方碰到火線的比例 = (4.76 − y)/0.95，從上方 = (y + 0.19 − 3)/0.95 */
   const hit = y => {
     const s = mk(3); arena(s);
@@ -252,13 +255,21 @@ test('半身機制（上下）：用身體實際的範圍判定（人物往上�
     R.step(s, {}, R.DT);
     return !s.players[1].alive;
   };
-  assert(!hit(4.45), '火線在上方、只有頭的一小角碰到（約 33%）：安全');
-  assert(!hit(4.4), '約 38%：安全');
-  assert(hit(4.35), '約 43%（站在火線下方一格的上緣，頭已燒到）：被炸 —— 以前這裡判定在下一格所以不會死');
+  assert(!hit(4.45), '火線在上方、只有頭的一小角碰到：安全');
+  assert(!hit(4.285), '剛好一半（50%）在火線裡（身體中心在格線上）：安全 —— 這就是半身機制');
+  assert(!hit(4.26), '約 53%：安全');
+  assert(hit(4.2), '約 59%（頭已經燒進去一大半）：被炸 —— 以前判定在下一格，這裡不會死');
   assert(hit(3.5), '站在火線正中間：被炸');
-  assert(hit(3.25), '腳和身體下段在火線裡（約 46%）：被炸');
-  assert(!hit(3.1), '只有腳尖（約 30%）在火線裡（從上方走近）：安全');
+  assert(hit(3.4), '約 62%：被炸');
+  assert(!hit(3.3), '約 52%（只有下半身在火線裡）：安全');
+  assert(!hit(3.1), '只有腳尖（約 30%）在火線裡：安全');
   assert(Math.abs(R.HURT_LIFT - (R.BODY_UP - R.BODY_DOWN) / 2) < 1e-9);
+  /* 炸彈在 (5,5)，玩家 x=5.5 站在炸彈格（5）與上面一格（4）各一半（身體中心 y = 5.0）：上下是同一條火線，各一半，不會被波及 */
+  const s2 = mk(3); arena(s2); put(s2.players[0], 1, 1); put(s2.players[2], 11, 11);
+  s2.players[1].x = 5.5; s2.players[1].y = 5.0 + R.HURT_LIFT;
+  s2.bombs.push({ id: 1, owner: 0, cx: 5, cy: 5, t: 0, range: 2, pass: [], sl: null });
+  R.step(s2, {}, R.DT);
+  assert(s2.players[1].alive, '站在炸彈格與上面那格各一半（同一條上下線上）：不會被這顆炸彈波及');
 });
 
 test('磚塊被炸掉後，那一格的火花不傷人（走進去不會被燒到），火線上的空格仍會', () => {
@@ -562,7 +573,7 @@ test('踢炸彈：有踢炸彈能力才會滑，沒有就被擋住', () => {
   assert(mkKick(true).bombs[0].cx > 4, '炸彈沒被踢走');
   assert.strictEqual(mkKick(false).bombs[0].cx, 3, '沒能力卻推動了炸彈');
 });
-test('踢炸彈：身體有 40% 壓在炸彈線上就踢得到（偏 0.57 格以內），偏太多就踢不到；同時碰到兩顆踢最對準的那顆', () => {
+test('踢炸彈：半個身體（50%）壓在炸彈線上就踢得到（偏 0.5 格以內），偏太多就踢不到；同時碰到兩顆踢最對準的那顆', () => {
   const kickAt = (off, extra) => {
     const s = mk(2); arena(s); const p = s.players[0]; p.kick = true; p.x = 2.5; p.y = 3.5 + off;
     s.bombs.push({ id: 1, owner: 1, cx: 3, cy: 3, t: 9, range: 2, pass: [], sl: null });
@@ -575,9 +586,9 @@ test('踢炸彈：身體有 40% 壓在炸彈線上就踢得到（偏 0.57 格以
   assert(kickAt(0.45).bombs[0].cx > 4, '半個身體（偏 0.45）要踢得到');
   assert(kickAt(-0.5).bombs[0].cx > 4, '往另一邊偏半格也要踢得到');
   assert.strictEqual(kickAt(0.65).bombs[0].cx, 3, '偏太多就踢不到');
-  assert(Math.abs(R.KICK_REACH - (0.5 + R.HALF - 2 * R.HALF * 0.4)) < 1e-9 && R.KICK_OVERLAP === 0.4, '40% 的身體壓在線上 ⇔ 中心離線 0.572 格');
-  assert(kickAt(0.55).bombs[0].cx > 4, '約 43% 壓在線上：要踢得到');
-  assert.strictEqual(kickAt(0.6).bombs[0].cx, 3, '不到 40% 踢不到');
+  assert(Math.abs(R.KICK_REACH - 0.5) < 1e-9 && R.KICK_OVERLAP === 0.5, '50% 的身體壓在線上 ⇔ 中心離線 0.5 格');
+  assert(kickAt(0.5).bombs[0].cx > 4, '剛好 50%（中心在邊線上）要踢得到');
+  assert.strictEqual(kickAt(0.55).bombs[0].cx, 3, '不到 50% 踢不到');
   /* 站在兩顆炸彈的交界（上下各壓一部分）：踢比較對準的那顆，另一顆不動 */
   const s2 = kickAt(0.4, { id: 2, owner: 1, cx: 3, cy: 4, t: 9, range: 2, pass: [], sl: null });
   assert(s2.bombs[0].cx > 4 && s2.bombs[1].cx === 3, '應該踢上面那顆（偏 0.4，離它比較近）');
