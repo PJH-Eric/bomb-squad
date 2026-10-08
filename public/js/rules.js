@@ -32,6 +32,11 @@
      （數字來自人物圖實際畫出來的範圍，render.js 的 SPRITE／SHADOW_DROP）；不然站在火線下方、頭已經燒到了卻還是安全（上下比左右難被波及） */
   const HALF_BODY = 0.6;
   const BODY_UP = 0.76, BODY_DOWN = 0.19;
+  /* 上下半身要有明顯差異（左右維持 HALF_BODY 的 60%）：上半身（頭）一樣看整個身體的比例（HALF_BODY），
+     下半身只允許壓到「一點點」不被波及——腳、影子圈與火焰光暈一起算「下半身」，從判定點往下 FEET_REACH 格，
+     下半身壓進火線格 FEET_HIT（20%，約 0.1 格）就被炸。站在火線正上方那一格、腳貼到火線時一定會被炸；
+     剛好站在格子正中間（下半身剛好碰到格線）仍然安全 */
+  const FEET_REACH = 0.5, FEET_HIT = 0.2;
   const HURT_LIFT = (BODY_UP - BODY_DOWN) / 2;     /* 身體中心比判定點高多少（約 0.285） */
   const HALF = 0.36;           /* 玩家碰撞半寬（比格子小，轉角才好過） */
   const START = { fire: 2, bomb: 1 };
@@ -454,10 +459,12 @@
   /** 被火燒的判定格：身體（左右 ±HALF、上下 −BODY_UP～+BODY_DOWN）壓到的格子裡，左右、上下的重疊比例都 ≥ HALF_BODY 的全部算 */
   function hurtCells(p) {
     const out = [], bw = 2 * HALF, bh = BODY_UP + BODY_DOWN;
-    const x0 = p.x - HALF, x1 = p.x + HALF, y0 = p.y - BODY_UP, y1 = p.y + BODY_DOWN;
-    for (let cy = Math.floor(y0); cy <= Math.floor(y1); cy++) for (let cx = Math.floor(x0); cx <= Math.floor(x1); cx++) {
-      const ox = Math.min(x1, cx + 1) - Math.max(x0, cx), oy = Math.min(y1, cy + 1) - Math.max(y0, cy);
-      if (ox / bw >= HALF_BODY - 1e-9 && oy / bh >= HALF_BODY - 1e-9) out.push({ x: cx, y: cy });     /* 一格一格算：各自壓不到 60% 的格子都不算 */
+    const x0 = p.x - HALF, x1 = p.x + HALF, y0 = p.y - BODY_UP, y1 = p.y + BODY_DOWN, y2 = p.y + Math.max(BODY_DOWN, FEET_REACH);
+    for (let cy = Math.floor(y0); cy <= Math.floor(y2); cy++) for (let cx = Math.floor(x0); cx <= Math.floor(x1); cx++) {
+      const ox = Math.min(x1, cx + 1) - Math.max(x0, cx), oy = Math.max(0, Math.min(y1, cy + 1) - Math.max(y0, cy));
+      const feet = Math.max(0, Math.min(p.y + FEET_REACH, cy + 1) - Math.max(p.y, cy)) / FEET_REACH;
+      /* 一格一格算：整個身體壓不到 60%、下半身也壓不到 20% 的格子都不算 */
+      if (ox / bw >= HALF_BODY - 1e-9 && (oy / bh >= HALF_BODY - 1e-9 || feet >= FEET_HIT - 1e-9)) out.push({ x: cx, y: cy });
     }
     return out;
   }
@@ -469,26 +476,27 @@
    */
   function flameHit(s, p) {
     const bw = 2 * HALF, bh = BODY_UP + BODY_DOWN;
-    const x0 = p.x - HALF, x1 = p.x + HALF, y0 = p.y - BODY_UP, y1 = p.y + BODY_DOWN;
+    const x0 = p.x - HALF, x1 = p.x + HALF, y0 = p.y - BODY_UP, y1 = p.y + BODY_DOWN, y2 = p.y + Math.max(BODY_DOWN, FEET_REACH);
     const cells = [];
-    for (let cy = Math.floor(y0); cy <= Math.floor(y1); cy++) for (let cx = Math.floor(x0); cx <= Math.floor(x1); cx++) {
+    for (let cy = Math.floor(y0); cy <= Math.floor(y2); cy++) for (let cx = Math.floor(x0); cx <= Math.floor(x1); cx++) {
       const f = flameAt(s, cx, cy);
       if (!f || f.cool) continue;
-      cells.push({ f, cx, cy, fx: (Math.min(x1, cx + 1) - Math.max(x0, cx)) / bw, fy: (Math.min(y1, cy + 1) - Math.max(y0, cy)) / bh });
+      cells.push({ f, cx, cy, fx: (Math.min(x1, cx + 1) - Math.max(x0, cx)) / bw, fy: Math.max(0, Math.min(y1, cy + 1) - Math.max(y0, cy)) / bh,
+        feet: Math.max(0, Math.min(p.y + FEET_REACH, cy + 1) - Math.max(p.y, cy)) / FEET_REACH });
     }
     const th = HALF_BODY - 1e-9;
-    for (const a of cells) if (a.fx >= th && a.fy >= th) return a.f;
-    /* 並排的火線：同一個方向（都是橫火、或都是直火）的火線跨了兩排／兩欄以上，身體壓到的面積加起來（幾乎整個身體都在火裡）達到門檻就被炸。
-       只有一排（同一條線上各壓一半）不算並排，維持半身機制 */
-    let ah = 0, av = 0, hf = null, vf = null;
-    const rowsH = new Set(), colsV = new Set();
-    for (const a of cells) {
-      const area = a.fx * a.fy;
-      if (a.f.h && !a.f.v) { ah += area; rowsH.add(a.cy); hf = hf || a.f; }
-      else if (a.f.v && !a.f.h) { av += area; colsV.add(a.cx); vf = vf || a.f; }
+    for (const a of cells) if (a.fx >= th && (a.fy >= th || a.feet >= FEET_HIT - 1e-9)) return a.f;      /* 整個身體壓到 60%，或下半身壓到 20% */
+    /* 並排的火線：壓到的火焰格不是排在「同一條線」上（橫火都在同一排、或直火都在同一欄才算同一條線），
+       就把壓到的面積全部加起來，達到門檻就被炸（含十字交叉的中心格、橫火直火混在一起、兩排／兩欄並排、2×2 區塊）；
+       只有一條線（同一條線上各壓一半）不算並排，維持半身機制 */
+    const touch = cells.filter(c => c.fx * c.fy > 1e-9);        /* 只算身體真的有壓到（面積 > 0）的火焰格，擦邊沒壓到的不算 */
+    if (touch.length >= 2) {
+      const sameRow = touch.every(c => c.cy === touch[0].cy && c.f.h), sameCol = touch.every(c => c.cx === touch[0].cx && c.f.v);
+      if (!sameRow && !sameCol) {
+        let area = 0; for (const c of touch) area += c.fx * c.fy;
+        if (area >= th) return touch[0].f;
+      }
     }
-    if (rowsH.size >= 2 && ah >= th) return hf;
-    if (colsV.size >= 2 && av >= th) return vf;
     return null;
   }
   /* 超人標誌期間：火力、炸彈數、加速都拉到「這隻角色」的上限（詛咒照樣有效，所以遲緩、短火還是會壓過它） */
@@ -1094,7 +1102,7 @@
   }
 
   root.Rules = {
-    DT, DIRS, FUSE, AIR_EVERY, SKY_START, SKY_EVERY, SKY_STEP, SKY_MAX, SKY_FUSE, SKY_RANGE, SKY_LAST, skyStartFor, skyCount, PLANE_SPEED, FLAME_T, HALF, HALF_BODY, BODY_UP, BODY_DOWN, HURT_LIFT, hurtCells, START, MAX, SPEED, ANIMAL_STATS, statsOf, CURSE_T, GHOST_T, SUPER_T, COUNTDOWN, SLIDE_SPEED,
+    DT, DIRS, FUSE, AIR_EVERY, SKY_START, SKY_EVERY, SKY_STEP, SKY_MAX, SKY_FUSE, SKY_RANGE, SKY_LAST, skyStartFor, skyCount, PLANE_SPEED, FLAME_T, HALF, HALF_BODY, BODY_UP, BODY_DOWN, FEET_REACH, FEET_HIT, HURT_LIFT, hurtCells, START, MAX, SPEED, ANIMAL_STATS, statsOf, CURSE_T, GHOST_T, SUPER_T, COUNTDOWN, SLIDE_SPEED,
     KICK_OVERLAP, KICK_REACH, ITEM_TYPES, POSITIVE, CURSES, LAYOUTS, RANDOM_LAYOUTS, FAB_THEME, LAYOUT_NAMES, THEME_COUNT, SHAPES, SLOT_COLORS, DROP_WEIGHTS,
     mulberry32, rand, sizeFor, spawnCount, MAP_SMALL, MAP_LARGE, spawnPoints, generateMap, connected, createGame, step,
     blast, bombAt, itemAt, flameAt, cellOf, cellIdx, inside, speedOf, rangeOf, maxBombsOf, fireOf, speedLvlOf, flipDir, hideInSnapshot,

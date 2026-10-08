@@ -20,8 +20,9 @@
     easy:    { name: '簡單', interval: 0.55, bombProb: 0.54, hunt: 0.21, chase: 5, chain: false, react: 0.59, notice: 0.21, itemRange: 5, itemProb: 0.45, wander: 0.3, sloppy: 0.24, curseOk: true },
     normal:  { name: '普通', interval: 0.38, bombProb: 0.74, hunt: 0.36, chase: 7, chain: true, react: 0.71, notice: 0.48, itemRange: 8, itemProb: 0.77, wander: 0.16, sloppy: 0.11, curseOk: false },
     hard:    { name: '困難', interval: 0.22, bombProb: 0.92, hunt: 0.9, chase: 14, chain: true, react: 0.75, notice: 0.29, itemRange: 17, itemProb: 0.79, wander: 0.11, sloppy: 0.11, curseOk: false, trap: true },
-    /* 神話：決策最快、逃得最準、追人與撿道具距離最遠、很少發呆與失誤（參數由強度目標 84 算出） */
-    myth:    { name: '神話', interval: 0.11, bombProb: 0.93, hunt: 0.93, chase: 37, chain: true, react: 0.93, notice: 0.07, itemRange: 37, itemProb: 0.93, wander: 0.04, sloppy: 0.04, curseOk: false, trap: true }
+    /* 神話：逃得最準、追人與撿道具距離最遠、幾乎不發呆與失誤。決策間隔訂在 0.2 秒：新的下半身判定下，決策比這更頻繁（0.11～0.17 秒）會讓走位不停改方向、位置偏離格子中心，
+       反而更常被炸（實測被炸率 81% → 59%），所以不再靠「決策更快」變強，改把其他能力拉到接近滿，強度約 92 */
+    myth:    { name: '神話', interval: 0.2, bombProb: 0.98, hunt: 0.98, chase: 40, chain: true, react: 0.98, notice: 0.02, itemRange: 40, itemProb: 0.98, wander: 0.02, sloppy: 0.02, curseOk: false, trap: true }
   };
 
   /* ---------- 等級權重表：把每個參數換算成「強度值」（0～100），用強度值來定級距與調數值 ----------
