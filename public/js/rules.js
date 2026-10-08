@@ -30,17 +30,17 @@
      再深入一點才會被炸。歷史：最早是「中心要深入火線格 0.1 格」，換算約 64%；曾試過 50%、40%、55%，太容易被波及，現在上半身取 75%、左右 64%、下半身 25%。踢球另外用 KICK_OVERLAP（50%）：半個身體壓在炸彈線上就踢得到。
      身體的範圍＝畫面上人物實際畫出來的範圍：左右 ±HALF；上下因為人物往上提（腳在判定點附近），頭在上方 BODY_UP 格、腳在下方 BODY_DOWN 格
      （數字來自人物圖實際畫出來的範圍，render.js 的 SPRITE／SHADOW_DROP）；不然站在火線下方、頭已經燒到了卻還是安全（上下比左右難被波及） */
-  const HALF_BODY = 0.80;
+  const HALF_BODY = 0.75;
   /* 火線從左右兩側經過時各自的門檻：身體壓進那一格的比例 ≥ SIDE_LEFT／SIDE_RIGHT 才被炸（可以左右不同）。
      直火中心離角色判定中心 ≤ 0.5 + HALF − SIDE×2×HALF 格就被炸（用 scripts/flame-tuning.js 量四個方向的實際邊界）。
-     目前：上半身 80%、下半身 20%、右 64%、左 36% */
+     目前：上半身 75%、下半身 25%、右 64%、左 36% */
   const SIDE_LEFT = 0.36, SIDE_RIGHT = 0.64;
   const BODY_UP = 0.76, BODY_DOWN = 0.19;
   /* 上下半身要有明顯差異：上半身（頭）看整個身體的比例（HALF_BODY），
      下半身只允許壓到「一點點」不被波及——腳、影子圈與火焰光暈一起算「下半身」，從判定點往下 FEET_REACH 格，
-     下半身壓進火線格 FEET_HIT（20%，約 0.1 格）就被炸。站在火線正上方那一格、腳貼到火線時一定會被炸；
+     下半身壓進火線格 FEET_HIT（25%，約 0.125 格）就被炸。站在火線正上方那一格、腳貼到火線時一定會被炸；
      剛好站在格子正中間（下半身剛好碰到格線）仍然安全 */
-  const FEET_REACH = 0.5, FEET_HIT = 0.20;
+  const FEET_REACH = 0.5, FEET_HIT = 0.25;
   const HURT_LIFT = (BODY_UP - BODY_DOWN) / 2;     /* 身體中心比判定點高多少（約 0.285） */
   const HALF = 0.36;           /* 玩家碰撞半寬（比格子小，轉角才好過） */
   const START = { fire: 2, bomb: 1 };
@@ -490,7 +490,7 @@
         feet: Math.max(0, Math.min(p.y + FEET_REACH, cy + 1) - Math.max(p.y, cy)) / FEET_REACH });
     }
     const th = HALF_BODY - 1e-9;
-    for (const a of cells) if (a.fx >= a.side - 1e-9 && (a.fy >= th || a.feet >= FEET_HIT - 1e-9)) return a.f;      /* 整個身體壓到 80%，或下半身壓到 20% */
+    for (const a of cells) if (a.fx >= a.side - 1e-9 && (a.fy >= th || a.feet >= FEET_HIT - 1e-9)) return a.f;      /* 整個身體壓到 75%，或下半身壓到 25% */
     /* 並排的火線：壓到的火焰格不是排在「同一條線」上（橫火都在同一排、或直火都在同一欄才算同一條線），
        就把壓到的面積全部加起來，達到門檻就被炸（含十字交叉的中心格、橫火直火混在一起、兩排／兩欄並排、2×2 區塊）；
        只有一條線（同一條線上各壓一半）不算並排，維持半身機制 */
