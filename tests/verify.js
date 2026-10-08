@@ -272,7 +272,7 @@ test('半身機制（上下）：剛好一半是安全的；站在炸彈格與�
   assert(!hit(4.45), '火線在上方、只有頭的一小角碰到：安全');
   assert(!hit(4.285), '剛好一半（50%）在火線裡（身體中心在格線上）：安全 —— 這就是半身機制');
   assert(!hit(4.23), '約 56%：安全');
-  assert(!hit(4.17), '約 62%：上半身門檻是 75%，還安全');
+  assert(!hit(4.17), '約 62%：頭的門檻是 90%，還安全');
   assert(hit(3.8), '約 100%（頭已經燒進去一大半）：被炸 —— 以前判定在下一格，這裡不會死');
   assert(hit(3.5), '站在火線正中間：被炸');
   assert(hit(3.45), '約 67%：被炸');
@@ -337,15 +337,15 @@ test('調教表：火線從角色右邊／左邊／上方／下方經過，判�
   const T = require('../scripts/flame-tuning.js');
   const near = (a, b, tol) => Math.abs(a - b) <= tol;
   const side = 0.5 + R.HALF - R.SIDE_RIGHT * 2 * R.HALF;                         /* 左右：身體壓進那格 ≥ SIDE（64%）→ 0.392 格 */
-  const up = 0.5 + R.BODY_UP - R.UPPER_HIT * (R.BODY_UP + R.BODY_DOWN);           /* 上方：頭壓進那格 ≥ HALF_BODY（75%）→ 0.642 格 */
-  const down = 0.5 + R.FEET_REACH - R.FEET_HIT * R.FEET_REACH;                    /* 下方：腳壓進那格 ≥ FEET_HIT（25%）→ 0.9 格 */
+  const up = 0.5 + R.BODY_UP - R.UPPER_HIT * (R.BODY_UP + R.BODY_DOWN);           /* 上方：頭壓進那格 ≥ UPPER_HIT（90%）→ 約 0.405 格 */
+  const down = 0.5 + R.FEET_REACH - R.FEET_HIT * R.FEET_REACH;                    /* 下方：腳壓進那格 ≥ FEET_HIT（20%）→ 0.9 格 */
   const b = { right: T.boundary('right'), left: T.boundary('left'), above: T.boundary('above'), below: T.boundary('below') };
   assert(near(b.right, side, 0.01), '右邊 ' + b.right + ' 應為 ' + side);
   const sideL = 0.5 + R.HALF - R.SIDE_LEFT * 2 * R.HALF;
   assert(near(b.left, sideL, 0.01), '左邊 ' + b.left + ' 應為 ' + sideL);
   assert(near(b.above, up, 0.01), '上方 ' + b.above + ' 應為 ' + up);
   assert(near(b.below, down, 0.01), '下方 ' + b.below + ' 應為 ' + down);
-  assert(b.below > b.left && b.left > b.right && b.right > b.above, '上下左右要有明顯差異：下 > 左 > 右 > 上（' + [b.below, b.left, b.right, b.above].map(x => x.toFixed(2)).join('／') + '）');
+  assert(b.below > b.left && b.left > b.right && b.left > b.above, '下 > 左 > 右、上（頭門檻 90% 後右與上都約 0.4）（' + [b.below, b.left, b.right, b.above].map(x => x.toFixed(2)).join('／') + '）');
   console.log('      邊界（格）右 ' + b.right.toFixed(3) + '／左 ' + b.left.toFixed(3) + '／上 ' + b.above.toFixed(3) + '／下 ' + b.below.toFixed(3));
 });
 test('影片情況：站在火線正上方一格、腳貼到火線就要被炸（並排、重疊、交叉都一樣）；站在格子正中間仍安全；上半身 87%', () => {
@@ -358,7 +358,7 @@ test('影片情況：站在火線正上方一格、腳貼到火線就要被炸�
     R.step(s, {}, R.DT);
     return !s.players[1].alive;
   };
-  assert(R.FEET_HIT === 0.2 && R.FEET_REACH === 0.5 && R.HALF_BODY === 0.87 && R.UPPER_HIT === 0.93);
+  assert(R.FEET_HIT === 0.2 && R.FEET_REACH === 0.5 && R.HALF_BODY === 0.87 && R.UPPER_HIT === 0.9);
   /* 1. 影片：一條橫火（第 3 列 y∈[3,4]），玩家在正上方那一格（第 2 列，中心 y=2.5）。影片裡他的中心離火線格上緣約 0.37 格（y≈2.63） */
   assert(!hit([[3, 3, 4]], 6.5, 2.5), '站在上面那格正中間：安全（腳剛好碰到格線）');
   assert(hit([[3, 3, 4]], 6.5, 2.64), '腳壓進火線超過 20%：被炸');
@@ -402,8 +402,8 @@ test('十字斜角站半身：身體整個在一排橫火裡（炸彈格＋旁�
   };
   assert(!hit(5.06, 5.9), '炸彈格左下角：身體在炸彈那一排，左右各約一半（左邊那格 45% 沒到左門檻 48%），腳尖碰到下面那條直火一點點：安全');
   assert(!hit(5.1, 5.95), '同上，稍微偏右下一點：安全');
-  assert(!hit(4.95, 5.9), '偏左一點、腳環剛好在火線排的下緣：安全（腳環還在排外）');
-  assert(!hit(5.0, 5.9), '正好在十字的角落（腳環在四格交界）：安全');
+  assert(!hit(4.95, 5.92), '偏左一點、腳環剛好在火線排的下緣：安全（腳環還在排外；頭壓進約 88%，沒到 90%）');
+  assert(!hit(5.0, 5.93), '正好在十字的角落（腳環 y+0.07 剛好在四格交界）：安全');
   assert(hit(4.95, 5.8), '再往上 0.1 格：身體整個進到橫火那一排，被炸');
   assert(hit(5.5, 5.5 + R.HURT_LIFT), '站在炸彈格正中間：被炸');
   assert(hit(4.5, 5.5 + R.HURT_LIFT), '站在旁邊那格正中間（整個在橫火裡）：被炸');
