@@ -22,7 +22,7 @@
     hard:    { name: '困難', interval: 0.22, bombProb: 0.92, hunt: 0.9, chase: 14, chain: true, react: 0.75, notice: 0.29, itemRange: 17, itemProb: 0.79, wander: 0.11, sloppy: 0.11, curseOk: false, trap: true },
     /* 神話：逃得最準、追人與撿道具距離最遠、幾乎不發呆與失誤。決策間隔訂在 0.2 秒：新的下半身判定下，決策比這更頻繁（0.11～0.17 秒）會讓走位不停改方向、位置偏離格子中心，
        反而更常被炸（實測被炸率 81% → 59%），所以不再靠「決策更快」變強，改把其他能力拉到接近滿，強度約 92 */
-    myth:    { name: '神話', interval: 0.2, bombProb: 0.98, hunt: 0.98, chase: 40, chain: true, react: 0.98, notice: 0.02, itemRange: 40, itemProb: 0.98, wander: 0.02, sloppy: 0.02, curseOk: false, trap: true }
+    myth:    { name: '神話', interval: 0.2, bombProb: 0.98, hunt: 0.98, chase: 40, chain: true, react: 0.98, notice: 0.02, itemRange: 40, itemProb: 0.98, wander: 0.02, sloppy: 0.02, curseOk: false, trap: true, precise: true }
   };
 
   /* ---------- 等級權重表：把每個參數換算成「強度值」（0～100），用強度值來定級距與調數值 ----------
@@ -104,7 +104,7 @@
   }
 
   /* ---------- 危險地圖 ---------- */
-  function dangerMap(s, chain, margin) {
+  function dangerMap(s, chain, margin, precise) {
     const n = s.w * s.h;
     const danger = new Float32Array(n).fill(Infinity);
     const burn = new Float32Array(n);
@@ -124,7 +124,7 @@
       if (e.t < danger[i]) danger[i] = e.t;
     }
     for (const f of s.flames) if (!f.cool) burn[f.cy * s.w + f.cx] = Math.max(burn[f.cy * s.w + f.cx], f.t);
-    return { danger, burn, margin: margin == null ? 0.1 : margin };
+    return { danger, burn, margin: margin == null ? 0.1 : margin, precise: !!precise };
   }
 
   /** 走第 k 步進入的格子，玩家的中心點會停留在 [Tin, Tout] 這段時間；跟爆炸或餘燼重疊就算不安全 */
@@ -134,6 +134,19 @@
     const d = dm.danger[i];
     if (d < Infinity && tin < d + R.FLAME_T + 0.05 && tout > d - m) return true;
     return dm.burn[i] > 0 && tin < dm.burn[i] + 0.05;
+  }
+
+  /** 精準走位：貼著火線旁邊的格子，身體（腳／頭）仍會壓進火線，要在爆炸前走到這一格的正中間才安全 */
+  function nearBlast(s, dm, j, tCentre) {
+    const x = j % s.w, y = (j / s.w) | 0;
+    for (const d of FOUR) {
+      const nx = x + d[0], ny = y + d[1];
+      if (!R.inside(s, nx, ny)) continue;
+      const k = ny * s.w + nx;
+      const t = dm.burn[k] > 0 ? 0 : dm.danger[k];
+      if (t < Infinity && tCentre + dm.margin > t) return true;
+    }
+    return false;
   }
 
   /** 時間感知的廣度優先：只走「抵達時還沒爆」的路 */
@@ -159,6 +172,7 @@
         const slowOf = c => (R.fxAt(s, c % s.w, (c / s.w) | 0) === R.FX_SLOW ? 1 / R.SLOW_MULT : 1);
         const arrive = tt[i] + (slowOf(i) + slowOf(j)) / 2;
         if (unsafeAt(dm, j, arrive, tile)) continue;
+        if (dm.precise && !strict && nearBlast(s, dm, j, arrive * tile)) continue;
         tt[j] = arrive; dist[j] = dist[i] + 1; prev[j] = i; q.push(j);
       }
     }
@@ -211,7 +225,7 @@
     const skip = brain.rnd() < cfg.sloppy;
     if (skip) return true;
     return withBomb(s, virt, () => {
-      const dm2 = dangerMap(s, cfg.chain, cfg.margin);
+      const dm2 = dangerMap(s, cfg.chain, cfg.margin);      /* 放炸彈前只確認有一般的逃生路（太嚴格會變得不敢放） */
       return !!escapePath(s, me, dm2, p);
     });
   }
@@ -232,7 +246,7 @@
     const cfg = brain.cfg;
     const c = R.cellOf(p);
     const me = c.y * s.w + c.x;
-    const dm = dangerMap(s, cfg.chain, cfg.margin);
+    const dm = dangerMap(s, cfg.chain, cfg.margin, cfg.precise);
     /* 被火燒是看身體壓到的格子（半身機制），走在格子邊緣時要提早躲 */
     const inDanger = dm.danger[me] < Infinity || dm.burn[me] > 0 || R.hurtCells(p).some(k => R.inside(s, k.x, k.y) && (dm.danger[k.y * s.w + k.x] < Infinity || dm.burn[k.y * s.w + k.x] > 0));
 
@@ -241,8 +255,11 @@
 
     if (inDanger) {
       if (s.time >= brain.noticeAt && brain.rnd() < cfg.react) {
-        const path = escapePath(s, me, dm, p);
+        let path = escapePath(s, me, dm, p);
+        if (!path && dm.precise) { dm.precise = false; path = escapePath(s, me, dm, p); dm.precise = true; }      /* 精準的逃生路找不到，就退而求其次用一般的 */
         if (path) { brain.path = path; return; }
+        /* 精準走位（神話）：自己這一格沒有火，只是身體（腳）壓到旁邊有火的格子 → 走回格子正中間就安全，不用另外找逃生路 */
+        if (cfg.precise && dm.danger[me] === Infinity && dm.burn[me] === 0) { brain.path = [me]; return; }
         /* 逃不掉：往最晚爆的鄰格擠 */
         let best = null, bestT = dm.danger[me];
         for (const d of FOUR) {
