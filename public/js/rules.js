@@ -321,41 +321,52 @@
     };
     for (const kind of on) {
       if (kind === 'belt') {
-        /* 輸送帶是一圈頭尾相連的環：先排一圈 2～3 格見方的長方形外框，再隨機往外推出一個凸起讓形狀不規則；
-           每格的方向就是路徑上的「下一格」，所以踩上去會一路繞圈。整圈只放在左上四分之一、不碰中線（中線上的格子鏡像後方向會打架），再鏡像到四個角落 */
-        for (let attempt = 0; attempt < 6; attempt++) {
-          const bw = 3, bh = 2 + Math.floor(rnd() * 2);
+        /* 輸送帶是一圈頭尾相連的環，每個角落放 1 圈（大圖有機會再多放 1 個小環），再鏡像到四個角落。形狀盡量隨機：
+           外框寬 2～4 格、高 2～3 格，再隨機往外或往內推出 0～2 個凸起（每個多 2 格），繞圈方向（順／逆時針）、橫放直放、位置都隨機；一圈最多 MAX_LOOP 格。
+           每格的方向就是路徑上的「下一格」，所以踩上去會一路繞圈。整圈只放在左上四分之一、不碰中線（中線上的格子鏡像後方向會打架），環與環之間不相鄰 */
+        const MAX_LOOP = 10;
+        const makeLoop = () => {
+          const bw = 2 + Math.floor(rnd() * 3), bh = 2 + Math.floor(rnd() * 2);
           let loop = [];
           for (let x = 0; x < bw; x++) loop.push([x, 0]);
           for (let y = 1; y < bh; y++) loop.push([bw - 1, y]);
           for (let x = bw - 2; x >= 0; x--) loop.push([x, bh - 1]);
           for (let y = bh - 2; y >= 1; y--) loop.push([0, y]);
-          /* 每一格都貼著外框 → 是純長方形圈；凸起要讓形狀真的不規則（有格子在框內）才採用 */
-          const boxed = c => { const xs = c.map(q => q[0]), ys = c.map(q => q[1]), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys); return c.every(q => q[0] === x0 || q[0] === x1 || q[1] === y0 || q[1] === y1); };
-          if (rnd() < 0.8) {
-            for (let t = 0; t < 8; t++) {
-              const cand = loop.slice(), i = Math.floor(rnd() * cand.length), a = cand[i], b = cand[(i + 1) % cand.length];
+          const bumps = [0, 0, 1, 1, 2][Math.floor(rnd() * 5)];
+          for (let n = 0; n < bumps; n++) {
+            for (let t = 0; t < 12 && loop.length + 2 <= MAX_LOOP; t++) {
+              const i = Math.floor(rnd() * loop.length), a = loop[i], b = loop[(i + 1) % loop.length];
               const dx = b[0] - a[0], dy = b[1] - a[1], sgn = rnd() < 0.5 ? 1 : -1, nx = -dy * sgn, ny = dx * sgn;
               const a2 = [a[0] + nx, a[1] + ny], b2 = [b[0] + nx, b[1] + ny];
-              if ([a2, b2].some(c => cand.some(q => q[0] === c[0] && q[1] === c[1]))) continue;
-              cand.splice(i + 1, 0, a2, b2);     /* a → a2 → b2 → b */
-              if (!boxed(cand)) { loop = cand; break; }
+              if ([a2, b2].some(c => loop.some(q => q[0] === c[0] && q[1] === c[1]))) continue;
+              loop.splice(i + 1, 0, a2, b2);       /* a → a2 → b2 → b（往外或往內推出一個凸起） */
+              break;
             }
           }
-          if (rnd() < 0.5) loop = loop.map(c => [c[1], c[0]]);      /* 轉個方向：橫的、直的都有（交換座標只是鏡射，依然是一圈） */
+          if (rnd() < 0.5) loop = loop.map(c => [c[1], c[0]]);      /* 橫的、直的都有 */
+          if (rnd() < 0.5) loop.reverse();                          /* 順時針、逆時針都有 */
           const minX = Math.min(...loop.map(c => c[0])), minY = Math.min(...loop.map(c => c[1]));
-          const rel = loop.map(c => [c[0] - minX, c[1] - minY]);
-          const start = pickCell(Math.ceil(cx) - 1, Math.ceil(cy) - 1, (x, y) => rel.every(([rx, ry]) => x + rx < cx && y + ry < cy && free(x + rx, y + ry)));
-          if (!start) continue;
-          rel.forEach(([rx, ry], k) => {
-            const nxt = rel[(k + 1) % rel.length], vec = [nxt[0] - rx, nxt[1] - ry];
-            for (const [gx, gy, fxl, fyl] of group(start[0] + rx, start[1] + ry)) {
-              const dx = fxl ? -vec[0] : vec[0], dy = fyl ? -vec[1] : vec[1];
-              fx[at(gx, gy)] = FX_BELT + (dy < 0 ? 0 : dy > 0 ? 1 : dx < 0 ? 2 : 3);
-            }
-          });
-          break;
-        }
+          return loop.map(c => [c[0] - minX, c[1] - minY]);
+        };
+        const beltNear = (x, y) => { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const nx = x + dx, ny = y + dy; if (nx >= 0 && ny >= 0 && nx < w && ny < h && isBelt(fx[at(nx, ny)])) return true; } return false; };
+        const placeLoop = () => {
+          for (let attempt = 0; attempt < 10; attempt++) {
+            const rel = makeLoop();
+            const start = pickCell(Math.ceil(cx) - 1, Math.ceil(cy) - 1, (x, y) => rel.every(([rx, ry]) => x + rx < cx && y + ry < cy && free(x + rx, y + ry) && !beltNear(x + rx, y + ry)));
+            if (!start) continue;
+            rel.forEach(([rx, ry], k) => {
+              const nxt = rel[(k + 1) % rel.length], vec = [nxt[0] - rx, nxt[1] - ry];
+              for (const [gx, gy, fxl, fyl] of group(start[0] + rx, start[1] + ry)) {
+                const dx = fxl ? -vec[0] : vec[0], dy = fyl ? -vec[1] : vec[1];
+                fx[at(gx, gy)] = FX_BELT + (dy < 0 ? 0 : dy > 0 ? 1 : dx < 0 ? 2 : 3);
+              }
+            });
+            return rel.length;
+          }
+          return 0;
+        };
+        const first = placeLoop();
+        if (first && first <= 6 && large && rnd() < 0.3) placeLoop();       /* 第一圈小的、而且是大圖，才有機會再多一個環 */
       } else {
         /* 尖刺、草叢、緩速格：一格一格散開，彼此不能相連（輸送帶是唯一例外）；數量規則一樣：小圖 2～6 格、大圖 4～8 格。
            機關一多會干擾操作；草叢還會讓人和炸彈完全看不到，更不能多 */
