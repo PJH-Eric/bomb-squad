@@ -451,9 +451,8 @@
   /**
    * 這個人被哪一格火焰燒到（沒有就回 null）：
    *  1. 單一火線格：身體壓在這一格的比例（左右、上下都要）≥ HALF_BODY 就被炸。站在同一條線上的兩格各一半，每格都不到門檻，不會被這顆炸彈波及（半身機制）。
-   *  2. 並排的火線：兩格相鄰，而且各自屬於「垂直於並排方向」的火線（左右並排的兩條直火、上下並排的兩條橫火），
-   *     身體各壓一部分、加起來（幾乎整個身體都在火裡）達到門檻就被炸 —— 否則站在兩條並排火線的中間，每格都只有一半，會明明被燒到卻不死。
-   *     同一條線上的兩格（線的方向就是相鄰的方向）不算並排，維持半身機制。
+   *  2. 並排的火線：同方向（都是橫火、或都是直火）的火線跨了兩排／兩欄以上，身體壓到的面積加起來達到門檻就被炸 —— 否則站在並排火線的中間，
+   *     每格都只有一半（甚至 2×2 每格 25%），會明明整個身體都在火裡卻不死。只有一排（同一條線上各壓一半）不算並排，維持半身機制。
    */
   function flameHit(s, p) {
     const bw = 2 * HALF, bh = BODY_UP + BODY_DOWN;
@@ -466,11 +465,17 @@
     }
     const th = HALF_BODY - 1e-9;
     for (const a of cells) if (a.fx >= th && a.fy >= th) return a.f;
-    for (const a of cells) for (const b of cells) {
-      if (a === b) continue;
-      if (a.cy === b.cy && b.cx === a.cx + 1 && !a.f.h && !b.f.h && a.fx + b.fx >= th && a.fy >= th) return a.f;     /* 左右並排的兩條直火 */
-      if (a.cx === b.cx && b.cy === a.cy + 1 && !a.f.v && !b.f.v && a.fy + b.fy >= th && a.fx >= th) return a.f;     /* 上下並排的兩條橫火 */
+    /* 並排的火線：同一個方向（都是橫火、或都是直火）的火線跨了兩排／兩欄以上，身體壓到的面積加起來（幾乎整個身體都在火裡）達到門檻就被炸。
+       只有一排（同一條線上各壓一半）不算並排，維持半身機制 */
+    let ah = 0, av = 0, hf = null, vf = null;
+    const rowsH = new Set(), colsV = new Set();
+    for (const a of cells) {
+      const area = a.fx * a.fy;
+      if (a.f.h && !a.f.v) { ah += area; rowsH.add(a.cy); hf = hf || a.f; }
+      else if (a.f.v && !a.f.h) { av += area; colsV.add(a.cx); vf = vf || a.f; }
     }
+    if (rowsH.size >= 2 && ah >= th) return hf;
+    if (colsV.size >= 2 && av >= th) return vf;
     return null;
   }
   /* 超人標誌期間：火力、炸彈數、加速都拉到「這隻角色」的上限（詛咒照樣有效，所以遲緩、短火還是會壓過它） */

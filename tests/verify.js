@@ -294,6 +294,45 @@ test('並排的火線：站在兩條並排火線的中間（各壓一半）會�
   assert(run1([[3, 3]], 3.5, 3.5 + R.HURT_LIFT), '站在炸彈格正中間：被炸');
 });
 
+test('並排火線掃描：兩條並排的橫火，身體上下移動時，被炸與否正好等於「壓到兩排的面積比例 ≥ 60%」', () => {
+  /* 炸彈 (3,3)、(3,4)，射程 4：第 3、4 列各有一條橫火；玩家在 x=6.5（離炸彈遠，只有橫火），身體垂直範圍 [y−0.76, y+0.19]（高 0.95） */
+  const hit = (x, y) => {
+    const s = mk(3); arena(s);
+    put(s.players[0], 1, 1); put(s.players[2], 15, 11);
+    s.players[1].x = x; s.players[1].y = y;
+    s.bombs.push({ id: 1, owner: 0, cx: 3, cy: 3, t: 0, range: 4, pass: [], sl: null }, { id: 2, owner: 0, cx: 3, cy: 4, t: 0, range: 4, pass: [], sl: null });
+    R.step(s, {}, R.DT);
+    return !s.players[1].alive;
+  };
+  let hits = 0, safe = 0;
+  for (let y = 2.6; y <= 6.2; y += 0.05) {
+    const lo = y - 0.76, hi = y + 0.19, cover = Math.max(0, Math.min(hi, 5) - Math.max(lo, 3)) / 0.95;     /* 身體在第 3、4 列（y∈[3,5)）裡的比例 */
+    if (Math.abs(cover - 0.6) < 0.015) continue;                                                           /* 剛好在門檻上的不測，免得浮點誤差 */
+    const want = cover >= 0.6;
+    assert.strictEqual(hit(6.5, y), want, 'y=' + y.toFixed(2) + ' 壓到兩排的比例 ' + (cover * 100).toFixed(0) + '%');
+    if (want) hits++; else safe++;
+  }
+  assert(hits > 5 && safe > 5, '掃描要同時有被炸與安全的點：' + hits + '／' + safe);
+});
+test('並排火線（2×2）：身體橫跨兩排、兩欄，每格各壓約 25% 也會被炸；只在一排裡各壓一半仍安全', () => {
+  const hitBombs = (bombs, x, y) => {
+    const s = mk(3); arena(s);
+    put(s.players[0], 1, 1); put(s.players[2], 15, 11);
+    s.players[1].x = x; s.players[1].y = y;
+    for (const [cx, cy] of bombs) s.bombs.push({ id: s.nextId++, owner: 0, cx, cy, t: 0, range: 5, pass: [], sl: null });
+    R.step(s, {}, R.DT);
+    return !s.players[1].alive;
+  };
+  /* 兩排橫火（第 3、4 列），玩家在 x=6.0（第 5、6 欄的交界，兩欄各一半），身體中心在兩排交界 y = 4.0 + 0.285 */
+  assert(hitBombs([[3, 3], [3, 4]], 6.0, 4.0 + R.HURT_LIFT), '兩排橫火 × 兩欄各一半：整個身體都在火裡，要被炸');
+  /* 兩欄直火（第 3、4 欄），玩家在 y=6.5 的下一格交界：身體中心 y = 7.0 */
+  assert(hitBombs([[3, 3], [4, 3]], 4.0, 7.0 + R.HURT_LIFT), '兩欄直火 × 兩列各一半：要被炸');
+  /* 只有一排橫火，同一條線上兩格各一半：安全 */
+  assert(!hitBombs([[3, 3]], 6.0, 3.5 + R.HURT_LIFT), '一排橫火、同一條線上兩格各一半：安全（半身機制）');
+  /* 一排橫火 + 另一排沒有火：身體一半在火排、一半在沒火的排：安全 */
+  assert(!hitBombs([[3, 3]], 6.5, 4.0 + R.HURT_LIFT), '只有一排橫火、另一半身體在沒有火的那排：安全');
+});
+
 test('磚塊被炸掉後，那一格的火花不傷人（走進去不會被燒到），火線上的空格仍會', () => {
   const s = mk(3); arena(s);
   s.grid[3 * s.w + 5] = 2;                                       /* 炸彈 (3,3) 射程 3：4 空格、5 軟磚 */
