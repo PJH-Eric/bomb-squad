@@ -555,14 +555,14 @@
       /* 倒數期間：在自己頭上標一個往下的箭頭（出生點每局隨機，開局先認出自己） */
       if (view.phase === 'countdown' && o.selfSlot != null && p.slot === o.selfSlot && p.alive) {
         const bob = o.reduceMotion ? 0 : Math.abs(Math.sin(now * 6)) * T * 0.1;
-        const aw = T * 0.6, ah = T * 0.5, sh = T * 0.26;
+        const aw = T * 0.95, ah = T * 0.78, sh = T * 0.4;      /* 倒數時指著自己的箭頭（原本 0.6／0.5／0.26 倍格子，放大約 1.55 倍） */
         const ax = cx, tip = Math.max(cy - T * 0.58 - bob, ah + sh + T * 0.04);      /* 人物往上提之後，上排出生點的箭頭不要被畫面上緣切掉 */
         this._arrow = { ax, tip, aw, ah, sh };
       }
       /* 暱稱（倒數時自己頭上改放箭頭，避免上排出生點被畫面邊緣切掉） */
       if (o.names !== false && !(view.phase === 'countdown' && o.selfSlot != null && p.slot === o.selfSlot)) {
         const label = p.kind === 'ai' && p.level && root.AI ? p.name + '·' + root.AI.LEVELS[p.level].name : p.name;
-        const fs = Math.max(10, Math.round(T * 0.26));
+        const fs = Math.max(12, Math.round(T * 0.33));      /* 角色頭上的名字（原本 0.26 倍格子，稍微加大） */
         ctx.font = '800 ' + fs + 'px "Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif';
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         const tw = ctx.measureText(label).width;
