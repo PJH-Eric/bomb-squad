@@ -910,7 +910,6 @@
     3: { grass: { k: 'blade', c: ['#4fb64a', '#2b7a30'] }, slow: { k: 'mud', c: ['#8a6240', '#5a3c24', '#c9a07a'] }, spike: { k: 'thorn', c: ['#7a5a38', '#4a3420', '#d6f0a0'] } },
     4: { grass: { k: 'blade', c: ['#d9b25a', '#a8812c'] }, slow: { k: 'quicksand', c: ['#e8c070', '#b8863a', '#fff0c0'] }, spike: { k: 'cactus', c: ['#58b85a', '#2f7a38', '#fff3c8'] } },
     5: { slow: { k: 'snow', c: ['#ffffff', '#a9cfe4', '#e8f8ff'] }, spike: { k: 'cone', c: ['#d6f4ff', '#6cb4d8', '#ffffff'] } },
-    6: { belt: { k: 'roller', c: ['#4a5568', '#ffd24d', '#ffffff'] }, spike: { k: 'cone', c: ['#d0d5e0', '#59627a', '#ff6a5a'] } },
     7: { belt: { k: 'roller', c: ['#2b3d73', '#ffd84d', '#7ff0b0'] }, spike: { k: 'pins', c: ['#e8e8f0', '#16553a', '#ffd84d'] } },
     8: { belt: { k: 'rails', c: ['#8a8a92', '#8a5a32', '#ffe9a8'] }, slow: { k: 'rubble', c: ['#a79b8f', '#6c6158', '#d8cec4'] }, spike: { k: 'cone', c: ['#a39a8e', '#5a524a', '#d8cfc2'] } },
     9: { grass: { k: 'blade', c: ['#5a8f6a', '#2f5a44'] }, slow: { k: 'web', c: ['#f3f0ff', '#8a86a8', '#ffffff'] }, spike: { k: 'cone', c: ['#f2ead2', '#5a4e66', '#ffffff'] } },

@@ -235,7 +235,7 @@
    * 地板上的裝置，整局固定不變，存在 state.fx（跟 grid 同長的陣列，不動 grid，所以磚牆規則、碰撞、AI 的判斷都不受影響）。
    * 機關可以和軟磚疊在一起（磚炸掉才露出來）；位置四向鏡像，每個出生點的處境一樣公平，也不會放在出生點旁。
    *   草叢：站在裡面，離你 GRASS_REVEAL 格以外的對手（含電腦）看不到你，只剩淡淡身形
-   *   輸送帶：踩上去被往帶子的方向推（只推人，不推炸彈）
+   *   輸送帶：踩上去被往帶子的方向推，頭尾相連的環；停在帶子上的炸彈也被載著走
    *   緩速格：走過去只剩 SLOW_MULT 倍速度
    *   尖刺：不傷人；炸彈放在上面、或被踢到上面，會立刻爆炸 */
   const FX_GRASS = 1, FX_SLOW = 2, FX_SPIKE = 3, FX_BELT = 4;     /* 輸送帶 4 上、5 下、6 左、7 右 */
@@ -243,29 +243,29 @@
   const SLOW_MULT = 0.6;       /* 緩速格上的速度倍率 */
   const BELT_SPEED = 1.6;      /* 輸送帶推人的速度（格／秒） */
   const GRASS_REVEAL = 1.6;    /* 草叢裡的人，距離觀看者在這個格數以內就看得到 */
-  const FX_KEEP = 0.85;        /* 主題的每一種機關，每張圖各有 85% 機率出現（至少會有一種） */
-  /* 各主題適合的機關（外觀風格在 art.js 的 FX_STYLE）：grass 草叢、belt 輸送帶、slow 緩速格、spike 尖刺 */
+  const FX_KEEP = 0.7;         /* 主題有機關的話，每張圖有 70% 機率出現（所以也常常一張圖都沒有）；每個主題最多 1 種，機關太多會干擾玩家自己的操作 */
+  /* 各主題適合的機關（外觀風格在 art.js 的 FX_STYLE）；不適合的主題留空，不是每個主題都有機關：grass 草叢、belt 輸送帶、slow 緩速格、spike 尖刺 */
   const THEME_FX = [
-    ['slow', 'belt'],                    /* 0 糖果樂園：糖漿、糖果輸送帶 */
-    ['grass', 'belt', 'slow', 'spike'],  /* 1 海底世界：海草、洋流、淤泥、海膽 */
-    ['belt', 'spike'],                   /* 2 太空站：磁浮輸送帶、電極刺 */
-    ['grass', 'slow', 'spike'],          /* 3 森林：草叢、泥巴、荊棘 */
-    ['grass', 'slow', 'spike'],          /* 4 沙漠：乾草叢、流沙、仙人掌 */
-    ['slow', 'spike'],                   /* 5 雪地：積雪、冰錐 */
-    ['belt', 'spike'],                   /* 6 競技場：跑道輸送帶、鋼刺 */
-    ['belt', 'spike'],                   /* 7 日月光廠房：產線輸送帶、探針 */
-    ['belt', 'slow', 'spike'],           /* 8 礦山：礦車軌道、碎石堆、石筍 */
-    ['grass', 'slow', 'spike'],          /* 9 地下墓穴：藤蔓、蜘蛛網、骨刺 */
-    ['belt', 'slow', 'spike'],           /* 10 火山：熔岩流、火山灰、黑曜石刺 */
-    ['grass', 'belt', 'slow', 'spike'],  /* 11 聖誕小鎮：聖誕樹叢、彩帶輸送帶、厚雪、冰錐 */
-    ['grass', 'belt']                    /* 12 遊樂園：花叢、旋轉輸送台 */
+    ['slow'],    /* 0 糖果樂園：糖漿 */
+    ['belt'],    /* 1 海底世界：洋流 */
+    ['belt'],    /* 2 太空站：磁浮輸送帶 */
+    ['grass'],   /* 3 森林：草叢 */
+    ['slow'],    /* 4 沙漠：流沙 */
+    ['slow'],    /* 5 雪地：積雪 */
+    [],          /* 6 競技場：維持單純的比賽場地，沒有機關 */
+    ['belt'],    /* 7 日月光廠房：產線輸送帶 */
+    ['spike'],   /* 8 礦山：石筍 */
+    ['spike'],   /* 9 地下墓穴：骨刺 */
+    ['spike'],   /* 10 火山：黑曜石刺 */
+    ['grass'],   /* 11 聖誕小鎮：聖誕樹叢 */
+    ['belt']     /* 12 遊樂園：旋轉輸送台 */
   ];
   const fxAt = (s, x, y) => (s.fx && x >= 0 && y >= 0 && x < s.w && y < s.h ? s.fx[y * s.w + x] : 0);
   const isBelt = v => v >= FX_BELT && v < FX_BELT + 4;
 
   /**
    * 依 seed 與主題產生機關；用自己的亂數，不影響地圖與掉寶的亂數序列。唯一會動到 grid 的是：尖刺、草叢所在格的軟磚會被拿掉（只會多開路，連通不受影響）。
-   * 尖刺總數：小圖 2～6 個、大圖 4～8 個（偶數，四向鏡像）；草叢、緩速格是一小塊一小塊；輸送帶是 3～4 格的直線。
+   * 尖刺總數：小圖 2～6 個、大圖 4～8 個（偶數，四向鏡像）；草叢、緩速格是一小塊一小塊；輸送帶是頭尾相連的環形（6～10 格，多半不是單純的長方形），每個角落一圈。
    */
   function generateFx(seed, w, h, grid, themeId) {
     const fx = new Array(w * h).fill(0);
@@ -282,8 +282,7 @@
         if (d <= 2) safe[at(x, y)] = 1;
       }
     }
-    let on = feats.filter(() => rnd() < FX_KEEP);
-    if (!on.length) on = [feats[Math.floor(rnd() * feats.length)]];
+    const on = feats.filter(() => rnd() < FX_KEEP);
     /* 一個格子的四向鏡像（在中線上的格子會少幾個）；fl 記錄左右、上下各翻了沒有 */
     const group = (x, y) => {
       const out = [[x, y, 0, 0]];
@@ -302,26 +301,40 @@
     const FOUR4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
     for (const kind of on) {
       if (kind === 'belt') {
-        const lines = 1 + (large && rnd() < 0.4 ? 1 : 0);
-        for (let n = 0; n < lines; n++) {
-          const len = 3 + Math.floor(rnd() * 2), horiz = rnd() < 0.5, sign = rnd() < 0.5 ? 1 : -1;
-          const vec = horiz ? [sign, 0] : [0, sign];
-          /* 整條線只放在左上四分之一、不碰中線（中線上的格子鏡像後方向會打架） */
-          const start = pickCell(Math.ceil(cx) - 1, Math.ceil(cy) - 1, (x, y) => {
-            for (let k = 0; k < len; k++) {
-              const bx = horiz ? x + k : x, by = horiz ? y : y + k;
-              if (bx >= cx || by >= cy || !free(bx, by)) return false;
+        /* 輸送帶是一圈頭尾相連的環：先排一圈 2～3 格見方的長方形外框，再隨機往外推出一個凸起讓形狀不規則；
+           每格的方向就是路徑上的「下一格」，所以踩上去會一路繞圈。整圈只放在左上四分之一、不碰中線（中線上的格子鏡像後方向會打架），再鏡像到四個角落 */
+        for (let attempt = 0; attempt < 6; attempt++) {
+          const bw = 3, bh = 2 + Math.floor(rnd() * 2);
+          let loop = [];
+          for (let x = 0; x < bw; x++) loop.push([x, 0]);
+          for (let y = 1; y < bh; y++) loop.push([bw - 1, y]);
+          for (let x = bw - 2; x >= 0; x--) loop.push([x, bh - 1]);
+          for (let y = bh - 2; y >= 1; y--) loop.push([0, y]);
+          /* 每一格都貼著外框 → 是純長方形圈；凸起要讓形狀真的不規則（有格子在框內）才採用 */
+          const boxed = c => { const xs = c.map(q => q[0]), ys = c.map(q => q[1]), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys); return c.every(q => q[0] === x0 || q[0] === x1 || q[1] === y0 || q[1] === y1); };
+          if (rnd() < 0.8) {
+            for (let t = 0; t < 8; t++) {
+              const cand = loop.slice(), i = Math.floor(rnd() * cand.length), a = cand[i], b = cand[(i + 1) % cand.length];
+              const dx = b[0] - a[0], dy = b[1] - a[1], sgn = rnd() < 0.5 ? 1 : -1, nx = -dy * sgn, ny = dx * sgn;
+              const a2 = [a[0] + nx, a[1] + ny], b2 = [b[0] + nx, b[1] + ny];
+              if ([a2, b2].some(c => cand.some(q => q[0] === c[0] && q[1] === c[1]))) continue;
+              cand.splice(i + 1, 0, a2, b2);     /* a → a2 → b2 → b */
+              if (!boxed(cand)) { loop = cand; break; }
             }
-            return true;
-          });
+          }
+          if (rnd() < 0.5) loop = loop.map(c => [c[1], c[0]]);      /* 轉個方向：橫的、直的都有（交換座標只是鏡射，依然是一圈） */
+          const minX = Math.min(...loop.map(c => c[0])), minY = Math.min(...loop.map(c => c[1]));
+          const rel = loop.map(c => [c[0] - minX, c[1] - minY]);
+          const start = pickCell(Math.ceil(cx) - 1, Math.ceil(cy) - 1, (x, y) => rel.every(([rx, ry]) => x + rx < cx && y + ry < cy && free(x + rx, y + ry)));
           if (!start) continue;
-          for (let k = 0; k < len; k++) {
-            const bx = horiz ? start[0] + k : start[0], by = horiz ? start[1] : start[1] + k;
-            for (const [gx, gy, fxl, fyl] of group(bx, by)) {
+          rel.forEach(([rx, ry], k) => {
+            const nxt = rel[(k + 1) % rel.length], vec = [nxt[0] - rx, nxt[1] - ry];
+            for (const [gx, gy, fxl, fyl] of group(start[0] + rx, start[1] + ry)) {
               const dx = fxl ? -vec[0] : vec[0], dy = fyl ? -vec[1] : vec[1];
               fx[at(gx, gy)] = FX_BELT + (dy < 0 ? 0 : dy > 0 ? 1 : dx < 0 ? 2 : 3);
             }
-          }
+          });
+          break;
         }
       } else if (kind === 'spike') {
         const target = large ? 2 * (2 + Math.floor(rnd() * 3)) : 2 * (1 + Math.floor(rnd() * 3));
@@ -336,7 +349,7 @@
         }
       } else {
         const code = kind === 'grass' ? FX_GRASS : FX_SLOW;
-        const patches = 1 + (large && rnd() < 0.4 ? 1 : 0);
+        const patches = 1;
         for (let n = 0; n < patches; n++) {
           const start = pickCell(Math.floor(cx), Math.floor(cy), (x, y) => free(x, y));
           if (!start) continue;
@@ -538,6 +551,26 @@
       }
     }
     p.moving = moved;
+  }
+
+  /**
+   * 被輸送帶載著走的炸彈。f 是這一格走了幾成（0～1）；過半就算進到下一格（爆炸位置離畫面上的炸彈最多半格），
+   * sl.prog 是給畫面的：畫面把炸彈畫在「所在格往後退 (1 - prog) 格」的地方，所以過半前（還算舊格）是 1 + f、過半後是 f。
+   * 走到下一格的中心後，如果還在帶子上就照那一格的方向繼續（轉彎），不在帶子上或前面被擋住（牆、磚、炸彈、人）就停。
+   */
+  function stepBeltBomb(s, b, dt) {
+    const st = b.sl;
+    st.f += BELT_SPEED * dt;
+    if (!st.sw && st.f >= 0.5) {
+      if (slideFree(s, b.cx + st.dx, b.cy + st.dy)) { b.cx += st.dx; b.cy += st.dy; st.sw = true; }
+      else st.f = 0.499;                       /* 前面突然有人或東西：先停在半路，等路通了再走 */
+    }
+    if (st.sw && st.f >= 1) {
+      const rem = st.f - 1, f = fxAt(s, b.cx, b.cy);
+      if (isBelt(f) && slideFree(s, b.cx + BELT_VEC[f][0], b.cy + BELT_VEC[f][1])) { st.dx = BELT_VEC[f][0]; st.dy = BELT_VEC[f][1]; st.f = rem; st.sw = false; }
+      else { b.sl = null; return; }
+    }
+    st.prog = st.sw ? st.f : 1 + st.f;
   }
 
   /* ---------- 放炸彈 ---------- */
@@ -838,7 +871,13 @@
     for (const b of s.bombs) {
       b.t -= dt;
       if (b.pass.length) b.pass = b.pass.filter(sl => { const q = getPlayer(s, sl); return q && q.alive && overlapsCell(q, b.cx, b.cy); });
-      if (b.sl) {
+      if (!b.sl && isBelt(fxAt(s, b.cx, b.cy))) {
+        /* 輸送帶：停在帶子上的炸彈被載著走（速度同人），沿路跟著帶子轉彎 */
+        const [dx, dy] = BELT_VEC[fxAt(s, b.cx, b.cy)];
+        if (slideFree(s, b.cx + dx, b.cy + dy)) b.sl = { dx, dy, prog: 1, f: 0, sw: false, belt: true };
+      }
+      if (b.sl && b.sl.belt) stepBeltBomb(s, b, dt);
+      else if (b.sl) {
         b.sl.prog += SLIDE_SPEED * dt;
         while (b.sl && b.sl.prog >= 1) {
           b.sl.prog -= 1;

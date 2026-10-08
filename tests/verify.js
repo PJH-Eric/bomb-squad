@@ -618,14 +618,70 @@ test('機關：同 seed 一樣、四向鏡像（輸送帶方向跟著翻）、�
         for (const [sx, sy] of R.spawnPoints(w, h).slice(0, R.spawnCount(w, h))) assert(Math.abs(x - sx) + Math.abs(y - sy) > 2, '尖刺離出生點太近');
       }
     }
-    if (allowed.length) assert(any, `主題 ${themeId} 至少要有一種機關`);
+    assert(allowed.length <= 1, '每個主題最多 1 種機關');
     if (spikes) { const lo = h > 13 ? 4 : 2, hi = h > 13 ? 8 : 6; assert(spikes >= lo && spikes <= hi && spikes % 2 === 0, `尖刺數量 ${spikes}（${w}x${h}）`); total++; }
   }
   assert(total > 50, '尖刺出現的次數太少：' + total);
 });
+test('輸送帶：每一圈都頭尾相連（順著方向走一定繞回原點、每格只有一個上游）、形狀不全是長方形', () => {
+  let loops = 0, irregular = 0;
+  for (const themeId of [1, 2, 7, 12]) for (const [w, h] of [[17, 13], [19, 15]]) for (let seed = 1; seed <= 40; seed++) {
+    const fx = R.generateFx(seed, w, h, R.generateMap(seed, w, h, 'classic'), themeId);
+    const indeg = new Map(), seen = new Set();
+    for (let i = 0; i < fx.length; i++) {
+      if (!R.isBelt(fx[i])) continue;
+      const [dx, dy] = R.BELT_VEC[fx[i]], x = i % w + dx, y = ((i / w) | 0) + dy, j = y * w + x;
+      assert(R.isBelt(fx[j]), '輸送帶的下一格不是輸送帶（斷頭）');
+      indeg.set(j, (indeg.get(j) || 0) + 1);
+    }
+    for (const [j, n] of indeg) assert.strictEqual(n, 1, '一格有多條輸送帶接進來');
+    for (let i = 0; i < fx.length; i++) {
+      if (!R.isBelt(fx[i]) || seen.has(i)) continue;
+      let k = i, steps = 0, minX = 99, maxX = -1, minY = 99, maxY = -1; const cells = [];
+      do {
+        seen.add(k); steps++; cells.push(k);
+        const x = k % w, y = (k / w) | 0; minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+        const [dx, dy] = R.BELT_VEC[fx[k]]; k = (y + dy) * w + x + dx;
+        assert(steps <= 12, '環太長或沒接回來');
+      } while (k !== i);
+      assert(steps >= 4, '環太小');
+      loops++;
+      if (cells.some(c => { const x = c % w, y = (c / w) | 0; return x !== minX && x !== maxX && y !== minY && y !== maxY; })) irregular++;
+    }
+  }
+  assert(loops > 100, '環太少：' + loops);
+  assert(irregular > loops * 0.4, '不規則的環太少：' + irregular + '/' + loops);
+});
+test('輸送帶：炸彈放在上面也被載走（速度同人、沿路轉彎、繞圈回到原點、離開帶子就停、被擋住就等）', () => {
+  const s = fxOn(2); arena(s); s.fx.fill(0);
+  put(s.players[0], 1, 1); put(s.players[1], 15, 11);
+  const ring = [[3, 3, 7], [4, 3, 5], [4, 4, 6], [3, 4, 4]];                  /* 2×2 的環：右、下、左、上 */
+  for (const [x, y, c] of ring) s.fx[y * s.w + x] = R.FX_BELT + (c - 4);
+  s.fx[3 * s.w + 7] = R.FX_BELT + 3; s.fx[3 * s.w + 8] = R.FX_BELT + 3;       /* 另一條往右的直線：(7,3)(8,3)，之後是空地 */
+  const mkBomb = (x, y) => { const b = { id: s.nextId++, owner: 0, cx: x, cy: y, t: 30, range: 2, pass: [], sl: null }; s.bombs.push(b); return b; };
+  const b = mkBomb(3, 3), c = mkBomb(7, 3);
+  let maxProg = 0, minProg = 9;
+  for (let i = 0; i < Math.round(0.6 / R.DT); i++) { R.step(s, {}, R.DT); if (b.sl) { maxProg = Math.max(maxProg, b.sl.prog); minProg = Math.min(minProg, b.sl.prog); } }
+  assert.deepStrictEqual([b.cx, b.cy], [4, 3], '0.6 秒（約 1 格）後應該在第二格');
+  for (let i = 0; i < Math.round(2.0 / R.DT); i++) { R.step(s, {}, R.DT); if (b.sl) { maxProg = Math.max(maxProg, b.sl.prog); minProg = Math.min(minProg, b.sl.prog); } }
+  assert.deepStrictEqual([b.cx, b.cy], [3, 3], '繞一圈（4 格 ÷ 1.6）後回到原點：' + b.cx + ',' + b.cy);
+  assert(maxProg <= 1.5 + 1e-9 && minProg >= 0.5 - 1e-9, '畫面用的位移要在 0.5～1.5 之間：' + minProg + '～' + maxProg);
+  assert.deepStrictEqual([c.cx, c.cy], [9, 3], '離開輸送帶就停在帶子外');
+  assert(!c.sl && b.sl, '停下來的沒有滑行狀態，繞圈的還在走');
+  /* 被擋住：前面有炸彈就停在原地 */
+  const t = fxOn(2); arena(t); t.fx.fill(0); put(t.players[0], 1, 1); put(t.players[1], 15, 11);
+  t.fx[5 * t.w + 5] = R.FX_BELT + 3; t.fx[5 * t.w + 6] = R.FX_BELT + 3;
+  t.bombs.push({ id: 1, owner: 0, cx: 5, cy: 5, t: 30, range: 2, pass: [], sl: null }, { id: 2, owner: 0, cx: 6, cy: 5, t: 30, range: 2, pass: [], sl: null });
+  t.bombs.push({ id: 3, owner: 0, cx: 7, cy: 5, t: 30, range: 2, pass: [], sl: null });
+  run(t, {}, 1);
+  assert.deepStrictEqual(t.bombs.map(x => [x.cx, x.cy]), [[5, 5], [6, 5], [7, 5]], '前面被擋住就不動');
+  /* 經過快照再還原，畫面位移不變 */
+  const snap = R.snapshot(s), v = R.applySnapshot(R.viewFromStart(R.startInfo(s)), JSON.parse(JSON.stringify(snap)));
+  assert(v.bombs.every((vb, i) => !!vb.sl === !!s.bombs[i].sl));
+});
 test('機關：各主題的機關種類符合風格（草叢、輸送帶、緩速、尖刺都有主題用得到），沒有機關的選項不會產生', () => {
   const has = k => R.THEME_FX.filter(a => a.indexOf(k) >= 0).length;
-  for (const k of ['grass', 'belt', 'slow', 'spike']) assert(has(k) >= 4, k + ' 太少主題用');
+  for (const k of ['grass', 'belt', 'slow', 'spike']) assert(has(k) >= 2, k + ' 太少主題用');
   for (const t of [0, 4, 5]) assert(R.THEME_FX[t].indexOf('slow') >= 0, '糖果、沙漠、雪地要有緩速格：' + t);
   assert.strictEqual(R.THEME_FX.length, R.THEME_COUNT);
   assert(R.generateFx(3, 17, 13, R.generateMap(3, 17, 13, 'classic'), 99).every(v => v === 0));
