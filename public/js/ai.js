@@ -16,12 +16,12 @@
     /* interval 決策間隔（秒，越大反應越慢）、hunt 追人機率、chase 追人最遠格數、react 發現危險時每次決策會逃的機率、notice 發現危險後要多久才反應得過來（秒）、
        wander 發呆亂走機率、sloppy 放了炸彈卻沒先確認退路的機率。
        （margin 走位安全餘裕：校準顯示留越多反而越保守越弱，所以所有等級都用預設 0.1，不列入強度權重） */
-    toddler: { name: '幼幼班', interval: 0.65, bombProb: 0.28, hunt: 0, chase: 0, chain: false, react: 0.42, notice: 0.23, itemRange: 2, itemProb: 0.31, wander: 0.48, sloppy: 0.42, curseOk: true },
-    easy:    { name: '簡單', interval: 0.58, bombProb: 0.51, hunt: 0.16, chase: 3, chain: false, react: 0.57, notice: 0.21, itemRange: 3, itemProb: 0.42, wander: 0.32, sloppy: 0.26, curseOk: true },
-    normal:  { name: '普通', interval: 0.4, bombProb: 0.72, hunt: 0.3, chase: 5, chain: true, react: 0.69, notice: 0.51, itemRange: 6, itemProb: 0.75, wander: 0.17, sloppy: 0.12, curseOk: false },
-    hard:    { name: '困難', interval: 0.26, bombProb: 0.9, hunt: 0.88, chase: 8, chain: true, react: 0.69, notice: 0.35, itemRange: 12, itemProb: 0.74, wander: 0.14, sloppy: 0.14, curseOk: false, trap: true },
+    toddler: { name: '幼幼班', interval: 0.62, bombProb: 0.31, hunt: 0.04, chase: 2, chain: false, react: 0.45, notice: 0.23, itemRange: 4, itemProb: 0.34, wander: 0.46, sloppy: 0.4, curseOk: true },
+    easy:    { name: '簡單', interval: 0.55, bombProb: 0.54, hunt: 0.21, chase: 5, chain: false, react: 0.59, notice: 0.21, itemRange: 5, itemProb: 0.45, wander: 0.3, sloppy: 0.24, curseOk: true },
+    normal:  { name: '普通', interval: 0.38, bombProb: 0.74, hunt: 0.36, chase: 7, chain: true, react: 0.71, notice: 0.48, itemRange: 8, itemProb: 0.77, wander: 0.16, sloppy: 0.11, curseOk: false },
+    hard:    { name: '困難', interval: 0.23, bombProb: 0.91, hunt: 0.89, chase: 12, chain: true, react: 0.73, notice: 0.31, itemRange: 15, itemProb: 0.77, wander: 0.12, sloppy: 0.12, curseOk: false, trap: true },
     /* 神話：決策最快、逃得最準、追人與撿道具距離最遠、很少發呆與失誤（參數由強度目標 84 算出） */
-    myth:    { name: '神話', interval: 0.17, bombProb: 0.88, hunt: 0.85, chase: 34, chain: true, react: 0.85, notice: 0.15, itemRange: 34, itemProb: 0.85, wander: 0.09, sloppy: 0.08, curseOk: false, trap: true }
+    myth:    { name: '神話', interval: 0.14, bombProb: 0.91, hunt: 0.9, chase: 36, chain: true, react: 0.9, notice: 0.1, itemRange: 36, itemProb: 0.9, wander: 0.06, sloppy: 0.06, curseOk: false, trap: true }
   };
 
   /* ---------- 等級權重表：把每個參數換算成「強度值」（0～100），用強度值來定級距與調數值 ----------
@@ -44,8 +44,9 @@
     chain:     { w: 1, worst: 0, best: 1, label: '會算連鎖爆炸', flag: true }
   };
   const POWER_TOTAL = Object.keys(POWER_WEIGHTS).reduce((a, k) => a + POWER_WEIGHTS[k].w, 0);
-  /* 各等級的目標強度（30、42、55、69、84：級距 12、13、14、15，越高級略微拉開）；改這張表就能整體調整難度的級距 */
-  const LEVEL_POWER = { toddler: 30, easy: 42, normal: 55, hard: 69, myth: 84 };
+  /* 各等級的目標強度（33、45、58、73、89：級距 12、13、15、16，越高級略微拉開）；改這張表就能整體調整難度的級距。
+     半身機制改成 40%（更容易被火波及）後，整體再加了 3 點，讓電腦稍微聰明一點 */
+  const LEVEL_POWER = { toddler: 33, easy: 45, normal: 58, hard: 73, myth: 89 };
   const POWER_DEFAULT = { notice: 0 };
 
   function paramValue(cfg, k) {
@@ -122,6 +123,14 @@
       if (e.t < danger[i]) danger[i] = e.t;
     }
     for (const f of s.flames) if (!f.cool) burn[f.cy * s.w + f.cx] = Math.max(burn[f.cy * s.w + f.cx], f.t);
+    /* 半身機制：人物往上提，頭比判定點高約 0.76 格，所以站在火線「正下方一格」時頭會燒到（從那一格上緣走過去就算被炸）。
+       把火線下面那一格也當成危險區（時間一樣），電腦就不會在那裡停留或橫著走過去 */
+    for (let y = s.h - 2; y >= 1; y--) for (let x = 1; x < s.w - 1; x++) {
+      const i = y * s.w + x, up = i - s.w;
+      if (s.grid[i] === 1) continue;
+      if (danger[up] < danger[i]) danger[i] = danger[up];
+      if (burn[up] > burn[i]) burn[i] = burn[up];
+    }
     return { danger, burn, margin: margin == null ? 0.1 : margin };
   }
 
@@ -225,7 +234,8 @@
     const c = R.cellOf(p);
     const me = c.y * s.w + c.x;
     const dm = dangerMap(s, cfg.chain, cfg.margin);
-    const inDanger = dm.danger[me] < Infinity || dm.burn[me] > 0;
+    /* 被火燒是看身體壓到的格子（半身機制），走在格子邊緣時要提早躲 */
+    const inDanger = dm.danger[me] < Infinity || dm.burn[me] > 0 || R.hurtCells(p).some(k => R.inside(s, k.x, k.y) && (dm.danger[k.y * s.w + k.x] < Infinity || dm.burn[k.y * s.w + k.x] > 0));
 
     if (!inDanger) brain.noticeAt = null;
     else if (brain.noticeAt == null) brain.noticeAt = s.time + (cfg.notice || 0) * (0.5 + brain.rnd());   /* 發現腳下有危險後，要過一小段時間才反應得過來 */

@@ -12,7 +12,7 @@
     { v: 'classic', label: '經典', hint: '硬牆一組一組散落' },
     { v: 'open', label: '空曠', hint: '硬牆很少，空間大' },
     { v: 'dense', label: '密集', hint: '硬牆多，巷戰多' },
-    { v: 'fab', label: '產線', hint: '橫向機台排排站' }
+    { v: 'fab', label: '產線', hint: '橫向機台排排站，一定有輸送帶' }
   ];
   const THEMES = [{ v: -1, name: '隨機', hint: '每局換一個主題' }].concat(Art.THEMES.map(t => ({ v: t.id, name: t.name })));
   const themeName = v => (THEMES.find(t => t.v === v) || THEMES[0]).name;
@@ -30,7 +30,7 @@
     const lay = layout === 'random' ? R.RANDOM_LAYOUTS[seed % R.RANDOM_LAYOUTS.length] : layout;
     const w = size ? size.w : 15, hh = size ? size.h : 13;
     const grid = R.generateMap(seed, w, hh, lay);
-    const fx = R.generateFx(seed, w, hh, grid, tid);
+    const fx = R.generateFx(seed, w, hh, grid, tid, lay);
     const ts = tiles(tid, T);
     canvas.width = w * T; canvas.height = hh * T;
     const g = canvas.getContext('2d');
@@ -76,10 +76,10 @@
       '炸彈前面有人或障礙就停住，離開帶子就停下。四個角落各一圈，可以和軟磚疊在一起，磚炸掉才露出來。'] },
     slow: { name: '緩速格', lines: [
       '踩上去速度只剩 6 成，離開就恢復；格子右下角有蝸牛記號。',
-      '每個角落各一小塊，可以和軟磚疊在一起，磚炸掉才露出來。'] },
+      '每張圖最多 2～8 格，一格一格散開、不會相連；可以和軟磚疊在一起，磚炸掉才露出來。'] },
     spike: { name: '尖刺', lines: [
       '固定的尖刺，不會傷人；但炸彈放在上面、或被踢到（滑到）上面，會當場爆炸。',
-      '每張圖只有 2～8 個，開局就看得見，不蓋軟磚；空投與空襲也不會落在上面。'] }
+      '每張圖最多 2～8 個，一個一個散開、不會相連，開局就看得見，不蓋軟磚；空投與空襲也不會落在上面。'] }
   };
   /* 每個主題專屬的機關名稱（一個主題最多 1 種，競技場沒有） */
   const FX_NAME = { 0: '糖漿', 1: '洋流', 2: '磁浮輸送帶', 3: '草叢', 4: '流沙', 5: '積雪', 7: '產線輸送帶', 8: '石筍', 9: '骨刺', 10: '黑曜石刺', 11: '聖誕樹叢', 12: '旋轉輸送台' };

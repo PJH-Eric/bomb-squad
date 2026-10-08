@@ -224,22 +224,26 @@ test('被火焰碰到淘汰，擊殺數記給放炸彈的人，自己炸自己�
   R.step(t, {}, R.DT);
   assert(!t.players[0].alive); assert.strictEqual(t.players[0].kills, 0);
 });
-test('判定寬鬆：中心離格線很近（擦邊）不算被炸，進到格子中間才算', () => {
-  const edge = mk(3); arena(edge);
-  put(edge.players[0], 1, 1); put(edge.players[2], 9, 9);
-  edge.players[1].x = 4 + 0.05; edge.players[1].y = 3.5;     /* 站在炸彈格 3 與旁邊火焰格 4 的交界上 */
-  edge.bombs.push({ id: 1, owner: 0, cx: 3, cy: 3, t: 0, range: 2, pass: [], sl: null });
-  R.step(edge, {}, R.DT);
-  assert(edge.players[1].alive, '擦邊應該活著');
-  const mid = mk(3); arena(mid);
-  put(mid.players[0], 1, 1); put(mid.players[2], 9, 9);
-  mid.players[1].x = 4.5; mid.players[1].y = 3.5;
-  mid.bombs.push({ id: 1, owner: 0, cx: 3, cy: 3, t: 0, range: 2, pass: [], sl: null });
-  R.step(mid, {}, R.DT);
-  assert(!mid.players[1].alive, '站在火焰格正中間應該被炸');
+test('半身機制（左右）：身體有 40% 以上在火線格裡就被炸，不到就安全', () => {
+  /* 炸彈在 (3,3)、射程 2：火線是 x∈[3,6)（格 3、4、5），y 在第 3 列。身體寬 0.72，中心離火線末端 6.0 越近，在火線裡的比例越低：比例 = (6.36 − x) / 0.72 */
+  const hit = x => {
+    const s = mk(3); arena(s);
+    put(s.players[0], 1, 1); put(s.players[2], 9, 11);
+    s.players[1].x = x; s.players[1].y = 3.5 + R.HURT_LIFT;      /* 身體中心剛好在火線這一列的正中間 */
+    s.bombs.push({ id: 1, owner: 0, cx: 3, cy: 3, t: 0, range: 2, pass: [], sl: null });
+    R.step(s, {}, R.DT);
+    return !s.players[1].alive;
+  };
+  assert(R.HALF_BODY === 0.4);
+  assert(!hit(6.4), '身體只有一小角在火線裡：安全');
+  assert(!hit(6.1), '身體約 36% 在火線裡：安全');
+  assert(hit(6.05), '身體約 43% 在火線裡：被炸');
+  assert(hit(5.95), '身體約 57% 在火線裡：被炸');
+  assert(hit(5.5), '站在火線正中間：被炸');
+  assert(hit(3.5), '站在炸彈那一格：被炸');
 });
-test('半身操作：身體有一半（中心剛好在格線上）進到火線格不會被炸，要再深入才算', () => {
-  /* 炸彈在 (3,3)、射程 2：火線是第 3 列 y∈[3,4]。玩家站在 x=5.5（火線上的一格），y 是他的中心；身體是 0.72 高 */
+test('半身機制（上下）：用身體實際的範圍判定（人物往上提，頭比腳高很多），上半身燒到 40% 以上就被炸，不再「頭在火裡卻不死」', () => {
+  /* 火線是第 3 列 y∈[3,4]，玩家站在 x=5.5（火線上）。身體約從 y−0.76 到 y+0.19（高 0.95）；從下方碰到火線的比例 = (4.76 − y)/0.95，從上方 = (y + 0.19 − 3)/0.95 */
   const hit = y => {
     const s = mk(3); arena(s);
     put(s.players[0], 1, 1); put(s.players[2], 11, 11);
@@ -248,11 +252,13 @@ test('半身操作：身體有一半（中心剛好在格線上）進到火線�
     R.step(s, {}, R.DT);
     return !s.players[1].alive;
   };
-  assert(!hit(4.3), '身體只有一小角伸進火線：安全');
-  assert(!hit(4.0), '身體剛好一半伸進火線（中心在格線上）：安全，這就是半身操作');
-  assert(!hit(3.95), '中心剛過格線一點點（身體約 56% 在火線裡）：還是安全');
-  assert(hit(3.8), '中心深入火線超過 0.1（身體約 64% 以上）：被炸');
+  assert(!hit(4.45), '火線在上方、只有頭的一小角碰到（約 33%）：安全');
+  assert(!hit(4.4), '約 38%：安全');
+  assert(hit(4.35), '約 43%（站在火線下方一格的上緣，頭已燒到）：被炸 —— 以前這裡判定在下一格所以不會死');
   assert(hit(3.5), '站在火線正中間：被炸');
+  assert(hit(3.25), '腳和身體下段在火線裡（約 46%）：被炸');
+  assert(!hit(3.1), '只有腳尖（約 30%）在火線裡（從上方走近）：安全');
+  assert(Math.abs(R.HURT_LIFT - (R.BODY_UP - R.BODY_DOWN) / 2) < 1e-9);
 });
 
 test('磚塊被炸掉後，那一格的火花不傷人（走進去不會被燒到），火線上的空格仍會', () => {
@@ -556,6 +562,31 @@ test('踢炸彈：有踢炸彈能力才會滑，沒有就被擋住', () => {
   assert(mkKick(true).bombs[0].cx > 4, '炸彈沒被踢走');
   assert.strictEqual(mkKick(false).bombs[0].cx, 3, '沒能力卻推動了炸彈');
 });
+test('踢炸彈：身體有 40% 壓在炸彈線上就踢得到（偏 0.57 格以內），偏太多就踢不到；同時碰到兩顆踢最對準的那顆', () => {
+  const kickAt = (off, extra) => {
+    const s = mk(2); arena(s); const p = s.players[0]; p.kick = true; p.x = 2.5; p.y = 3.5 + off;
+    s.bombs.push({ id: 1, owner: 1, cx: 3, cy: 3, t: 9, range: 2, pass: [], sl: null });
+    if (extra) s.bombs.push(extra);
+    put(s.players[1], 1, 11);
+    run(s, { 0: { dir: 'R' } }, 0.9);
+    return s;
+  };
+  assert(kickAt(0).bombs[0].cx > 4, '正對要踢得到');
+  assert(kickAt(0.45).bombs[0].cx > 4, '半個身體（偏 0.45）要踢得到');
+  assert(kickAt(-0.5).bombs[0].cx > 4, '往另一邊偏半格也要踢得到');
+  assert.strictEqual(kickAt(0.65).bombs[0].cx, 3, '偏太多就踢不到');
+  assert(Math.abs(R.KICK_REACH - (0.5 + R.HALF - 2 * R.HALF * 0.4)) < 1e-9 && R.KICK_OVERLAP === 0.4, '40% 的身體壓在線上 ⇔ 中心離線 0.572 格');
+  assert(kickAt(0.55).bombs[0].cx > 4, '約 43% 壓在線上：要踢得到');
+  assert.strictEqual(kickAt(0.6).bombs[0].cx, 3, '不到 40% 踢不到');
+  /* 站在兩顆炸彈的交界（上下各壓一部分）：踢比較對準的那顆，另一顆不動 */
+  const s2 = kickAt(0.4, { id: 2, owner: 1, cx: 3, cy: 4, t: 9, range: 2, pass: [], sl: null });
+  assert(s2.bombs[0].cx > 4 && s2.bombs[1].cx === 3, '應該踢上面那顆（偏 0.4，離它比較近）');
+  /* 往別的方向走也一樣（向上踢） */
+  const s3 = mk(2); arena(s3); const q = s3.players[0]; q.kick = true; q.x = 5.5 + 0.45; q.y = 6.5;
+  s3.bombs.push({ id: 1, owner: 1, cx: 5, cy: 5, t: 9, range: 2, pass: [], sl: null }); put(s3.players[1], 1, 11);
+  run(s3, { 0: { dir: 'U' } }, 0.9);
+  assert(s3.bombs[0].cy < 4, '往上踢半身也要踢得到：' + s3.bombs[0].cy);
+});
 test('淘汰時噴出一半的強化道具', () => {
   const s = mk(3); arena(s);
   put(s.players[0], 1, 1); put(s.players[1], 6, 6); put(s.players[2], 11, 9);
@@ -631,9 +662,9 @@ test('機關：同 seed 一樣、四向鏡像（輸送帶方向跟著翻）、�
       const mx = fx[y * w + (w - 1 - x)], my = fx[(h - 1 - y) * w + x];
       if (R.isBelt(v)) { assert.strictEqual(mx, flipX(v), '左右鏡像方向錯'); assert.strictEqual(my, flipY(v), '上下鏡像方向錯'); }
       else { assert.strictEqual(mx, v, '左右不對稱'); assert.strictEqual(my, v, '上下不對稱'); }
-      if (v === R.FX_SPIKE || v === R.FX_GRASS) {
+      if (v === R.FX_SPIKE || v === R.FX_GRASS || v === R.FX_SLOW) {
         spikes++;
-        for (const [sx, sy] of R.spawnPoints(w, h).slice(0, R.spawnCount(w, h))) assert(Math.abs(x - sx) + Math.abs(y - sy) > 2, '尖刺、草叢離出生點太近');
+        for (const [sx, sy] of R.spawnPoints(w, h).slice(0, R.spawnCount(w, h))) assert(Math.abs(x - sx) + Math.abs(y - sy) > 2, '尖刺、草叢、緩速格離出生點太近');
       }
     }
     assert(allowed.length <= 1, '每個主題最多 1 種機關');
@@ -669,6 +700,24 @@ test('輸送帶：每一圈都頭尾相連（順著方向走一定繞回原點�
   }
   assert(loops > 100, '環太少：' + loops);
   assert(irregular > loops * 0.4, '不規則的環太少：' + irregular + '/' + loops);
+});
+test('產線一定有輸送帶：產線版型（任何主題）、日月光廠房（任何版型）每張圖都有，而且只有輸送帶；其他組合照主題規則', () => {
+  const hasBelt = fx => fx.some(v => R.isBelt(v)), only = fx => fx.every(v => v === 0 || R.isBelt(v));
+  for (const [w, h] of [[17, 13], [19, 15]]) for (let seed = 1; seed <= 30; seed++) {
+    for (let themeId = 0; themeId < R.THEME_COUNT; themeId++) {
+      const fx = R.generateFx(seed, w, h, R.generateMap(seed, w, h, 'fab'), themeId, 'fab');
+      assert(hasBelt(fx) && only(fx), `產線版型 主題 ${themeId} seed ${seed} 沒有輸送帶（或混了別的機關）`);
+    }
+    for (const layout of R.LAYOUTS) {
+      const fx = R.generateFx(seed, w, h, R.generateMap(seed, w, h, layout), R.FAB_THEME, layout);
+      assert(hasBelt(fx) && only(fx), `日月光 版型 ${layout} seed ${seed} 沒有輸送帶`);
+    }
+  }
+  /* 其他版型的其他主題，仍照主題規則（森林沒有輸送帶） */
+  assert(!hasBelt(R.generateFx(3, 17, 13, R.generateMap(3, 17, 13, 'classic'), 3, 'classic')));
+  /* createGame：隨機版型的日月光會用產線版型，所以一定有輸送帶 */
+  for (let seed = 1; seed <= 20; seed++) { const g = mk(2, { seed, themeId: R.FAB_THEME, layout: 'random', fx: true }); assert.strictEqual(g.layout, 'fab'); assert(hasBelt(g.fx), '日月光隨機版型沒有輸送帶'); }
+  for (const themeId of [0, 3, 6, 9]) { const g = mk(2, { seed: 5, themeId, layout: 'fab', fx: true }); assert(hasBelt(g.fx), '產線版型主題 ' + themeId + ' 沒有輸送帶'); }
 });
 test('輸送帶：每格找得到前一格（進來的方向），環上有轉角、直的格子進出同方向', () => {
   let corners = 0, straight = 0;
@@ -711,6 +760,28 @@ test('輸送帶：炸彈放在上面也被載走（速度同人、沿路轉彎�
   /* 經過快照再還原，畫面位移不變 */
   const snap = R.snapshot(s), v = R.applySnapshot(R.viewFromStart(R.startInfo(s)), JSON.parse(JSON.stringify(snap)));
   assert(v.bombs.every((vb, i) => !!vb.sl === !!s.bombs[i].sl));
+});
+test('尖刺與緩速格：一格一格散開、彼此不相連（含斜角）、數量 2～6／4～8（偶數）、尖刺不蓋軟磚、緩速格可蓋軟磚、地圖連通', () => {
+  for (const [themeId, code] of [[8, R.FX_SPIKE], [9, R.FX_SPIKE], [10, R.FX_SPIKE], [0, R.FX_SLOW], [4, R.FX_SLOW], [5, R.FX_SLOW]]) {
+    let seen = 0, maps = 0, bricksUnder = 0;
+    for (const [w, h] of [[17, 13], [19, 15]]) for (const layout of R.LAYOUTS) for (let seed = 1; seed <= 40; seed++) {
+      const orig = R.generateMap(seed, w, h, layout), grid = orig.slice(), fx = R.generateFx(seed, w, h, grid, themeId);
+      let n = 0; maps++;
+      for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+        if (fx[y * w + x] !== code) continue;
+        n++;
+        if (code === R.FX_SPIKE) assert.notStrictEqual(grid[y * w + x], 2, '尖刺上有軟磚'); else if (grid[y * w + x] === 2) bricksUnder++;
+        assert.notStrictEqual(grid[y * w + x], 1, '機關在硬牆上');
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && x + dx > 0 && y + dy > 0 && x + dx < w - 1 && y + dy < h - 1) assert.strictEqual(fx[(y + dy) * w + x + dx], 0, `機關相連：${themeId} seed ${seed} ${x},${y} 與 ${x + dx},${y + dy}`);
+      }
+      assert(n <= (h > 13 ? 8 : 6) && n % 2 === 0, '數量 ' + n);
+      for (let i = 0; i < grid.length; i++) if (grid[i] !== orig[i]) assert(code === R.FX_SPIKE && fx[i] === code && orig[i] === 2, '只有尖刺格的軟磚會被拿掉');
+      assert(R.connected(grid, w, h));
+      if (n) seen++;
+    }
+    assert(seen > maps * 0.7, '主題 ' + themeId + ' 機關太少出現：' + seen + '／' + maps);
+    if (code === R.FX_SLOW) assert(bricksUnder > 0, '緩速格應該有機會疊在軟磚底下');
+  }
 });
 test('草叢位置（森林、聖誕小鎮 × 兩種尺寸 × 四種版型 × 40 個 seed）：走道格、不相連（含斜角）、四向對稱、不靠邊框與出生點、不動硬牆、炸彈只沿一條直線炸', () => {
   let seen = 0, maps = 0, cells = 0;
@@ -893,7 +964,7 @@ test('等級權重表：權重總和 100，每一級的強度值貼近目標、�
   /* 實測校準：決策間隔與逃生機率最重要（scripts/ai-weights.js），這個比例不能被改回憑感覺 */
   assert(W.interval.w + W.react.w >= 55, '決策間隔＋逃生機率應佔大部分權重');
   const target = AI.LEVEL_ORDER.map(k => AI.LEVEL_POWER[k]), real = AI.LEVEL_ORDER.map(k => AI.power(AI.LEVELS[k]));
-  assert.deepStrictEqual(target, [30, 42, 55, 69, 84], '目標強度（級距）');
+  assert.deepStrictEqual(target, [33, 45, 58, 73, 89], '目標強度（級距）');
   real.forEach((v, i) => assert(Math.abs(v - target[i]) <= 1.5, AI.LEVEL_ORDER[i] + ' 強度 ' + v.toFixed(1) + ' 偏離目標 ' + target[i]));
   const gaps = target.slice(1).map((v, i) => v - target[i]);
   gaps.forEach((g, i) => assert(g >= 10, '第 ' + (i + 1) + ' 個級距只有 ' + g));
@@ -969,14 +1040,16 @@ test('四段難度有可觀察的差異：困難 > 普通 > 簡單 > 幼幼班�
   /* 簡單、普通、困難要拉得開：平均存活要有明顯差距（單位：秒），場數夠多時勝場也要差一截 */
   const avg = k => surv[k] / games;
   assert(avg('normal') - avg('easy') >= 6, '普通應比簡單多活至少 6 秒：' + Math.round(avg('normal') - avg('easy')));
-  assert(avg('hard') - avg('normal') >= 4, '困難應比普通多活至少 4 秒：' + Math.round(avg('hard') - avg('normal')));
+  /* 半身機制改成 40%（更容易被火波及）後，每一級都死得更快、存活時間的差距縮小（困難比普通只多活幾秒），所以這一項從 4 秒放寬成 2 秒；
+     困難和普通的強弱差距主要看下面的勝場（差一倍以上） */
+  assert(avg('hard') - avg('normal') >= 2, '困難應比普通多活至少 2 秒：' + Math.round(avg('hard') - avg('normal')));
   if (games >= 100) {
     assert(score.normal >= score.easy * 1.5, '普通勝場應明顯多於簡單');
     assert(score.hard >= score.normal * 1.5, '困難勝場應明顯多於普通');
   }
 });
 test('神話比困難強：一個神話對三個困難，擊倒明顯比每個困難多，而且不會比困難更常被淘汰', () => {
-  const games = process.env.MYTH_GAMES ? +process.env.MYTH_GAMES : (quick ? 16 : 40);
+  const games = process.env.MYTH_GAMES ? +process.env.MYTH_GAMES : (quick ? 16 : 100);
   let kills = 0, opp = 0, dead = 0, oppDead = 0, wins = 0, oppWins = 0;
   for (let g = 0; g < games; g++) {
     const order = ['myth', 'hard', 'hard', 'hard'];

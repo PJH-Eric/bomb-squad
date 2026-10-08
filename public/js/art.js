@@ -917,6 +917,7 @@
     11: { grass: { k: 'pine', c: ['#2f9a55', '#1a6a38'] }, belt: { k: 'candy', c: ['#e85a5a', '#ffffff', '#fff6d0'] }, slow: { k: 'snow', c: ['#ffffff', '#a9cfe4', '#e8f8ff'] }, spike: { k: 'cone', c: ['#e6f8ff', '#7fb8d8', '#ff5a5a'] } },
     12: { grass: { k: 'blade', c: ['#6fd36a', '#3a9a45'], d: 'flower' }, belt: { k: 'candy', c: ['#7fd0ff', '#ffe03d', '#ffffff'] } }
   };
+  const DEFAULT_BELT = { k: 'roller', c: ['#4a5568', '#ffd24d', '#ffffff'] };
   /* 固定的偽亂數：同一格每次畫都長一樣，不會閃 */
   function fxRand(seed) { let a = seed >>> 0; return () => { a = (Math.imul(a, 1664525) + 1013904223) >>> 0; return a / 4294967296; }; }
   function fxBlob(ctx, cx, cy, rx, ry) {
@@ -1076,10 +1077,10 @@
         }
         break;
       }
-      default: {   /* cone：底座＋四根尖錐（電極、冰錐、鋼刺、石筍、骨刺、黑曜石） */
+      default: {   /* cone：底座＋五根尖錐（四角加正中間；電極、冰錐、鋼刺、石筍、骨刺、黑曜石） */
         ctx.fillStyle = c1; rr(ctx, T * 0.1, T * 0.14, T * 0.8, T * 0.74, T * 0.1); ctx.fill();
         ctx.strokeStyle = '#ff5a4a'; ctx.lineWidth = Math.max(1.5, T * 0.045); ctx.setLineDash([T * 0.1, T * 0.07]); ctx.stroke(); ctx.setLineDash([]);   /* 紅色警示虛線 */
-        for (const [x, y] of [[0.3, 0.38], [0.7, 0.38], [0.3, 0.74], [0.7, 0.74]]) {
+        for (const [x, y] of [[0.3, 0.38], [0.7, 0.38], [0.5, 0.56], [0.3, 0.74], [0.7, 0.74]]) {      /* 四角加正中間共 5 根，由後排畫到前排 */
           const cx = T * x, by = T * y, w = T * 0.14;
           const g = ctx.createLinearGradient(cx - w, 0, cx + w, 0); g.addColorStop(0, c0); g.addColorStop(1, 'rgba(0,0,0,0.35)');
           ctx.fillStyle = c0; ctx.beginPath(); ctx.moveTo(cx - w, by); ctx.lineTo(cx, by - T * 0.3); ctx.lineTo(cx + w, by); ctx.closePath(); ctx.fill();
@@ -1199,8 +1200,9 @@
   function buildTileset(T, themeId) {
     const th = THEMES[themeId] || THEMES[0];
     const make = fn => { const c = mkCanvas(T, T); const x = c.getContext('2d'); fn(x); return c; };
-    const fxs = FX_STYLE[th.id] || {};
-    const beltStraight = fxs.belt ? make(x => drawBeltBase(x, T, fxs.belt)) : null;
+    const fxs = Object.assign({}, FX_STYLE[th.id] || {});
+    if (!fxs.belt) fxs.belt = DEFAULT_BELT;      /* 「產線」版型可以搭任何主題，沒有自己輸送帶風格的主題就用通用的金屬輸送帶 */
+    const beltStraight = make(x => drawBeltBase(x, T, fxs.belt));
     return {
       theme: th,
       fx: {

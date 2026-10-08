@@ -25,7 +25,12 @@
   const PLANE_SPEED = 5;       /* 空投機飛行速度（格／秒） */
   const FLAME_COOL_T = 0.3;    /* 磚塊格的無殺傷火花停留秒數 */
   const FLAME_T = 0.5;         /* 火焰停留秒數 */
-  const HIT_INSET = 0.1;       /* 火焰判定：人物中心要深入格子才算被炸（離格線 0.1 內算擦邊，安全） */
+  /* 半身機制：身體壓在火線格（或炸彈那條線）裡的比例達到這個門檻就算。目前 40%（原本 50%，再下修一點，更容易被波及、也更容易踢到）。
+     身體的範圍＝畫面上人物實際畫出來的範圍：左右 ±HALF；上下因為人物往上提（腳在判定點附近），頭在上方 BODY_UP 格、腳在下方 BODY_DOWN 格
+     （數字來自人物圖實際畫出來的範圍，render.js 的 SPRITE／SHADOW_DROP）；不然站在火線下方、頭已經燒到了卻還是安全（上下比左右難被波及） */
+  const HALF_BODY = 0.4;
+  const BODY_UP = 0.76, BODY_DOWN = 0.19;
+  const HURT_LIFT = (BODY_UP - BODY_DOWN) / 2;     /* 身體中心比判定點高多少（約 0.285） */
   const HALF = 0.36;           /* 玩家碰撞半寬（比格子小，轉角才好過） */
   const START = { fire: 2, bomb: 1 };
   const MAX = { fire: 11, bomb: 8, speed: 6 };
@@ -279,9 +284,11 @@
    * 依 seed 與主題產生機關；用自己的亂數，不影響地圖與掉寶的亂數序列。唯一會動到 grid 的是：尖刺、草叢所在格的軟磚會被拿掉（只會多開路，連通不受影響）。
    * 尖刺總數：小圖 2～6 個、大圖 4～8 個（偶數，四向鏡像）；緩速格是一小塊；草叢數量規則同尖刺；輸送帶是頭尾相連的環形（6～10 格，多半不是單純的長方形），每個角落一圈。
    */
-  function generateFx(seed, w, h, grid, themeId) {
+  function generateFx(seed, w, h, grid, themeId, layout) {
     const fx = new Array(w * h).fill(0);
-    const feats = THEME_FX[themeId] || [];
+    /* 「產線」一定有輸送帶：產線版型、日月光廠房主題都固定放輸送帶（不受 FX_KEEP 機率影響，也不管主題原本的機關） */
+    const line = layout === 'fab' || themeId === FAB_THEME;
+    const feats = line ? ['belt'] : (THEME_FX[themeId] || []);
     if (!feats.length) return fx;
     const rnd = mulberry32((seed ^ 0x7f4a7c15) >>> 0);
     const cx = (w - 1) / 2, cy = (h - 1) / 2, large = h > MAP_SMALL.h;
@@ -294,7 +301,7 @@
         if (d <= 2) safe[at(x, y)] = 1;
       }
     }
-    const on = feats.filter(() => rnd() < FX_KEEP);
+    const on = line ? feats : feats.filter(() => rnd() < FX_KEEP);
     /* 一個格子的四向鏡像（在中線上的格子會少幾個）；fl 記錄左右、上下各翻了沒有 */
     const group = (x, y) => {
       const out = [[x, y, 0, 0]];
@@ -310,7 +317,6 @@
       }
       return null;
     };
-    const FOUR4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
     for (const kind of on) {
       if (kind === 'belt') {
         /* 輸送帶是一圈頭尾相連的環：先排一圈 2～3 格見方的長方形外框，再隨機往外推出一個凸起讓形狀不規則；
@@ -348,57 +354,37 @@
           });
           break;
         }
-      } else if (kind === 'spike' || kind === 'grass') {
-        /* 尖刺和草叢數量規則一樣（草叢一多，躲進去就完全看不到人和炸彈，所以不能太多）：小圖 2～6 格、大圖 4～8 格，一格一格散開 */
-        const code = kind === 'spike' ? FX_SPIKE : FX_GRASS;
+      } else {
+        /* 尖刺、草叢、緩速格：一格一格散開，彼此不能相連（輸送帶是唯一例外）；數量規則一樣：小圖 2～6 格、大圖 4～8 格。
+           機關一多會干擾操作；草叢還會讓人和炸彈完全看不到，更不能多 */
+        const code = kind === 'spike' ? FX_SPIKE : kind === 'grass' ? FX_GRASS : FX_SLOW;
         const target = large ? 2 * (2 + Math.floor(rnd() * 3)) : 2 * (1 + Math.floor(rnd() * 3));
         const shuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); const tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp; } return arr; };
-        const quad = ok => { const out = []; for (let y = 1; y <= Math.floor(cy); y++) for (let x = 1; x <= Math.floor(cx); x++) if (free(x, y, true) && ok(x, y)) out.push([x, y]); return shuffle(out); };
+        const wall = (x, y) => grid[at(x, y)] === 1;
+        /* 草叢只放走道格：左右都是硬牆、或上下都是硬牆（邊框也算），裡面的炸彈就只會沿著剩下那條直線炸；符合的格子不夠就少放，甚至這張圖沒有草叢 */
+        const suits = kind === 'grass' ? (x, y) => (wall(x - 1, y) && wall(x + 1, y)) || (wall(x, y - 1) && wall(x, y + 1)) : () => true;
+        const cands = [];
+        for (let y = 1; y <= Math.floor(cy); y++) for (let x = 1; x <= Math.floor(cx); x++) if (free(x, y, true) && suits(x, y)) cands.push([x, y]);
+        /* 不能相連：八個方向（含斜角）都不能已經有機關，同一組鏡像的格子彼此也不能相鄰 */
+        const touches = g => g.some(([gx, gy]) => {
+          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+            if (!dx && !dy) continue;
+            const nx = gx + dx, ny = gy + dy;
+            if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+            if (fx[at(nx, ny)] !== 0 || g.some(q => q[0] === nx && q[1] === ny)) return true;
+          }
+          return false;
+        });
         let count = 0;
-        const place = g => { for (const [gx, gy] of g) { fx[at(gx, gy)] = code; if (grid[at(gx, gy)] === 2) grid[at(gx, gy)] = 0; } count += g.length; };   /* 尖刺、草叢都要讓人看得見，所以開局不蓋軟磚 */
-        if (kind === 'spike') {
-          for (const c of quad(() => true)) {
-            if (count >= target) break;
-            const g = group(c[0], c[1]);
-            if (g.length < 2 || count + g.length > target) continue;     /* 正中央那一格（只有 1 個）不放，免得總數變奇數 */
-            place(g);
-          }
-        } else {
-          /* 草叢只放走道格：左右都是硬牆、或上下都是硬牆（邊框也算），裡面的炸彈就只會沿著剩下那條直線炸；草叢之間不能相連；符合的格子不夠就少放，甚至這張圖沒有草叢 */
-          const wall = (x, y) => grid[at(x, y)] === 1;
-          /* 草叢之間不能相連：任何一格的八個方向（含斜角）都不能已經有草叢，同一組鏡像的格子彼此也不能相鄰 */
-          const touches = g => g.some(([gx, gy]) => {
-            for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-              if (!dx && !dy) continue;
-              const nx = gx + dx, ny = gy + dy;
-              if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
-              if (fx[at(nx, ny)] === FX_GRASS || g.some(q => q[0] === nx && q[1] === ny)) return true;
-            }
-            return false;
-          });
-          for (const c of quad((x, y) => (wall(x - 1, y) && wall(x + 1, y)) || (wall(x, y - 1) && wall(x, y + 1)))) {
-            if (count >= target) break;
-            const g = group(c[0], c[1]);
-            if (g.length < 2 || count + g.length > target || touches(g)) continue;
-            place(g);
-          }
-        }
-      } else {
-        const code = FX_SLOW;
-        const patches = 1;
-        for (let n = 0; n < patches; n++) {
-          const start = pickCell(Math.floor(cx), Math.floor(cy), (x, y) => free(x, y));
-          if (!start) continue;
-          const cells = [start], size = 2 + Math.floor(rnd() * 2);
-          for (let t = 0; t < 30 && cells.length < size; t++) {
-            const from = cells[Math.floor(rnd() * cells.length)], d = FOUR4[Math.floor(rnd() * 4)];
-            const x = from[0] + d[0], y = from[1] + d[1];
-            if (x > cx || y > cy || !free(x, y) || cells.some(q => q[0] === x && q[1] === y)) continue;
-            cells.push([x, y]);
-          }
-          for (const [bx, by] of cells) for (const [gx, gy] of group(bx, by)) {
+        for (const c of shuffle(cands)) {
+          if (count >= target) break;
+          const g = group(c[0], c[1]);
+          if (g.length < 2 || count + g.length > target || touches(g)) continue;     /* 正中央那一格（只有 1 個）不放，免得總數變奇數 */
+          for (const [gx, gy] of g) {
             fx[at(gx, gy)] = code;
+            if (kind !== 'slow' && grid[at(gx, gy)] === 2) grid[at(gx, gy)] = 0;     /* 尖刺、草叢要讓人看得見，所以開局不蓋軟磚；緩速格可以和軟磚疊在一起 */
           }
+          count += g.length;
         }
       }
     }
@@ -423,7 +409,7 @@
     /* 每局隨機分配出生點：只在「已清出安全區」的點之間洗牌，所以每個位置一樣公平；同一個 seed 洗出來一樣（連線雙方一致） */
     const spawns = spawnPoints(w, h).slice(0, spawnCount(w, h));
     { const sr = mulberry32((seed ^ 0x51ed270b) >>> 0); for (let i = spawns.length - 1; i > 0; i--) { const j = Math.floor(sr() * (i + 1)); const t = spawns[i]; spawns[i] = spawns[j]; spawns[j] = t; } }
-    const fx = opts.fx === false ? new Array(w * h).fill(0) : generateFx(seed, w, h, grid, themeId);
+    const fx = opts.fx === false ? new Array(w * h).fill(0) : generateFx(seed, w, h, grid, themeId, layout);
     const state = {
       seed, rng: (seed ^ 0xa5a5a5a5) | 0, w, h, grid, fx, layout, themeId,
       phase: 'countdown', countdown: opts.countdown == null ? COUNTDOWN : opts.countdown,
@@ -450,6 +436,16 @@
   const cellIdx = (s, x, y) => y * s.w + x;
   const inside = (s, x, y) => x >= 0 && y >= 0 && x < s.w && y < s.h;
   const cellOf = p => ({ x: Math.floor(p.x), y: Math.floor(p.y) });
+  /** 被火燒的判定格：身體（左右 ±HALF、上下 −BODY_UP～+BODY_DOWN）壓到的格子裡，左右、上下的重疊比例都 ≥ HALF_BODY 的全部算 */
+  function hurtCells(p) {
+    const out = [], bw = 2 * HALF, bh = BODY_UP + BODY_DOWN;
+    const x0 = p.x - HALF, x1 = p.x + HALF, y0 = p.y - BODY_UP, y1 = p.y + BODY_DOWN;
+    for (let cy = Math.floor(y0); cy <= Math.floor(y1); cy++) for (let cx = Math.floor(x0); cx <= Math.floor(x1); cx++) {
+      const ox = Math.min(x1, cx + 1) - Math.max(x0, cx), oy = Math.min(y1, cy + 1) - Math.max(y0, cy);
+      if (ox / bw >= HALF_BODY - 1e-9 && oy / bh >= HALF_BODY - 1e-9) out.push({ x: cx, y: cy });
+    }
+    return out;
+  }
   /* 超人標誌期間：火力、炸彈數、加速都拉到「這隻角色」的上限（詛咒照樣有效，所以遲緩、短火還是會壓過它） */
   const fireOf = p => p.superT > 0 ? Math.max(p.fire, statsOf(p.animal).max.fire) : p.fire;
   const speedLvlOf = p => p.superT > 0 ? Math.max(p.speedLvl, statsOf(p.animal).max.speed) : p.speedLvl;
@@ -516,14 +512,24 @@
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (cellBlocked(s, x, y, p)) return true;
     return false;
   }
-  function blockingBomb(s, p, nx, ny) {
+  /* 踢炸彈：往 (dx, dy) 走會撞到、而且在前方的炸彈裡，選「身體最對準它那條線」的一顆（同時碰到兩顆時踢比較對準的，不是隨便一顆）；
+     身體至少有 KICK_OVERLAP（40%，跟火焰判定同一個半身門檻）壓在炸彈的線上就踢得到，不必對得很準。身體寬 2×HALF；中心離炸彈那條線的距離 o，壓在線上的寬度是 (0.5 + HALF − o)，
+     所以門檻是 o ≤ 0.5 + HALF − 2×HALF×KICK_OVERLAP（50% 時是 0.5：中心在炸彈格的邊線上；40% 時約 0.57） */
+  const KICK_OVERLAP = HALF_BODY;
+  const KICK_REACH = 0.5 + HALF - 2 * HALF * KICK_OVERLAP;
+  function kickTarget(s, p, nx, ny, dx, dy) {
     const x0 = Math.floor(nx - HALF), x1 = Math.floor(nx + HALF - 1e-9);
     const y0 = Math.floor(ny - HALF), y1 = Math.floor(ny + HALF - 1e-9);
+    let best = null, bestOff = 9;
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
       const b = bombAt(s, x, y);
-      if (b && b.pass.indexOf(p.slot) < 0) return b;
+      if (!b || b.pass.indexOf(p.slot) >= 0) continue;
+      const along = dx !== 0 ? (b.cx + 0.5 - p.x) * dx : (b.cy + 0.5 - p.y) * dy;
+      if (along <= 0) continue;
+      const off = dx !== 0 ? Math.abs(p.y - (b.cy + 0.5)) : Math.abs(p.x - (b.cx + 0.5));
+      if (off < bestOff) { best = b; bestOff = off; }
     }
-    return null;
+    return best && bestOff <= KICK_REACH + 1e-9 ? best : null;
   }
   function slideFree(s, x, y) {
     if (!inside(s, x, y) || s.grid[cellIdx(s, x, y)] !== 0 || bombAt(s, x, y)) return false;
@@ -564,13 +570,10 @@
     if (!collides(s, p, nx, ny)) { p.x = nx; p.y = ny; p.moving = true; return; }
 
     /* 擋住了：先看是不是炸彈、有踢炸彈能力就踢 */
-    const b = blockingBomb(s, p, nx, ny);
-    if (b && p.kick && !b.sl) {
-      const laneOff = dx !== 0 ? Math.abs(p.y - (b.cy + 0.5)) : Math.abs(p.x - (b.cx + 0.5));
-      if (laneOff < 0.3 && slideFree(s, b.cx + dx, b.cy + dy)) {
-        b.cx += dx; b.cy += dy; b.sl = { dx, dy, prog: 0 };
-        s.events.push({ t: 'kick', x: b.cx, y: b.cy });
-      }
+    const b = p.kick ? kickTarget(s, p, nx, ny, dx, dy) : null;
+    if (b && !b.sl && slideFree(s, b.cx + dx, b.cy + dy)) {
+      b.cx += dx; b.cy += dy; b.sl = { dx, dy, prog: 0 };
+      s.events.push({ t: 'kick', x: b.cx, y: b.cy });
     }
     /* 轉角輔助：偏離車道中心就往中心滑，才鑽得進一格寬的通道 */
     let moved = false;
@@ -935,10 +938,10 @@
     if (s.phase !== 'over') {
       for (const p of s.players) {
         if (!p.alive) continue;
-        const c = cellOf(p);
-        if (Math.abs(p.x - (c.x + 0.5)) > 0.5 - HIT_INSET || Math.abs(p.y - (c.y + 0.5)) > 0.5 - HIT_INSET) continue;
-        const f = flameAt(s, c.x, c.y);
-        if (f && !f.cool) hurt(s, p, f.owner);
+        for (const c of hurtCells(p)) {
+          const f = flameAt(s, c.x, c.y);
+          if (f && !f.cool) { hurt(s, p, f.owner); break; }
+        }
       }
     }
 
@@ -1048,8 +1051,8 @@
   }
 
   root.Rules = {
-    DT, DIRS, FUSE, AIR_EVERY, SKY_START, SKY_EVERY, SKY_STEP, SKY_MAX, SKY_FUSE, SKY_RANGE, SKY_LAST, skyStartFor, skyCount, PLANE_SPEED, FLAME_T, HALF, HIT_INSET, START, MAX, SPEED, ANIMAL_STATS, statsOf, CURSE_T, GHOST_T, SUPER_T, COUNTDOWN, SLIDE_SPEED,
-    ITEM_TYPES, POSITIVE, CURSES, LAYOUTS, RANDOM_LAYOUTS, FAB_THEME, LAYOUT_NAMES, THEME_COUNT, SHAPES, SLOT_COLORS, DROP_WEIGHTS,
+    DT, DIRS, FUSE, AIR_EVERY, SKY_START, SKY_EVERY, SKY_STEP, SKY_MAX, SKY_FUSE, SKY_RANGE, SKY_LAST, skyStartFor, skyCount, PLANE_SPEED, FLAME_T, HALF, HALF_BODY, BODY_UP, BODY_DOWN, HURT_LIFT, hurtCells, START, MAX, SPEED, ANIMAL_STATS, statsOf, CURSE_T, GHOST_T, SUPER_T, COUNTDOWN, SLIDE_SPEED,
+    KICK_OVERLAP, KICK_REACH, ITEM_TYPES, POSITIVE, CURSES, LAYOUTS, RANDOM_LAYOUTS, FAB_THEME, LAYOUT_NAMES, THEME_COUNT, SHAPES, SLOT_COLORS, DROP_WEIGHTS,
     mulberry32, rand, sizeFor, spawnCount, MAP_SMALL, MAP_LARGE, spawnPoints, generateMap, connected, createGame, step,
     blast, bombAt, itemAt, flameAt, cellOf, cellIdx, inside, speedOf, rangeOf, maxBombsOf, fireOf, speedLvlOf, flipDir, hideInSnapshot,
     canPlaceBomb, placeBomb, overlapsCell, movePlayer, slideFree, getPlayer, alivePlayers, collides, removePlayer, finish,
