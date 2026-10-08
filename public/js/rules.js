@@ -352,12 +352,22 @@
             place(g);
           }
         } else {
-          /* 草叢只放走道格：左右都是硬牆、或上下都是硬牆（邊框也算），裡面的炸彈就只會沿著剩下那條直線炸；符合的格子不夠就少放，甚至這張圖沒有草叢 */
+          /* 草叢只放走道格：左右都是硬牆、或上下都是硬牆（邊框也算），裡面的炸彈就只會沿著剩下那條直線炸；草叢之間不能相連；符合的格子不夠就少放，甚至這張圖沒有草叢 */
           const wall = (x, y) => grid[at(x, y)] === 1;
+          /* 草叢之間不能相連：任何一格的八個方向（含斜角）都不能已經有草叢，同一組鏡像的格子彼此也不能相鄰 */
+          const touches = g => g.some(([gx, gy]) => {
+            for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+              if (!dx && !dy) continue;
+              const nx = gx + dx, ny = gy + dy;
+              if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+              if (fx[at(nx, ny)] === FX_GRASS || g.some(q => q[0] === nx && q[1] === ny)) return true;
+            }
+            return false;
+          });
           for (const c of quad((x, y) => (wall(x - 1, y) && wall(x + 1, y)) || (wall(x, y - 1) && wall(x, y + 1)))) {
             if (count >= target) break;
             const g = group(c[0], c[1]);
-            if (g.length < 2 || count + g.length > target) continue;
+            if (g.length < 2 || count + g.length > target || touches(g)) continue;
             place(g);
           }
         }

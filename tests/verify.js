@@ -679,23 +679,36 @@ test('輸送帶：炸彈放在上面也被載走（速度同人、沿路轉彎�
   const snap = R.snapshot(s), v = R.applySnapshot(R.viewFromStart(R.startInfo(s)), JSON.parse(JSON.stringify(snap)));
   assert(v.bombs.every((vb, i) => !!vb.sl === !!s.bombs[i].sl));
 });
-test('草叢：只放走道格（左右都是硬牆，或上下都是硬牆），開局沒有軟磚，數量不超過尖刺的規則；地圖不被動到牆', () => {
-  let seen = 0, maps = 0;
+test('草叢位置（森林、聖誕小鎮 × 兩種尺寸 × 四種版型 × 40 個 seed）：走道格、不相連（含斜角）、四向對稱、不靠邊框與出生點、不動硬牆、炸彈只沿一條直線炸', () => {
+  let seen = 0, maps = 0, cells = 0;
   for (const themeId of [3, 11]) for (const [w, h] of [[17, 13], [19, 15]]) for (const layout of R.LAYOUTS) for (let seed = 1; seed <= 40; seed++) {
     const orig = R.generateMap(seed, w, h, layout), grid = orig.slice(), fx = R.generateFx(seed, w, h, grid, themeId);
+    assert.deepStrictEqual(fx, R.generateFx(seed, w, h, orig.slice(), themeId), '同 seed 要一樣');
+    const at = (x, y) => y * w + x, wl = (x, y) => grid[at(x, y)] === 1;
+    const spawns = R.spawnPoints(w, h).slice(0, R.spawnCount(w, h));
     let n = 0; maps++;
     for (let i = 0; i < grid.length; i++) if (grid[i] !== orig[i]) assert(fx[i] === R.FX_GRASS && orig[i] === 2 && grid[i] === 0, '只有草叢格的軟磚會被拿掉，不能動硬牆');
-    for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
-      if (fx[y * w + x] !== R.FX_GRASS) continue;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const v = fx[at(x, y)];
+      if (v !== R.FX_GRASS) { assert(v === 0, '草叢主題只該有草叢'); continue; }
       n++;
-      const wl = (a, b) => grid[b * w + a] === 1;
+      assert(x >= 1 && y >= 1 && x <= w - 2 && y <= h - 2, '草叢在邊框上');
+      assert.strictEqual(grid[at(x, y)], 0, '草叢格要是空地（不是牆、也不蓋軟磚）');
       assert((wl(x - 1, y) && wl(x + 1, y)) || (wl(x, y - 1) && wl(x, y + 1)), `草叢不在走道上：${x},${y}`);
-      assert.notStrictEqual(grid[y * w + x], 2, '草叢上有軟磚');
+      assert.strictEqual(fx[at(w - 1 - x, y)], R.FX_GRASS, '左右不對稱');
+      assert.strictEqual(fx[at(x, h - 1 - y)], R.FX_GRASS, '上下不對稱');
+      for (const [sx, sy] of spawns) assert(Math.abs(x - sx) + Math.abs(y - sy) > 2, '草叢離出生點太近');
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && x + dx > 0 && y + dy > 0 && x + dx < w - 1 && y + dy < h - 1) assert.notStrictEqual(fx[at(x + dx, y + dy)], R.FX_GRASS, `草叢相連：${x},${y} 與 ${x + dx},${y + dy}`);
+      /* 這一格放炸彈，火焰只會落在同一條直線上（同一欄或同一列） */
+      const cellsHit = R.blast({ w, h, grid, bombs: [] }, { cx: x, cy: y, range: 9, id: -1, owner: 0, pass: [], sl: null }).cells;
+      assert(cellsHit.every(c => c.x === x) || cellsHit.every(c => c.y === y), `草叢裡的炸彈火焰不只一條線：${x},${y}`);
     }
     assert(n <= (h > 13 ? 8 : 6) && n % 2 === 0, '草叢數量 ' + n);
-    if (n) seen++;
+    assert(R.connected(grid, w, h), '地圖要連通');
+    if (n) { seen++; cells += n; }
   }
-  assert(seen > maps * 0.3, '草叢太少出現：' + seen + '／' + maps);
+  assert(seen > maps * 0.25, '草叢太少出現：' + seen + '／' + maps);
+  console.log('      有草叢的圖 ' + seen + '／' + maps + '，平均每張 ' + (cells / seen).toFixed(1) + ' 格');
 });
 test('機關：各主題的機關種類符合風格（草叢、輸送帶、緩速、尖刺都有主題用得到），沒有機關的選項不會產生', () => {
   const has = k => R.THEME_FX.filter(a => a.indexOf(k) >= 0).length;
