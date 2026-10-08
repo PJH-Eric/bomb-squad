@@ -123,14 +123,6 @@
       if (e.t < danger[i]) danger[i] = e.t;
     }
     for (const f of s.flames) if (!f.cool) burn[f.cy * s.w + f.cx] = Math.max(burn[f.cy * s.w + f.cx], f.t);
-    /* 半身機制：人物往上提，頭比判定點高約 0.76 格，所以站在火線「正下方一格」時頭會燒到（從那一格上緣走過去就算被炸）。
-       把火線下面那一格也當成危險區（時間一樣），電腦就不會在那裡停留或橫著走過去 */
-    for (let y = s.h - 2; y >= 1; y--) for (let x = 1; x < s.w - 1; x++) {
-      const i = y * s.w + x, up = i - s.w;
-      if (s.grid[i] === 1) continue;
-      if (danger[up] < danger[i]) danger[i] = danger[up];
-      if (burn[up] > burn[i]) burn[i] = burn[up];
-    }
     return { danger, burn, margin: margin == null ? 0.1 : margin };
   }
 
@@ -144,12 +136,13 @@
   }
 
   /** 時間感知的廣度優先：只走「抵達時還沒爆」的路 */
-  function bfs(s, start, dm, p, avoid, strict) {
+  function bfs(s, start, dm, p, avoid, strict, noBelt) {
     const n = s.w * s.h;
     const dist = new Int16Array(n).fill(-1);
     const prev = new Int32Array(n).fill(-1);
     const tile = 1 / R.speedOf(p);
     dist[start] = 0;
+    const tt = new Float32Array(n);       /* 走到每一格要花幾個「一格的時間」（緩速格要多花，電腦才算得準逃不逃得掉） */
     const q = [start];
     for (let h = 0; h < q.length; h++) {
       const i = q[h], x = i % s.w, y = (i / s.w) | 0;
@@ -161,8 +154,11 @@
         if (seenBomb(s, nx, ny)) continue;
         if (avoid && avoid[j]) continue;
         if (strict && (dm.danger[j] < Infinity || dm.burn[j] > 0)) continue;   /* 平時不踩任何會被炸到的格子 */
-        if (unsafeAt(dm, j, dist[i] + 1, tile)) continue;
-        dist[j] = dist[i] + 1; prev[j] = i; q.push(j);
+        if ((strict || noBelt) && R.isBelt(R.fxAt(s, nx, ny))) continue;      /* 平時不走輸送帶（會被推著跑）；逃命時也先找不用走輸送帶的路 */
+        const slowOf = c => (R.fxAt(s, c % s.w, (c / s.w) | 0) === R.FX_SLOW ? 1 / R.SLOW_MULT : 1);
+        const arrive = tt[i] + (slowOf(i) + slowOf(j)) / 2;
+        if (unsafeAt(dm, j, arrive, tile)) continue;
+        tt[j] = arrive; dist[j] = dist[i] + 1; prev[j] = i; q.push(j);
       }
     }
     return { dist, prev, order: q };
@@ -175,13 +171,14 @@
   }
 
   function escapePath(s, startCell, dm, p) {
-    const r = bfs(s, startCell, dm, p, null, false);
-    let best = -1;
-    for (const i of r.order) {
-      if (i === startCell) continue;
-      if (dm.danger[i] === Infinity && dm.burn[i] === 0) { best = i; break; }
+    /* 先找不用走輸送帶的逃生路（輸送帶會把人推走、讓時間算不準），沒有才走輸送帶 */
+    for (const noBelt of [true, false]) {
+      const r = bfs(s, startCell, dm, p, null, false, noBelt);
+      for (const i of r.order) {
+        if (i === startCell) continue;
+        if (dm.danger[i] === Infinity && dm.burn[i] === 0) return pathTo(r.prev, startCell, i);
+      }
     }
-    if (best >= 0) return pathTo(r.prev, startCell, best);
     return null;
   }
 
@@ -202,6 +199,7 @@
     if (!R.canPlaceBomb(s, p)) return false;
     const x = me % s.w, y = (me / s.w) | 0;
     if (R.fxAt(s, x, y) === R.FX_SPIKE) return false;      /* 尖刺上放炸彈會當場爆炸 */
+    if (R.isBelt(R.fxAt(s, x, y))) return false;           /* 輸送帶上的炸彈會被載走，爆炸位置算不準 */
     const virt = { id: -1, owner: p.slot, cx: x, cy: y, range: R.rangeOf(p), t: R.FUSE, pass: [p.slot], sl: null };
     const bl = R.blast(s, virt);
     const foes = enemiesOf(s, p);

@@ -1114,9 +1114,7 @@ test('四段難度有可觀察的差異：困難 > 普通 > 簡單 > 幼幼班�
   /* 簡單、普通、困難要拉得開：平均存活要有明顯差距（單位：秒），場數夠多時勝場也要差一截 */
   const avg = k => surv[k] / games;
   assert(avg('normal') - avg('easy') >= 6, '普通應比簡單多活至少 6 秒：' + Math.round(avg('normal') - avg('easy')));
-  /* 半身機制改成 40%（更容易被火波及）後，每一級都死得更快、存活時間的差距縮小（困難比普通只多活幾秒），所以這一項從 4 秒放寬成 2 秒；
-     困難和普通的強弱差距主要看下面的勝場（差一倍以上） */
-  assert(avg('hard') - avg('normal') >= 2, '困難應比普通多活至少 2 秒：' + Math.round(avg('hard') - avg('normal')));
+  assert(avg('hard') - avg('normal') >= 4, '困難應比普通多活至少 4 秒：' + Math.round(avg('hard') - avg('normal')));
   if (games >= 100) {
     assert(score.normal >= score.easy * 1.5, '普通勝場應明顯多於簡單');
     assert(score.hard >= score.normal * 1.5, '困難勝場應明顯多於普通');
