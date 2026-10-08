@@ -18,8 +18,8 @@
        （margin 走位安全餘裕：校準顯示留越多反而越保守越弱，所以所有等級都用預設 0.1，不列入強度權重） */
     toddler: { name: '幼幼班', interval: 0.64, bombProb: 0.3, hunt: 0.04, chase: 2, chain: false, react: 0.41, notice: 0.3, itemRange: 4, itemProb: 0.31, wander: 0.47, sloppy: 0.41, curseOk: true },
     easy:    { name: '簡單', interval: 0.57, bombProb: 0.52, hunt: 0.2, chase: 5, chain: false, react: 0.55, notice: 0.26, itemRange: 5, itemProb: 0.42, wander: 0.32, sloppy: 0.26, curseOk: true },
-    normal:  { name: '普通', interval: 0.41, bombProb: 0.7, hunt: 0.33, chase: 6, chain: true, react: 0.65, notice: 0.52, itemRange: 7, itemProb: 0.71, wander: 0.2, sloppy: 0.14, curseOk: false },
-    hard:    { name: '困難', interval: 0.23, bombProb: 0.9, hunt: 0.88, chase: 14, chain: true, react: 0.73, notice: 0.31, itemRange: 17, itemProb: 0.77, wander: 0.12, sloppy: 0.12, curseOk: false, trap: true },
+    normal:  { name: '普通', interval: 0.41, bombProb: 0.7, hunt: 0.33, chase: 6, chain: true, react: 0.65, notice: 0.52, itemRange: 7, itemProb: 0.71, wander: 0.2, sloppy: 0.14, curseOk: false, precise: true },
+    hard:    { name: '困難', interval: 0.23, bombProb: 0.9, hunt: 0.88, chase: 14, chain: true, react: 0.73, notice: 0.31, itemRange: 17, itemProb: 0.77, wander: 0.12, sloppy: 0.12, curseOk: false, trap: true, precise: true },
     /* 神話：逃得最準、追人與撿道具距離最遠、幾乎不發呆與失誤。決策間隔訂在 0.2 秒：新的下半身判定下，決策比這更頻繁（0.11～0.17 秒）會讓走位不停改方向、位置偏離格子中心，
        反而更常被炸（實測被炸率 81% → 59%），所以不再靠「決策更快」變強，改把其他能力拉到接近滿，強度約 92 */
     myth:    { name: '神話', interval: 0.2, bombProb: 0.98, hunt: 0.98, chase: 40, chain: true, react: 0.98, notice: 0.02, itemRange: 40, itemProb: 0.98, wander: 0.02, sloppy: 0.02, curseOk: false, trap: true, precise: true }
