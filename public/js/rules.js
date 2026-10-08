@@ -448,6 +448,31 @@
     }
     return out;
   }
+  /**
+   * 這個人被哪一格火焰燒到（沒有就回 null）：
+   *  1. 單一火線格：身體壓在這一格的比例（左右、上下都要）≥ HALF_BODY 就被炸。站在同一條線上的兩格各一半，每格都不到門檻，不會被這顆炸彈波及（半身機制）。
+   *  2. 並排的火線：兩格相鄰，而且各自屬於「垂直於並排方向」的火線（左右並排的兩條直火、上下並排的兩條橫火），
+   *     身體各壓一部分、加起來（幾乎整個身體都在火裡）達到門檻就被炸 —— 否則站在兩條並排火線的中間，每格都只有一半，會明明被燒到卻不死。
+   *     同一條線上的兩格（線的方向就是相鄰的方向）不算並排，維持半身機制。
+   */
+  function flameHit(s, p) {
+    const bw = 2 * HALF, bh = BODY_UP + BODY_DOWN;
+    const x0 = p.x - HALF, x1 = p.x + HALF, y0 = p.y - BODY_UP, y1 = p.y + BODY_DOWN;
+    const cells = [];
+    for (let cy = Math.floor(y0); cy <= Math.floor(y1); cy++) for (let cx = Math.floor(x0); cx <= Math.floor(x1); cx++) {
+      const f = flameAt(s, cx, cy);
+      if (!f || f.cool) continue;
+      cells.push({ f, cx, cy, fx: (Math.min(x1, cx + 1) - Math.max(x0, cx)) / bw, fy: (Math.min(y1, cy + 1) - Math.max(y0, cy)) / bh });
+    }
+    const th = HALF_BODY - 1e-9;
+    for (const a of cells) if (a.fx >= th && a.fy >= th) return a.f;
+    for (const a of cells) for (const b of cells) {
+      if (a === b) continue;
+      if (a.cy === b.cy && b.cx === a.cx + 1 && !a.f.h && !b.f.h && a.fx + b.fx >= th && a.fy >= th) return a.f;     /* 左右並排的兩條直火 */
+      if (a.cx === b.cx && b.cy === a.cy + 1 && !a.f.v && !b.f.v && a.fy + b.fy >= th && a.fx >= th) return a.f;     /* 上下並排的兩條橫火 */
+    }
+    return null;
+  }
   /* 超人標誌期間：火力、炸彈數、加速都拉到「這隻角色」的上限（詛咒照樣有效，所以遲緩、短火還是會壓過它） */
   const fireOf = p => p.superT > 0 ? Math.max(p.fire, statsOf(p.animal).max.fire) : p.fire;
   const speedLvlOf = p => p.superT > 0 ? Math.max(p.speedLvl, statsOf(p.animal).max.speed) : p.speedLvl;
@@ -480,7 +505,7 @@
 
   /** 計算一顆炸彈的十字爆炸範圍（不改動任何狀態） */
   function blast(s, b) {
-    const cells = [{ x: b.cx, y: b.cy }];
+    const cells = [{ x: b.cx, y: b.cy, h: true, v: true }];     /* h／v：這一格是橫向、直向的火線（中心兩者都是），並排火線的判定要用 */
     const softs = [];
     const chain = [];
     for (const d of Object.values(DIRS)) {
@@ -489,7 +514,7 @@
         if (!inside(s, x, y)) break;
         const g = s.grid[cellIdx(s, x, y)];
         if (g === 1) break;
-        cells.push({ x, y });
+        cells.push({ x, y, h: d[0] !== 0, v: d[1] !== 0 });
         if (g === 2) { softs.push({ x, y }); break; }
         const other = bombAt(s, x, y);
         /* 碰到別的炸彈：引爆它，但火焰不會被擋住，照樣噴完自己的射程（連鎖時每個方向以最長的那顆為準）；只有硬牆、軟磚才會擋 */
@@ -515,9 +540,9 @@
     return false;
   }
   /* 踢炸彈：往 (dx, dy) 走會撞到、而且在前方的炸彈裡，選「身體最對準它那條線」的一顆（同時碰到兩顆時踢比較對準的，不是隨便一顆）；
-     身體至少有 KICK_OVERLAP（50%，半個身體）壓在炸彈的線上就踢得到，不必對得很準。身體寬 2×HALF；中心離炸彈那條線的距離 o，壓在線上的寬度是 (0.5 + HALF − o)，
-     所以門檻是 o ≤ 0.5 + HALF − 2×HALF×KICK_OVERLAP（50% 時剛好是 0.5：中心在炸彈格的邊線上） */
-  const KICK_OVERLAP = 0.5;
+     身體至少有 KICK_OVERLAP（30%，比半個身體還少很多）壓在炸彈的線上就踢得到，不必對得很準。身體寬 2×HALF；中心離炸彈那條線的距離 o，壓在線上的寬度是 (0.5 + HALF − o)，
+     所以門檻是 o ≤ 0.5 + HALF − 2×HALF×KICK_OVERLAP（50% 時是 0.5：中心在炸彈格的邊線上；現在 30%，約 0.64：中心離線再多一點也踢得到） */
+  const KICK_OVERLAP = 0.3;     /* 比火焰的半身門檻（58.8%）寬鬆很多：踢球希望容易踢到，火焰希望一半站位安全 */
   const KICK_REACH = 0.5 + HALF - 2 * HALF * KICK_OVERLAP;
   function kickTarget(s, p, nx, ny, dx, dy) {
     const x0 = Math.floor(nx - HALF), x1 = Math.floor(nx + HALF - 1e-9);
@@ -730,8 +755,8 @@
         const f = flameAt(s, c.x, c.y);
         /* 磚塊被炸掉的那一格只有視覺火花（無殺傷）：磚塊一消失就走進去不該被燒到 */
         const cool = r.softs.some(q => q.x === c.x && q.y === c.y);
-        if (f) { if (!cool) { f.t = FLAME_T; f.cool = false; } f.owner = b.owner; }
-        else s.flames.push({ cx: c.x, cy: c.y, t: cool ? FLAME_COOL_T : FLAME_T, owner: b.owner, cool });
+        if (f) { if (!cool) { f.t = FLAME_T; f.cool = false; } f.owner = b.owner; f.h = f.h || c.h; f.v = f.v || c.v; }
+        else s.flames.push({ cx: c.x, cy: c.y, t: cool ? FLAME_COOL_T : FLAME_T, owner: b.owner, cool, h: c.h, v: c.v });
         const it = itemAt(s, c.x, c.y);
         if (it && !it.fresh) { s.itemsOn.splice(s.itemsOn.indexOf(it), 1); s.events.push({ t: 'itemgone', x: c.x, y: c.y }); }
       }
@@ -940,10 +965,8 @@
     if (s.phase !== 'over') {
       for (const p of s.players) {
         if (!p.alive) continue;
-        for (const c of hurtCells(p)) {
-          const f = flameAt(s, c.x, c.y);
-          if (f && !f.cool) { hurt(s, p, f.owner); break; }
-        }
+        const hitBy = flameHit(s, p);
+        if (hitBy) hurt(s, p, hitBy.owner);
       }
     }
 

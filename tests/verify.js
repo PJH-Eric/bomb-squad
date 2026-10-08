@@ -272,6 +272,28 @@ test('半身機制（上下）：剛好一半是安全的；站在炸彈格與�
   assert(s2.players[1].alive, '站在炸彈格與上面那格各一半（同一條上下線上）：不會被這顆炸彈波及');
 });
 
+test('並排的火線：站在兩條並排火線的中間（各壓一半）會被炸；同一條線上各壓一半仍然安全（半身機制）', () => {
+  const run1 = (bombs, x, y) => {
+    const s = mk(3); arena(s);
+    put(s.players[0], 1, 1); put(s.players[2], 15, 11);
+    s.players[1].x = x; s.players[1].y = y;
+    for (const [cx, cy] of bombs) s.bombs.push({ id: s.nextId++, owner: 0, cx, cy, t: 0, range: 4, pass: [], sl: null });
+    R.step(s, {}, R.DT);
+    return !s.players[1].alive;
+  };
+  /* 上下並排的兩條橫火：炸彈在 (3,3) 與 (3,4)，火線是第 3、4 列；玩家在 x=6.5（離炸彈遠，只有橫火），身體中心剛好在兩列的交界（y−0.285 = 4.0）：各壓一半 */
+  assert(run1([[3, 3], [3, 4]], 6.5, 4.0 + R.HURT_LIFT), '上下並排的兩條橫火，各壓一半：整個身體都在火裡，要被炸');
+  assert(!run1([[3, 3]], 6.5, 4.0 + R.HURT_LIFT), '只有一條橫火、另一半身體在沒有火的格子：安全（半身機制）');
+  /* 左右並排的兩條直火：炸彈在 (3,3) 與 (4,3)，火線是第 3、4 欄；玩家在 y=6.5（離炸彈遠，只有直火），中心在兩欄的交界 x=4.0 */
+  assert(run1([[3, 3], [4, 3]], 4.0, 6.5 + R.HURT_LIFT - 0.0), '左右並排的兩條直火，各壓一半：要被炸');
+  assert(!run1([[3, 3]], 4.0, 6.5 + R.HURT_LIFT), '只有一條直火、另一半身體在沒有火的格子：安全');
+  /* 同一條線上各壓一半：炸彈 (3,3)，玩家站在 (4,3)(5,3) 的交界 x=5.0：兩格都是同一條橫火，不算並排，安全 */
+  assert(!run1([[3, 3]], 5.0, 3.5 + R.HURT_LIFT), '同一條橫火上各壓一半：安全（半身機制）');
+  assert(!run1([[5, 2]], 5.5, 4.0 + R.HURT_LIFT), '同一條直火上（上下）各壓一半：安全（半身機制）');
+  /* 十字交叉的中心附近照常判定：站在炸彈格正中間被炸 */
+  assert(run1([[3, 3]], 3.5, 3.5 + R.HURT_LIFT), '站在炸彈格正中間：被炸');
+});
+
 test('磚塊被炸掉後，那一格的火花不傷人（走進去不會被燒到），火線上的空格仍會', () => {
   const s = mk(3); arena(s);
   s.grid[3 * s.w + 5] = 2;                                       /* 炸彈 (3,3) 射程 3：4 空格、5 軟磚 */
@@ -573,7 +595,7 @@ test('踢炸彈：有踢炸彈能力才會滑，沒有就被擋住', () => {
   assert(mkKick(true).bombs[0].cx > 4, '炸彈沒被踢走');
   assert.strictEqual(mkKick(false).bombs[0].cx, 3, '沒能力卻推動了炸彈');
 });
-test('踢炸彈：半個身體（50%）壓在炸彈線上就踢得到（偏 0.5 格以內），偏太多就踢不到；同時碰到兩顆踢最對準的那顆', () => {
+test('踢炸彈：身體有 30% 壓在炸彈線上就踢得到（偏 0.64 格以內，比半個身體寬鬆很多），偏太多就踢不到；同時碰到兩顆踢最對準的那顆', () => {
   const kickAt = (off, extra) => {
     const s = mk(2); arena(s); const p = s.players[0]; p.kick = true; p.x = 2.5; p.y = 3.5 + off;
     s.bombs.push({ id: 1, owner: 1, cx: 3, cy: 3, t: 9, range: 2, pass: [], sl: null });
@@ -585,10 +607,12 @@ test('踢炸彈：半個身體（50%）壓在炸彈線上就踢得到（偏 0.5 
   assert(kickAt(0).bombs[0].cx > 4, '正對要踢得到');
   assert(kickAt(0.45).bombs[0].cx > 4, '半個身體（偏 0.45）要踢得到');
   assert(kickAt(-0.5).bombs[0].cx > 4, '往另一邊偏半格也要踢得到');
-  assert.strictEqual(kickAt(0.65).bombs[0].cx, 3, '偏太多就踢不到');
-  assert(Math.abs(R.KICK_REACH - 0.5) < 1e-9 && R.KICK_OVERLAP === 0.5, '50% 的身體壓在線上 ⇔ 中心離線 0.5 格');
-  assert(kickAt(0.5).bombs[0].cx > 4, '剛好 50%（中心在邊線上）要踢得到');
-  assert.strictEqual(kickAt(0.55).bombs[0].cx, 3, '不到 50% 踢不到');
+  assert.strictEqual(kickAt(0.7).bombs[0].cx, 3, '偏太多就踢不到');
+  assert(Math.abs(R.KICK_REACH - (0.5 + R.HALF - 2 * R.HALF * 0.3)) < 1e-9 && R.KICK_OVERLAP === 0.3, '30% 的身體壓在線上 ⇔ 中心離線 0.644 格');
+  assert(kickAt(0.5).bombs[0].cx > 4, '剛好半個身體（50%，中心在邊線上）要踢得到');
+  assert(kickAt(0.56).bombs[0].cx > 4, '約 42%：要踢得到');
+  assert(kickAt(0.62).bombs[0].cx > 4, '約 33%：要踢得到');
+  assert.strictEqual(kickAt(0.68).bombs[0].cx, 3, '不到 30% 踢不到');
   /* 站在兩顆炸彈的交界（上下各壓一部分）：踢比較對準的那顆，另一顆不動 */
   const s2 = kickAt(0.4, { id: 2, owner: 1, cx: 3, cy: 4, t: 9, range: 2, pass: [], sl: null });
   assert(s2.bombs[0].cx > 4 && s2.bombs[1].cx === 3, '應該踢上面那顆（偏 0.4，離它比較近）');
