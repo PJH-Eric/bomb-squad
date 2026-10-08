@@ -234,7 +234,7 @@ test('半身機制（左右）：剛好一半在火線格裡是安全的，火�
     R.step(s, {}, R.DT);
     return !s.players[1].alive;
   };
-  assert(R.HALF_BODY === 0.85 && R.SIDE_LEFT === 0.48 && R.SIDE_RIGHT === 0.64);
+  assert(R.HALF_BODY === 0.87 && R.SIDE_LEFT === 0.48 && R.SIDE_RIGHT === 0.64);
   /* 火線末端在角色的「左邊」（火線格在左）：左門檻 48% —— 身體壓進火線格 ≥48% 就被炸 */
   assert(!hit(6.4), '身體只有一小角在火線裡：安全');
   assert(!hit(6.25), '約 15%：安全');
@@ -279,7 +279,7 @@ test('半身機制（上下）：剛好一半是安全的；站在炸彈格與�
   assert(hit(3.35), '下半身整個在火線裡：被炸（下半身只允許壓到一點點）');
   assert(!hit(2.5), '站在火線上方那格正中間（腳剛好碰到格線）：安全');
   assert(!hit(2.55), '腳只壓進火線一點點（約 10%）：安全');
-  assert(hit(2.64), '腳壓進火線超過 20%：被炸（下半身只允許壓到一點點，跟上半身的 85% 明顯不同）');
+  assert(hit(2.64), '腳壓進火線超過 20%：被炸（下半身只允許壓到一點點，跟上半身的 87% 明顯不同）');
   assert(Math.abs(R.HURT_LIFT - (R.BODY_UP - R.BODY_DOWN) / 2) < 1e-9);
   /* 炸彈在 (5,5)，玩家 x=5.5 站在炸彈格（5）與上面一格（4）各一半（身體中心 y = 5.0）：上下是同一條火線，各一半，不會被波及 */
   const s2 = mk(3); arena(s2); put(s2.players[0], 1, 1); put(s2.players[2], 11, 11);
@@ -312,7 +312,7 @@ test('並排的火線：站在兩條並排火線的中間（各壓一半）會�
   assert(run1([[3, 3]], 3.5, 3.5 + R.HURT_LIFT), '站在炸彈格正中間：被炸');
 });
 
-test('並排火線掃描：兩條並排的橫火，身體上下移動時，被炸與否正好等於「壓到兩排的面積比例 ≥ 85%」或「下半身壓到 ≥ 20%」', () => {
+test('並排火線掃描：兩條並排的橫火，身體上下移動時，被炸與否正好等於「壓到兩排的面積比例 ≥ 87%」或「下半身壓到 ≥ 20%」', () => {
   /* 炸彈 (3,3)、(3,4)，射程 4：第 3、4 列各有一條橫火；玩家在 x=6.5（離炸彈遠，只有橫火），身體垂直範圍 [y−0.76, y+0.19]（高 0.95） */
   const hit = (x, y) => {
     const s = mk(3); arena(s);
@@ -326,8 +326,8 @@ test('並排火線掃描：兩條並排的橫火，身體上下移動時，被�
   for (let y = 2.6; y <= 6.2; y += 0.05) {
     const lo = y - 0.76, hi = y + 0.19, cover = Math.max(0, Math.min(hi, 5) - Math.max(lo, 3)) / 0.95;     /* 身體在第 3、4 列（y∈[3,5)）裡的比例 */
     const feet = Math.max(0, Math.min(y + 0.5, 5) - Math.max(y, 3)) / 0.5;                                 /* 下半身（判定點往下 0.5 格）壓在兩排裡的比例 */
-    if (Math.abs(cover - 0.85) < 0.015 || Math.abs(feet - 0.2) < 0.02) continue;                            /* 剛好在門檻上的不測，免得浮點誤差 */
-    const want = cover >= 0.85 || feet >= 0.2;
+    if (Math.abs(cover - 0.87) < 0.015 || Math.abs(feet - 0.2) < 0.02) continue;                            /* 剛好在門檻上的不測，免得浮點誤差 */
+    const want = cover >= 0.87 || feet >= 0.2;
     assert.strictEqual(hit(6.5, y), want, 'y=' + y.toFixed(2) + ' 壓到兩排 ' + (cover * 100).toFixed(0) + '%、下半身 ' + (feet * 100).toFixed(0) + '%');
     if (want) hits++; else safe++;
   }
@@ -348,7 +348,7 @@ test('調教表：火線從角色右邊／左邊／上方／下方經過，判�
   assert(b.below > b.left && b.left > b.above && b.above > b.right, '上下左右要有明顯差異：下 > 左 > 上 > 右（' + [b.below, b.left, b.above, b.right].map(x => x.toFixed(2)).join('／') + '）');
   console.log('      邊界（格）右 ' + b.right.toFixed(3) + '／左 ' + b.left.toFixed(3) + '／上 ' + b.above.toFixed(3) + '／下 ' + b.below.toFixed(3));
 });
-test('影片情況：站在火線正上方一格、腳貼到火線就要被炸（並排、重疊、交叉都一樣）；站在格子正中間仍安全；上半身 85%', () => {
+test('影片情況：站在火線正上方一格、腳貼到火線就要被炸（並排、重疊、交叉都一樣）；站在格子正中間仍安全；上半身 87%', () => {
   /* 一個通用的測試場景：bombs 是 [cx, cy, range]，玩家在 (x, y)，回傳有沒有被炸死（炸彈 t=0，下一步就爆） */
   const hit = (bombs, x, y) => {
     const s = mk(3); arena(s);
@@ -358,7 +358,7 @@ test('影片情況：站在火線正上方一格、腳貼到火線就要被炸�
     R.step(s, {}, R.DT);
     return !s.players[1].alive;
   };
-  assert(R.FEET_HIT === 0.2 && R.FEET_REACH === 0.5 && R.HALF_BODY === 0.85);
+  assert(R.FEET_HIT === 0.2 && R.FEET_REACH === 0.5 && R.HALF_BODY === 0.87);
   /* 1. 影片：一條橫火（第 3 列 y∈[3,4]），玩家在正上方那一格（第 2 列，中心 y=2.5）。影片裡他的中心離火線格上緣約 0.37 格（y≈2.63） */
   assert(!hit([[3, 3, 4]], 6.5, 2.5), '站在上面那格正中間：安全（腳剛好碰到格線）');
   assert(hit([[3, 3, 4]], 6.5, 2.64), '腳壓進火線超過 20%：被炸');
