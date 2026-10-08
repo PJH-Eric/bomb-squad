@@ -132,6 +132,19 @@
             for (let y = 1; y < view.h - 1; y += 2) { put(0, y); put(view.w - 1, y); }
           }
         }
+        /* 地圖機關：畫在地板上、磚塊底下（軟磚炸掉才看得到）；草叢的前排葉子與輸送帶的流動箭頭每幀另外畫 */
+        this.fxList = { grass: [], belt: [] };
+        const fxT = this.tiles.fx;
+        if (view.fx && fxT) {
+          for (let y = 1; y < view.h - 1; y++) for (let x = 1; x < view.w - 1; x++) {
+            const v = view.fx[y * view.w + x];
+            if (!v || at(x, y) === 1) continue;
+            if (v === R.FX_GRASS) { if (fxT.grassBack) { g.drawImage(fxT.grassBack, x * T, y * T); this.fxList.grass.push({ x, y }); } }
+            else if (v === R.FX_SLOW) { if (fxT.slow) g.drawImage(fxT.slow, x * T, y * T); }
+            else if (v === R.FX_SPIKE) { if (fxT.spike) g.drawImage(fxT.spike, x * T, y * T); }
+            else if (R.isBelt(v) && fxT.belt) { g.drawImage(fxT.belt[v - R.FX_BELT], x * T, y * T); this.fxList.belt.push({ x, y, code: v }); }
+          }
+        }
         /* 第二層：牆體在地板上的投影（右下方光源）與外框內側陰影 */
         for (let y = 1; y < view.h - 1; y++) for (let x = 1; x < view.w - 1; x++) {
           if (at(x, y) !== 0) continue;
@@ -171,6 +184,7 @@
         else if (e.t === 'item') this.burst(e.x + 0.5, e.y + 0.5, '#fff3a0', calm ? 3 : 9, 'star');
         else if (e.t === 'die') this.burst(e.x, e.y, '#fff3a0', calm ? 4 : 14, 'star');
         else if (e.t === 'place') this.burst(e.x + 0.5, e.y + 0.8, '#ffffff66', 4, 'dot');
+        else if (e.t === 'spike') this.burst(e.x + 0.5, e.y + 0.5, '#ffffff', calm ? 3 : 8, 'star');
         else if (e.t === 'sky') this.drops.push({ x: e.x, y: e.y, t: 0 });   /* 空襲：炸彈從天上掉下來的動畫 */
       }
     }
@@ -195,6 +209,16 @@
         this.shake = Math.max(0, this.shake - dt);
       }
       ctx.drawImage(this.statics, 0, 0);
+
+      /* 輸送帶：箭頭順著帶子方向流動（速度跟玩家被推的速度一致）；上面還蓋著軟磚的格子不畫 */
+      const fxl = this.fxList, fxs = this.tiles.fx;
+      if (fxl && fxl.belt.length && fxs.style.belt) {
+        const ph = o.reduceMotion ? 0.3 : (now * R.BELT_SPEED * 2) % 1;
+        for (const b of fxl.belt) {
+          if (view.grid[b.y * view.w + b.x] !== 0) continue;
+          ctx.save(); ctx.translate(b.x * T, b.y * T); Art.drawBeltArrows(ctx, T, fxs.style.belt, b.code, ph); ctx.restore();
+        }
+      }
 
       /* 危險預警：即將爆炸的格子先亮紅色斜紋，越接近爆炸越明顯 */
       if (view.bombs.length) {
@@ -304,6 +328,10 @@
       this._arrow = null;
       const list = view.players.slice().sort((a, b) => (a.ry != null ? a.ry : a.y) - (b.ry != null ? b.ry : b.y));
       for (const p of list) this.drawPlayer(ctx, view, p, now, dt, o);
+      /* 草叢的前排葉子蓋在人物（與炸彈、火焰）下半身上：站進去就被遮住一半 */
+      if (fxl && fxl.grass.length && fxs.grassFront) {
+        for (const c of fxl.grass) if (view.grid[c.y * view.w + c.x] === 0) ctx.drawImage(fxs.grassFront, c.x * T, c.y * T);
+      }
 
       /* 人物站在炸彈上（剛放下還沒走開）時，再把炸彈以 25% 不透明度疊在人物上面（BOMB_OVER_ALPHA）：人物看得清楚，炸彈的輪廓也淡淡浮在上面，不會被整個藏起來 */
       if (bombImg) {
@@ -441,7 +469,10 @@
       const selfP = o.selfSlot != null ? view.players.find(q => q.slot === o.selfSlot) : null;
       const ghostOn = p.alive && p.ghostT > 0;
       /* 隱身：還活著的對手只看得到淡淡的身形（沒有名牌、護盾等細節）；自己、觀戰者、淘汰者看到的是半透明 */
-      const faint = p.alive && (p.hidden || (ghostOn && p.slot !== o.selfSlot && selfP && selfP.alive));
+      const ghostFaint = p.hidden || (ghostOn && p.slot !== o.selfSlot && selfP && selfP.alive);
+      /* 草叢：躲在草叢裡、離你超過 GRASS_REVEAL 格的對手也只剩淡淡身形（比隱身稍明顯一點）；貼近了就現形 */
+      const grassHid = !!(selfP && p.alive && R.hiddenInGrass(view, selfP, p));
+      const faint = p.alive && (ghostFaint || grassHid);
 
       let death = 0;
       if (!p.alive) {
@@ -461,7 +492,7 @@
       const color = R.SLOT_COLORS[p.slot % 8];
       let alpha = p.alive && p.invuln > 0 && Math.floor(now * 12) % 2 === 0 ? 0.45 : 1;
       if (ghostOn) alpha = Math.min(alpha, 0.4);
-      if (faint) alpha = SPRITE.ghostFaint * (o.reduceMotion ? 1 : 0.82 + 0.18 * Math.sin(now * 5 + p.slot));   /* 微微閃爍，像空氣扭曲 */
+      if (faint) alpha = (ghostFaint ? SPRITE.ghostFaint : 0.32) * (o.reduceMotion ? 1 : 0.82 + 0.18 * Math.sin(now * 5 + p.slot));   /* 微微閃爍，像空氣扭曲 */
 
       ctx.save();
       /* 影子與自己的光環 */

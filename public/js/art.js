@@ -901,11 +901,258 @@
     g.restore();
   }
 
+  /* ---------- 地圖機關的外觀（依主題換風格；哪個主題有哪些機關在 rules.js 的 THEME_FX） ---------- */
+  /* k：外觀種類；c：[主色, 深色, 亮點色]；d：額外裝飾 */
+  const FX_STYLE = {
+    0: { slow: { k: 'syrup', c: ['#9a5530', '#6a3419', '#ffd9a8'] }, belt: { k: 'candy', c: ['#ff8fc4', '#ffe03d', '#ffffff'] } },
+    1: { grass: { k: 'kelp', c: ['#4fd0a0', '#1f8f6a'] }, belt: { k: 'current', c: ['#5ec8f0', '#2a8fc0', '#ffffff'] }, slow: { k: 'mud', c: ['#8b97a8', '#5c6878', '#cfd9e4'] }, spike: { k: 'urchin', c: ['#7a4cc8', '#2f1670', '#ffd0f0'] } },
+    2: { belt: { k: 'neon', c: ['#1b2142', '#43d9ff', '#b6f4ff'] }, spike: { k: 'cone', c: ['#b9c3e2', '#4a5580', '#5be6ff'] } },
+    3: { grass: { k: 'blade', c: ['#4fb64a', '#2b7a30'] }, slow: { k: 'mud', c: ['#8a6240', '#5a3c24', '#c9a07a'] }, spike: { k: 'thorn', c: ['#7a5a38', '#4a3420', '#d6f0a0'] } },
+    4: { grass: { k: 'blade', c: ['#d9b25a', '#a8812c'] }, slow: { k: 'quicksand', c: ['#e8c070', '#b8863a', '#fff0c0'] }, spike: { k: 'cactus', c: ['#58b85a', '#2f7a38', '#fff3c8'] } },
+    5: { slow: { k: 'snow', c: ['#ffffff', '#a9cfe4', '#e8f8ff'] }, spike: { k: 'cone', c: ['#d6f4ff', '#6cb4d8', '#ffffff'] } },
+    6: { belt: { k: 'roller', c: ['#4a5568', '#ffd24d', '#ffffff'] }, spike: { k: 'cone', c: ['#d0d5e0', '#59627a', '#ff6a5a'] } },
+    7: { belt: { k: 'roller', c: ['#2b3d73', '#ffd84d', '#7ff0b0'] }, spike: { k: 'pins', c: ['#e8e8f0', '#16553a', '#ffd84d'] } },
+    8: { belt: { k: 'rails', c: ['#8a8a92', '#8a5a32', '#ffe9a8'] }, slow: { k: 'rubble', c: ['#a79b8f', '#6c6158', '#d8cec4'] }, spike: { k: 'cone', c: ['#a39a8e', '#5a524a', '#d8cfc2'] } },
+    9: { grass: { k: 'blade', c: ['#5a8f6a', '#2f5a44'] }, slow: { k: 'web', c: ['#f3f0ff', '#8a86a8', '#ffffff'] }, spike: { k: 'cone', c: ['#f2ead2', '#5a4e66', '#ffffff'] } },
+    10: { belt: { k: 'lava', c: ['#ff7a2a', '#7a1c0a', '#fff0a0'] }, slow: { k: 'ash', c: ['#6b6262', '#3a3434', '#ff8a3a'] }, spike: { k: 'cone', c: ['#3a3038', '#1a1318', '#ff6a2a'] } },
+    11: { grass: { k: 'pine', c: ['#2f9a55', '#1a6a38'] }, belt: { k: 'candy', c: ['#e85a5a', '#ffffff', '#fff6d0'] }, slow: { k: 'snow', c: ['#ffffff', '#a9cfe4', '#e8f8ff'] }, spike: { k: 'cone', c: ['#e6f8ff', '#7fb8d8', '#ff5a5a'] } },
+    12: { grass: { k: 'blade', c: ['#6fd36a', '#3a9a45'], d: 'flower' }, belt: { k: 'candy', c: ['#7fd0ff', '#ffe03d', '#ffffff'] } }
+  };
+  /* 固定的偽亂數：同一格每次畫都長一樣，不會閃 */
+  function fxRand(seed) { let a = seed >>> 0; return () => { a = (Math.imul(a, 1664525) + 1013904223) >>> 0; return a / 4294967296; }; }
+  function fxBlob(ctx, cx, cy, rx, ry) {
+    ctx.beginPath();
+    for (let i = 0; i <= 14; i++) {
+      const a = i / 14 * Math.PI * 2, q = 0.9 + 0.1 * Math.sin(i * 2.3 + 1);
+      const x = cx + Math.cos(a) * rx * q, y = cy + Math.sin(a) * ry * q;
+      if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+    }
+    ctx.closePath();
+  }
+
+  /** 草叢：back 畫在地板上（後排草葉與一塊暗色草地），front 疊在人物上面（只有下半部的前排草葉，人站進去就被遮住一半） */
+  function drawGrassFx(ctx, T, st, front) {
+    const [c0, c1] = st.c, r = fxRand(front ? 7 : 3);
+    ctx.save();
+    if (!front) { ctx.fillStyle = c1; ctx.globalAlpha = 0.2; ctx.beginPath(); ctx.ellipse(T * 0.5, T * 0.64, T * 0.46, T * 0.32, 0, 0, 7); ctx.fill(); ctx.globalAlpha = 1; }
+    if (st.k === 'pine') {
+      const tree = (x, base, sz) => {
+        ctx.fillStyle = '#7a4f2a'; ctx.fillRect(x - sz * 0.07, base - sz * 0.22, sz * 0.14, sz * 0.22);
+        for (let i = 0; i < 3; i++) {
+          const w = sz * (0.62 - i * 0.14), y = base - sz * (0.2 + i * 0.3);
+          ctx.fillStyle = i % 2 ? c0 : c1; ctx.beginPath(); ctx.moveTo(x - w, y); ctx.lineTo(x, y - sz * 0.42); ctx.lineTo(x + w, y); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.beginPath(); ctx.moveTo(x - w * 0.46, y - sz * 0.19); ctx.lineTo(x, y - sz * 0.42); ctx.lineTo(x + w * 0.46, y - sz * 0.19); ctx.closePath(); ctx.fill();
+        }
+      };
+      if (front) { tree(T * 0.24, T * 0.98, T * 0.5); tree(T * 0.76, T * 0.98, T * 0.5); }
+      else { tree(T * 0.3, T * 0.8, T * 0.7); tree(T * 0.7, T * 0.76, T * 0.62); }
+      ctx.restore(); return;
+    }
+    const n = front ? 7 : 9;
+    for (let i = 0; i < n; i++) {
+      const x = T * (0.08 + 0.84 * (i + r() * 0.6) / n), base = T * (front ? 0.98 - r() * 0.05 : 0.8 - r() * 0.1);
+      const hgt = T * (front ? 0.26 + r() * 0.14 : 0.36 + r() * 0.2) * (st.k === 'kelp' ? 1.5 : 1), lean = (r() - 0.5) * T * 0.22;
+      if (st.k === 'kelp') {
+        ctx.strokeStyle = i % 2 ? c0 : c1; ctx.lineWidth = T * 0.075; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(x, base); ctx.quadraticCurveTo(x + lean * 3, base - hgt * 0.5, x + lean, base - hgt); ctx.stroke();
+      } else {
+        const w = T * 0.07, g = ctx.createLinearGradient(0, base, 0, base - hgt); g.addColorStop(0, c1); g.addColorStop(1, c0);
+        ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(x - w, base); ctx.quadraticCurveTo(x - w * 0.2, base - hgt * 0.6, x + lean, base - hgt); ctx.quadraticCurveTo(x + w * 0.3, base - hgt * 0.5, x + w, base); ctx.closePath(); ctx.fill();
+        if (st.d === 'flower' && !front && i % 3 === 0) {
+          ctx.fillStyle = ['#ff8fc4', '#ffe03d', '#ffffff'][(i / 3) % 3 | 0]; ctx.beginPath(); ctx.arc(x + lean, base - hgt, T * 0.055, 0, 7); ctx.fill();
+          ctx.fillStyle = '#ffb12e'; ctx.beginPath(); ctx.arc(x + lean, base - hgt, T * 0.02, 0, 7); ctx.fill();
+        }
+      }
+    }
+    ctx.restore();
+  }
+
+  /** 緩速格：糖漿、泥巴、流沙、積雪、碎石、蜘蛛網、火山灰 */
+  function drawSlowFx(ctx, T, st) {
+    const [c0, c1, c2] = st.c, r = fxRand(11);
+    ctx.save();
+    ctx.lineWidth = Math.max(1, T * 0.025);
+    switch (st.k) {
+      case 'web': {
+        ctx.fillStyle = c1; ctx.globalAlpha = 0.2; ctx.beginPath(); ctx.arc(T / 2, T / 2, T * 0.44, 0, 7); ctx.fill();
+        ctx.globalAlpha = 0.9; ctx.strokeStyle = c0;
+        for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; ctx.beginPath(); ctx.moveTo(T / 2, T / 2); ctx.lineTo(T / 2 + Math.cos(a) * T * 0.46, T / 2 + Math.sin(a) * T * 0.46); ctx.stroke(); }
+        for (const rad of [0.14, 0.27, 0.4]) { ctx.beginPath(); for (let i = 0; i <= 8; i++) { const a = i * Math.PI / 4; const x = T / 2 + Math.cos(a) * T * rad, y = T / 2 + Math.sin(a) * T * rad * (i % 2 ? 0.92 : 1); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); } ctx.stroke(); }
+        break;
+      }
+      case 'snow': {
+        ctx.fillStyle = c1; fxBlob(ctx, T * 0.5, T * 0.6, T * 0.44, T * 0.28); ctx.fill();
+        ctx.fillStyle = c0; fxBlob(ctx, T * 0.48, T * 0.52, T * 0.4, T * 0.28); ctx.fill();
+        ctx.fillStyle = c1; ctx.globalAlpha = 0.35; fxBlob(ctx, T * 0.6, T * 0.6, T * 0.2, T * 0.1); ctx.fill(); ctx.globalAlpha = 1;
+        ctx.fillStyle = c2; for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(T * (0.25 + r() * 0.5), T * (0.4 + r() * 0.2), T * 0.025, 0, 7); ctx.fill(); }
+        break;
+      }
+      case 'rubble': {
+        for (let i = 0; i < 7; i++) {
+          const x = T * (0.18 + r() * 0.64), y = T * (0.25 + r() * 0.55), s = T * (0.09 + r() * 0.08);
+          ctx.fillStyle = i % 2 ? c0 : c1; fxBlob(ctx, x, y, s, s * 0.8); ctx.fill();
+          ctx.fillStyle = c2; ctx.globalAlpha = 0.4; ctx.beginPath(); ctx.arc(x - s * 0.3, y - s * 0.3, s * 0.3, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
+        }
+        break;
+      }
+      default: {   /* syrup 糖漿／mud 泥巴／quicksand 流沙／ash 火山灰：一灘會反光的稠狀東西 */
+        ctx.fillStyle = c1; fxBlob(ctx, T * 0.5, T * 0.56, T * 0.45, T * 0.36); ctx.fill();
+        ctx.fillStyle = c0; fxBlob(ctx, T * 0.5, T * 0.52, T * 0.4, T * 0.31); ctx.fill();
+        if (st.k === 'quicksand') {
+          ctx.strokeStyle = c1; ctx.globalAlpha = 0.6;
+          for (const k of [0.28, 0.18, 0.08]) { ctx.beginPath(); ctx.ellipse(T * 0.5, T * 0.52, T * k * 1.3, T * k, 0, 0, 7); ctx.stroke(); }
+          ctx.globalAlpha = 1;
+        } else {
+          ctx.fillStyle = c2; ctx.globalAlpha = st.k === 'ash' ? 0.9 : 0.45;
+          if (st.k === 'ash') { for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.arc(T * (0.25 + r() * 0.5), T * (0.35 + r() * 0.35), T * 0.025, 0, 7); ctx.fill(); } }
+          else { ctx.beginPath(); ctx.ellipse(T * 0.38, T * 0.4, T * 0.12, T * 0.06, -0.4, 0, 7); ctx.fill(); }
+          ctx.globalAlpha = 1;
+          if (st.k === 'syrup') { const cols = ['#ff6fa8', '#6fd0ff', '#ffe03d', '#ffffff']; for (let i = 0; i < 6; i++) { ctx.save(); ctx.translate(T * (0.25 + r() * 0.5), T * (0.35 + r() * 0.35)); ctx.rotate(r() * 3); ctx.fillStyle = cols[i % 4]; ctx.fillRect(-T * 0.05, -T * 0.015, T * 0.1, T * 0.03); ctx.restore(); } }
+          if (st.k === 'mud') { ctx.strokeStyle = c2; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(T * (0.3 + r() * 0.4), T * (0.4 + r() * 0.25), T * (0.03 + r() * 0.025), 0, 7); ctx.stroke(); } }
+        }
+      }
+    }
+    ctx.restore();
+  }
+
+  /** 尖刺（固定，不傷人，只會讓炸彈當場爆炸）：電極刺、冰錐、鋼刺、探針、骨刺、海膽、仙人掌、荊棘 */
+  function drawSpikeFx(ctx, T, st) {
+    const [c0, c1, c2] = st.c;
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.beginPath(); ctx.ellipse(T * 0.5, T * 0.8, T * 0.4, T * 0.12, 0, 0, 7); ctx.fill();
+    switch (st.k) {
+      case 'urchin': {
+        ctx.strokeStyle = c1; ctx.lineWidth = Math.max(1.5, T * 0.035); ctx.lineCap = 'round';
+        for (let i = 0; i < 18; i++) { const a = i / 18 * Math.PI * 2; ctx.beginPath(); ctx.moveTo(T / 2 + Math.cos(a) * T * 0.18, T * 0.52 + Math.sin(a) * T * 0.18); ctx.lineTo(T / 2 + Math.cos(a) * T * 0.42, T * 0.52 + Math.sin(a) * T * 0.42); ctx.stroke(); }
+        ctx.fillStyle = c0; ctx.beginPath(); ctx.arc(T / 2, T * 0.52, T * 0.22, 0, 7); ctx.fill();
+        ctx.fillStyle = c2; ctx.globalAlpha = 0.6; ctx.beginPath(); ctx.arc(T * 0.44, T * 0.45, T * 0.07, 0, 7); ctx.fill();
+        break;
+      }
+      case 'cactus': {
+        const body = (x, y, w, h) => { ctx.fillStyle = c0; rr(ctx, x, y, w, h, w / 2); ctx.fill(); ctx.strokeStyle = c1; ctx.lineWidth = Math.max(1.2, T * 0.03); ctx.stroke(); };
+        body(T * 0.2, T * 0.42, T * 0.16, T * 0.3); body(T * 0.64, T * 0.34, T * 0.16, T * 0.3); body(T * 0.38, T * 0.18, T * 0.24, T * 0.6);
+        ctx.strokeStyle = c2; ctx.lineWidth = Math.max(1, T * 0.022);
+        for (const [x, y] of [[0.44, 0.3], [0.56, 0.4], [0.46, 0.52], [0.55, 0.64], [0.28, 0.5], [0.72, 0.44], [0.5, 0.24]]) { ctx.beginPath(); ctx.moveTo(T * x - T * 0.03, T * y - T * 0.03); ctx.lineTo(T * x + T * 0.03, T * y + T * 0.03); ctx.moveTo(T * x + T * 0.03, T * y - T * 0.03); ctx.lineTo(T * x - T * 0.03, T * y + T * 0.03); ctx.stroke(); }
+        ctx.fillStyle = '#ff8fc4'; ctx.beginPath(); ctx.arc(T * 0.5, T * 0.17, T * 0.05, 0, 7); ctx.fill();
+        break;
+      }
+      case 'thorn': {
+        ctx.strokeStyle = c0; ctx.lineWidth = Math.max(2, T * 0.07); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        ctx.beginPath(); ctx.moveTo(T * 0.12, T * 0.75); ctx.bezierCurveTo(T * 0.3, T * 0.2, T * 0.5, T * 0.9, T * 0.88, T * 0.3); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(T * 0.2, T * 0.3); ctx.bezierCurveTo(T * 0.45, T * 0.5, T * 0.55, T * 0.15, T * 0.82, T * 0.78); ctx.stroke();
+        ctx.fillStyle = c1;
+        for (const [x, y, a] of [[0.24, 0.52, -2.2], [0.4, 0.62, 1.2], [0.6, 0.62, 0.9], [0.76, 0.45, -1.0], [0.34, 0.38, -2.6], [0.62, 0.4, -0.6], [0.72, 0.7, 2.0]]) {
+          ctx.save(); ctx.translate(T * x, T * y); ctx.rotate(a); ctx.beginPath(); ctx.moveTo(-T * 0.04, 0); ctx.lineTo(T * 0.11, 0); ctx.lineTo(-T * 0.04, T * 0.06); ctx.closePath(); ctx.fill(); ctx.restore();
+        }
+        ctx.fillStyle = c2; for (const [x, y] of [[0.5, 0.5], [0.3, 0.55]]) { ctx.beginPath(); ctx.arc(T * x, T * y, T * 0.035, 0, 7); ctx.fill(); }
+        break;
+      }
+      case 'pins': {
+        ctx.fillStyle = c1; rr(ctx, T * 0.1, T * 0.12, T * 0.8, T * 0.76, T * 0.08); ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = Math.max(1, T * 0.025); ctx.stroke();
+        for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
+          const x = T * (0.28 + i * 0.22), y = T * (0.3 + j * 0.2);
+          ctx.strokeStyle = c0; ctx.lineWidth = Math.max(1.5, T * 0.04); ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x, y + T * 0.08); ctx.lineTo(x, y - T * 0.06); ctx.stroke();
+          ctx.fillStyle = c2; ctx.beginPath(); ctx.arc(x, y - T * 0.08, T * 0.035, 0, 7); ctx.fill();
+        }
+        break;
+      }
+      default: {   /* cone：底座＋四根尖錐（電極、冰錐、鋼刺、石筍、骨刺、黑曜石） */
+        ctx.fillStyle = c1; rr(ctx, T * 0.1, T * 0.14, T * 0.8, T * 0.74, T * 0.1); ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = Math.max(1, T * 0.025); ctx.stroke();
+        for (const [x, y] of [[0.3, 0.38], [0.7, 0.38], [0.3, 0.74], [0.7, 0.74]]) {
+          const cx = T * x, by = T * y, w = T * 0.14;
+          const g = ctx.createLinearGradient(cx - w, 0, cx + w, 0); g.addColorStop(0, c0); g.addColorStop(1, 'rgba(0,0,0,0.35)');
+          ctx.fillStyle = c0; ctx.beginPath(); ctx.moveTo(cx - w, by); ctx.lineTo(cx, by - T * 0.3); ctx.lineTo(cx + w, by); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = g; ctx.globalAlpha = 0.5; ctx.fill(); ctx.globalAlpha = 1;
+          ctx.fillStyle = c2; ctx.beginPath(); ctx.arc(cx, by - T * 0.3, T * 0.035, 0, 7); ctx.fill();
+        }
+      }
+    }
+    ctx.restore();
+  }
+
+  /** 輸送帶底圖：一律畫成往右流動，再依方向旋轉；流動的箭頭另外逐格動態畫（drawBeltArrows） */
+  function drawBeltBase(ctx, T, st) {
+    const [c0, c1] = st.c;
+    ctx.save();
+    switch (st.k) {
+      case 'current': {
+        ctx.fillStyle = c0; ctx.globalAlpha = 0.4; ctx.fillRect(0, T * 0.1, T, T * 0.8); ctx.globalAlpha = 1;
+        ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = Math.max(1.2, T * 0.03);
+        for (const y of [0.28, 0.5, 0.72]) { ctx.beginPath(); for (let x = 0; x <= T; x += T / 8) { const yy = T * y + Math.sin(x / T * Math.PI * 4 + y * 9) * T * 0.035; if (x) ctx.lineTo(x, yy); else ctx.moveTo(x, yy); } ctx.stroke(); }
+        break;
+      }
+      case 'lava': {
+        const g = ctx.createLinearGradient(0, T * 0.12, 0, T * 0.88); g.addColorStop(0, c0); g.addColorStop(0.5, '#ffb040'); g.addColorStop(1, c0);
+        ctx.fillStyle = g; ctx.fillRect(0, T * 0.12, T, T * 0.76);
+        ctx.fillStyle = c1; ctx.fillRect(0, T * 0.08, T, T * 0.1); ctx.fillRect(0, T * 0.82, T, T * 0.1);
+        ctx.fillStyle = 'rgba(255,240,160,0.55)'; for (const [x, y] of [[0.2, 0.4], [0.62, 0.6], [0.85, 0.35]]) { fxBlob(ctx, T * x, T * y, T * 0.07, T * 0.04); ctx.fill(); }
+        break;
+      }
+      case 'rails': {
+        ctx.fillStyle = c1; for (let i = 0; i < 4; i++) ctx.fillRect(T * (i * 0.25 + 0.06), T * 0.14, T * 0.11, T * 0.72);
+        ctx.fillStyle = 'rgba(0,0,0,0.25)'; for (let i = 0; i < 4; i++) ctx.fillRect(T * (i * 0.25 + 0.06), T * 0.14, T * 0.11, T * 0.05);
+        ctx.fillStyle = c0; ctx.fillRect(0, T * 0.26, T, T * 0.09); ctx.fillRect(0, T * 0.65, T, T * 0.09);
+        ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(0, T * 0.26, T, T * 0.025); ctx.fillRect(0, T * 0.65, T, T * 0.025);
+        break;
+      }
+      case 'neon': {
+        ctx.fillStyle = c0; ctx.fillRect(0, T * 0.14, T, T * 0.72);
+        ctx.fillStyle = c1; ctx.shadowColor = c1; ctx.shadowBlur = T * 0.12;
+        ctx.fillRect(0, T * 0.14, T, T * 0.05); ctx.fillRect(0, T * 0.81, T, T * 0.05);
+        ctx.shadowBlur = 0; ctx.fillStyle = 'rgba(67,217,255,0.25)'; for (let i = 0; i < 4; i++) ctx.fillRect(T * (i * 0.25 + 0.1), T * 0.24, T * 0.05, T * 0.52);
+        break;
+      }
+      case 'candy': {
+        ctx.fillStyle = c0; ctx.fillRect(0, T * 0.14, T, T * 0.72);
+        ctx.save(); ctx.beginPath(); ctx.rect(0, T * 0.14, T, T * 0.72); ctx.clip();
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        for (let i = -2; i < 6; i++) { ctx.beginPath(); ctx.moveTo(T * i * 0.25, T * 0.86); ctx.lineTo(T * i * 0.25 + T * 0.1, T * 0.86); ctx.lineTo(T * i * 0.25 + T * 0.35, T * 0.14); ctx.lineTo(T * i * 0.25 + T * 0.25, T * 0.14); ctx.closePath(); ctx.fill(); }
+        ctx.restore();
+        ctx.fillStyle = c1; ctx.fillRect(0, T * 0.1, T, T * 0.06); ctx.fillRect(0, T * 0.84, T, T * 0.06);
+        break;
+      }
+      default: {   /* roller：金屬帶面＋滾輪＋上下警示邊 */
+        ctx.fillStyle = c0; ctx.fillRect(0, T * 0.14, T, T * 0.72);
+        ctx.fillStyle = 'rgba(0,0,0,0.22)'; for (let i = 0; i < 6; i++) ctx.fillRect(T * (i / 6 + 0.04), T * 0.14, T * 0.035, T * 0.72);
+        ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.fillRect(0, T * 0.14, T, T * 0.12);
+        ctx.fillStyle = c1; ctx.fillRect(0, T * 0.08, T, T * 0.08); ctx.fillRect(0, T * 0.84, T, T * 0.08);
+        ctx.fillStyle = 'rgba(20,24,38,0.7)'; for (let i = 0; i < 8; i++) { const x = T * i * 0.14; for (const y of [0.08, 0.84]) { ctx.beginPath(); ctx.moveTo(x, T * y + T * 0.08); ctx.lineTo(x + T * 0.05, T * y); ctx.lineTo(x + T * 0.09, T * y); ctx.lineTo(x + T * 0.04, T * y + T * 0.08); ctx.closePath(); ctx.fill(); } }
+      }
+    }
+    ctx.restore();
+  }
+  const BELT_ANGLE = [-Math.PI / 2, Math.PI / 2, Math.PI, 0];     /* 輸送帶 4 上、5 下、6 左、7 右 */
+  /** 輸送帶上流動的箭頭：phase 0～1 循環，相鄰格的箭頭接得起來；呼叫前 ctx 要已經 translate 到這一格的左上角 */
+  function drawBeltArrows(ctx, T, st, code, phase) {
+    ctx.save();
+    ctx.translate(T / 2, T / 2); ctx.rotate(BELT_ANGLE[code - 4]); ctx.translate(-T / 2, -T / 2);
+    ctx.beginPath(); ctx.rect(0, T * 0.14, T, T * 0.72); ctx.clip();
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for (let k = -1; k < 3; k++) {
+      const x = (k + phase) * T * 0.5 + T * 0.1;
+      ctx.beginPath(); ctx.moveTo(x - T * 0.09, T * 0.34); ctx.lineTo(x + T * 0.06, T * 0.5); ctx.lineTo(x - T * 0.09, T * 0.66);
+      ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = Math.max(2.5, T * 0.1); ctx.stroke();
+      ctx.strokeStyle = st.c[2]; ctx.lineWidth = Math.max(1.8, T * 0.06); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   function buildTileset(T, themeId) {
     const th = THEMES[themeId] || THEMES[0];
     const make = fn => { const c = mkCanvas(T, T); const x = c.getContext('2d'); fn(x); return c; };
+    const fxs = FX_STYLE[th.id] || {};
     return {
       theme: th,
+      fx: {
+        style: fxs,
+        grassBack: fxs.grass ? make(x => drawGrassFx(x, T, fxs.grass, false)) : null,
+        grassFront: fxs.grass ? make(x => drawGrassFx(x, T, fxs.grass, true)) : null,
+        slow: fxs.slow ? make(x => drawSlowFx(x, T, fxs.slow)) : null,
+        spike: fxs.spike ? make(x => drawSpikeFx(x, T, fxs.spike)) : null,
+        belt: fxs.belt ? BELT_ANGLE.map(a => make(x => { x.translate(T / 2, T / 2); x.rotate(a); x.translate(-T / 2, -T / 2); drawBeltBase(x, T, fxs.belt); })) : null
+      },
       floorA: make(x => drawFloor(x, T, th, false)),
       floorB: make(x => drawFloor(x, T, th, true)),
       hard: make(x => drawHard(x, T, th)),
@@ -927,6 +1174,6 @@
 
   root.Art = {
     ANIMALS, ANIMAL_IDS, THEMES, VARIANTS, variantIndex, ITEM_NAMES, ITEM_DESC,
-    animalSVG, itemSVG, bombSVG, planeSVG, icon, buildTileset, drawHard, drawSoft, drawFloor, drawBorder, drawFabHard, drawFabFloor, svgImage, svgUrl, rr
+    FX_STYLE, drawBeltArrows, animalSVG, itemSVG, bombSVG, planeSVG, icon, buildTileset, drawHard, drawSoft, drawFloor, drawBorder, drawFabHard, drawFabFloor, svgImage, svgUrl, rr
   };
 })(typeof self !== 'undefined' ? self : this);

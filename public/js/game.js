@@ -341,9 +341,10 @@
       while (pr.acc >= R.DT && n++ < 8) {
         pr.acc -= R.DT;
         const bombs = v.bombs.map(b => ({ id: b.id, cx: b.cx, cy: b.cy, sl: b.sl, pass: pr.pass.has(b.id) ? [me.slot] : [] }));
-        const tmp = { w: v.w, h: v.h, grid: v.grid, bombs, players: [pm], events: [] };
+        const tmp = { w: v.w, h: v.h, grid: v.grid, fx: v.fx, bombs, players: [pm], events: [] };
         R.movePlayer(tmp, pm, this.dir, R.DT);
         if (this.dir2 && this.dir2 !== this.dir && !pm.moving) R.movePlayer(tmp, pm, this.dir2, R.DT);
+        R.conveyPlayer(tmp, pm, R.DT);
         for (const b of v.bombs) if (pr.pass.has(b.id) && !R.overlapsCell(pm, b.cx, b.cy)) pr.pass.delete(b.id);
       }
       pr.x = pm.x; pr.y = pm.y; pr.dir = pm.dir;

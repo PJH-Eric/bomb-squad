@@ -182,13 +182,14 @@
   }
 
   /* 隱身的對手電腦也「看不到」，不然就變成開外掛 */
-  function enemiesOf(s, p) { return s.players.filter(q => q.alive && q.slot !== p.slot && !(q.ghostT > 0)); }
+  function enemiesOf(s, p) { return s.players.filter(q => q.alive && q.slot !== p.slot && !(q.ghostT > 0) && !R.hiddenInGrass(s, p, q)); }   /* 躲在遠處草叢裡的也看不到 */
 
   /* ---------- 判斷：這裡放炸彈划不划算 ---------- */
   function bombWanted(brain, s, p, me, dm) {
     const cfg = brain.cfg;
     if (!R.canPlaceBomb(s, p)) return false;
     const x = me % s.w, y = (me / s.w) | 0;
+    if (R.fxAt(s, x, y) === R.FX_SPIKE) return false;      /* 尖刺上放炸彈會當場爆炸 */
     const virt = { id: -1, owner: p.slot, cx: x, cy: y, range: R.rangeOf(p), t: R.FUSE, pass: [p.slot], sl: null };
     const bl = R.blast(s, virt);
     const foes = enemiesOf(s, p);

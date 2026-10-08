@@ -231,10 +231,136 @@
     return grid;
   }
 
+  /* ---------- 地圖機關 ----------
+   * 地板上的裝置，整局固定不變，存在 state.fx（跟 grid 同長的陣列，不動 grid，所以磚牆規則、碰撞、AI 的判斷都不受影響）。
+   * 機關可以和軟磚疊在一起（磚炸掉才露出來）；位置四向鏡像，每個出生點的處境一樣公平，也不會放在出生點旁。
+   *   草叢：站在裡面，離你 GRASS_REVEAL 格以外的對手（含電腦）看不到你，只剩淡淡身形
+   *   輸送帶：踩上去被往帶子的方向推（只推人，不推炸彈）
+   *   緩速格：走過去只剩 SLOW_MULT 倍速度
+   *   尖刺：不傷人；炸彈放在上面、或被踢到上面，會立刻爆炸 */
+  const FX_GRASS = 1, FX_SLOW = 2, FX_SPIKE = 3, FX_BELT = 4;     /* 輸送帶 4 上、5 下、6 左、7 右 */
+  const BELT_VEC = { 4: [0, -1], 5: [0, 1], 6: [-1, 0], 7: [1, 0] };
+  const SLOW_MULT = 0.6;       /* 緩速格上的速度倍率 */
+  const BELT_SPEED = 1.6;      /* 輸送帶推人的速度（格／秒） */
+  const GRASS_REVEAL = 1.6;    /* 草叢裡的人，距離觀看者在這個格數以內就看得到 */
+  const FX_KEEP = 0.85;        /* 主題的每一種機關，每張圖各有 85% 機率出現（至少會有一種） */
+  /* 各主題適合的機關（外觀風格在 art.js 的 FX_STYLE）：grass 草叢、belt 輸送帶、slow 緩速格、spike 尖刺 */
+  const THEME_FX = [
+    ['slow', 'belt'],                    /* 0 糖果樂園：糖漿、糖果輸送帶 */
+    ['grass', 'belt', 'slow', 'spike'],  /* 1 海底世界：海草、洋流、淤泥、海膽 */
+    ['belt', 'spike'],                   /* 2 太空站：磁浮輸送帶、電極刺 */
+    ['grass', 'slow', 'spike'],          /* 3 森林：草叢、泥巴、荊棘 */
+    ['grass', 'slow', 'spike'],          /* 4 沙漠：乾草叢、流沙、仙人掌 */
+    ['slow', 'spike'],                   /* 5 雪地：積雪、冰錐 */
+    ['belt', 'spike'],                   /* 6 競技場：跑道輸送帶、鋼刺 */
+    ['belt', 'spike'],                   /* 7 日月光廠房：產線輸送帶、探針 */
+    ['belt', 'slow', 'spike'],           /* 8 礦山：礦車軌道、碎石堆、石筍 */
+    ['grass', 'slow', 'spike'],          /* 9 地下墓穴：藤蔓、蜘蛛網、骨刺 */
+    ['belt', 'slow', 'spike'],           /* 10 火山：熔岩流、火山灰、黑曜石刺 */
+    ['grass', 'belt', 'slow', 'spike'],  /* 11 聖誕小鎮：聖誕樹叢、彩帶輸送帶、厚雪、冰錐 */
+    ['grass', 'belt']                    /* 12 遊樂園：花叢、旋轉輸送台 */
+  ];
+  const fxAt = (s, x, y) => (s.fx && x >= 0 && y >= 0 && x < s.w && y < s.h ? s.fx[y * s.w + x] : 0);
+  const isBelt = v => v >= FX_BELT && v < FX_BELT + 4;
+
+  /**
+   * 依 seed 與主題產生機關；用自己的亂數，不影響地圖與掉寶的亂數序列。唯一會動到 grid 的是：尖刺、草叢所在格的軟磚會被拿掉（只會多開路，連通不受影響）。
+   * 尖刺總數：小圖 2～6 個、大圖 4～8 個（偶數，四向鏡像）；草叢、緩速格是一小塊一小塊；輸送帶是 3～4 格的直線。
+   */
+  function generateFx(seed, w, h, grid, themeId) {
+    const fx = new Array(w * h).fill(0);
+    const feats = THEME_FX[themeId] || [];
+    if (!feats.length) return fx;
+    const rnd = mulberry32((seed ^ 0x7f4a7c15) >>> 0);
+    const cx = (w - 1) / 2, cy = (h - 1) / 2, large = h > MAP_SMALL.h;
+    const at = (x, y) => y * w + x;
+    const near = new Uint8Array(w * h), safe = new Uint8Array(w * h);
+    for (const [sx, sy] of spawnPoints(w, h).slice(0, spawnCount(w, h))) {
+      for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+        const d = Math.abs(x - sx) + Math.abs(y - sy);
+        if (d <= 1) near[at(x, y)] = 1;
+        if (d <= 2) safe[at(x, y)] = 1;
+      }
+    }
+    let on = feats.filter(() => rnd() < FX_KEEP);
+    if (!on.length) on = [feats[Math.floor(rnd() * feats.length)]];
+    /* 一個格子的四向鏡像（在中線上的格子會少幾個）；fl 記錄左右、上下各翻了沒有 */
+    const group = (x, y) => {
+      const out = [[x, y, 0, 0]];
+      if (w - 1 - x !== x) out.push([w - 1 - x, y, 1, 0]);
+      if (h - 1 - y !== y) { out.push([x, h - 1 - y, 0, 1]); if (w - 1 - x !== x) out.push([w - 1 - x, h - 1 - y, 1, 1]); }
+      return out;
+    };
+    const free = (x, y, noSafe) => x >= 1 && y >= 1 && x <= w - 2 && y <= h - 2 && grid[at(x, y)] !== 1 && fx[at(x, y)] === 0 && !near[at(x, y)] && !(noSafe && safe[at(x, y)]);
+    const pickCell = (maxX, maxY, ok) => {
+      for (let t = 0; t < 60; t++) {
+        const x = 1 + Math.floor(rnd() * maxX), y = 1 + Math.floor(rnd() * maxY);
+        if (ok(x, y)) return [x, y];
+      }
+      return null;
+    };
+    const FOUR4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    for (const kind of on) {
+      if (kind === 'belt') {
+        const lines = 1 + (large && rnd() < 0.4 ? 1 : 0);
+        for (let n = 0; n < lines; n++) {
+          const len = 3 + Math.floor(rnd() * 2), horiz = rnd() < 0.5, sign = rnd() < 0.5 ? 1 : -1;
+          const vec = horiz ? [sign, 0] : [0, sign];
+          /* 整條線只放在左上四分之一、不碰中線（中線上的格子鏡像後方向會打架） */
+          const start = pickCell(Math.ceil(cx) - 1, Math.ceil(cy) - 1, (x, y) => {
+            for (let k = 0; k < len; k++) {
+              const bx = horiz ? x + k : x, by = horiz ? y : y + k;
+              if (bx >= cx || by >= cy || !free(bx, by)) return false;
+            }
+            return true;
+          });
+          if (!start) continue;
+          for (let k = 0; k < len; k++) {
+            const bx = horiz ? start[0] + k : start[0], by = horiz ? start[1] : start[1] + k;
+            for (const [gx, gy, fxl, fyl] of group(bx, by)) {
+              const dx = fxl ? -vec[0] : vec[0], dy = fyl ? -vec[1] : vec[1];
+              fx[at(gx, gy)] = FX_BELT + (dy < 0 ? 0 : dy > 0 ? 1 : dx < 0 ? 2 : 3);
+            }
+          }
+        }
+      } else if (kind === 'spike') {
+        const target = large ? 2 * (2 + Math.floor(rnd() * 3)) : 2 * (1 + Math.floor(rnd() * 3));
+        let count = 0;
+        for (let t = 0; t < 120 && count < target; t++) {
+          const c = pickCell(Math.floor(cx), Math.floor(cy), (x, y) => free(x, y, true));
+          if (!c) break;
+          const g = group(c[0], c[1]);
+          if (g.length < 2 || count + g.length > target) continue;     /* 正中央那一格（只有 1 個）不放，免得總數變奇數 */
+          for (const [gx, gy] of g) { fx[at(gx, gy)] = FX_SPIKE; if (grid[at(gx, gy)] === 2) grid[at(gx, gy)] = 0; }   /* 尖刺是要讓人看見、避開（或拿來用）的，所以開局就不蓋軟磚 */
+          count += g.length;
+        }
+      } else {
+        const code = kind === 'grass' ? FX_GRASS : FX_SLOW;
+        const patches = 1 + (large && rnd() < 0.4 ? 1 : 0);
+        for (let n = 0; n < patches; n++) {
+          const start = pickCell(Math.floor(cx), Math.floor(cy), (x, y) => free(x, y));
+          if (!start) continue;
+          const cells = [start], size = 2 + Math.floor(rnd() * 2);
+          for (let t = 0; t < 30 && cells.length < size; t++) {
+            const from = cells[Math.floor(rnd() * cells.length)], d = FOUR4[Math.floor(rnd() * 4)];
+            const x = from[0] + d[0], y = from[1] + d[1];
+            if (x > cx || y > cy || !free(x, y) || cells.some(q => q[0] === x && q[1] === y)) continue;
+            cells.push([x, y]);
+          }
+          for (const [bx, by] of cells) for (const [gx, gy] of group(bx, by)) {
+            fx[at(gx, gy)] = code;
+            if (code === FX_GRASS && grid[at(gx, gy)] === 2) grid[at(gx, gy)] = 0;   /* 草叢也不蓋軟磚（要看得到才躲得進去） */
+          }
+        }
+      }
+    }
+    return fx;
+  }
+
   /* ---------- 建立一局 ---------- */
   /**
-   * opts：{ seed, players:[{slot,name,animal,kind,level}], layout, themeId, timeLimit, items, curses, countdown, soften }
-   * layout 可填 'random'（由 seed 決定）；themeId 填 -1 也是隨機。
+   * opts：{ seed, players:[{slot,name,animal,kind,level}], layout, themeId, timeLimit, items, curses, countdown, soften, fx }
+   * layout 可填 'random'（由 seed 決定）；themeId 填 -1 也是隨機；fx 填 false 就沒有地圖機關。
    */
   function createGame(opts) {
     const seed = (opts.seed == null ? 1 : opts.seed) >>> 0;
@@ -249,8 +375,9 @@
     /* 每局隨機分配出生點：只在「已清出安全區」的點之間洗牌，所以每個位置一樣公平；同一個 seed 洗出來一樣（連線雙方一致） */
     const spawns = spawnPoints(w, h).slice(0, spawnCount(w, h));
     { const sr = mulberry32((seed ^ 0x51ed270b) >>> 0); for (let i = spawns.length - 1; i > 0; i--) { const j = Math.floor(sr() * (i + 1)); const t = spawns[i]; spawns[i] = spawns[j]; spawns[j] = t; } }
+    const fx = opts.fx === false ? new Array(w * h).fill(0) : generateFx(seed, w, h, grid, themeId);
     const state = {
-      seed, rng: (seed ^ 0xa5a5a5a5) | 0, w, h, grid, layout, themeId,
+      seed, rng: (seed ^ 0xa5a5a5a5) | 0, w, h, grid, fx, layout, themeId,
       phase: 'countdown', countdown: opts.countdown == null ? COUNTDOWN : opts.countdown,
       time: 0, timeLimit: opts.timeLimit == null ? 180 : opts.timeLimit,
       items: opts.items !== false, curses: opts.curses !== false,
@@ -356,12 +483,33 @@
     return true;
   }
 
+  /** 草叢：viewer 看不看得到 q（q 在草叢裡、而且離 viewer 夠遠才看不到；自己、淘汰者不受影響） */
+  function hiddenInGrass(s, viewer, q) {
+    if (!viewer || !q || viewer.slot === q.slot || !viewer.alive || !q.alive) return false;
+    const c = cellOf(q);
+    if (fxAt(s, c.x, c.y) !== FX_GRASS) return false;
+    return Math.hypot(viewer.x - q.x, viewer.y - q.y) > GRASS_REVEAL;
+  }
+  /** 輸送帶：站在帶子上被往帶子方向推，同時慢慢拉回格子中線（才不會貼著牆卡住）；撞到東西就不動 */
+  function conveyPlayer(s, p, dt) {
+    const c = cellOf(p), f = fxAt(s, c.x, c.y);
+    if (!isBelt(f)) return;
+    const [dx, dy] = BELT_VEC[f], d = BELT_SPEED * dt;
+    let nx = p.x + dx * d, ny = p.y + dy * d;
+    if (dx !== 0) { const off = c.y + 0.5 - p.y; ny += Math.sign(off) * Math.min(Math.abs(off), d); }
+    else { const off = c.x + 0.5 - p.x; nx += Math.sign(off) * Math.min(Math.abs(off), d); }
+    if (!collides(s, p, nx, ny)) { p.x = nx; p.y = ny; return; }
+    nx = p.x + dx * d; ny = p.y + dy * d;
+    if (!collides(s, p, nx, ny)) { p.x = nx; p.y = ny; }
+  }
+
   function movePlayer(s, p, dir, dt) {
     dir = flipDir(p, dir);
     if (!dir || !DIRS[dir]) { p.moving = false; return; }
     p.dir = dir;
     const [dx, dy] = DIRS[dir];
-    const dist = speedOf(p) * dt;
+    const under = cellOf(p);
+    const dist = speedOf(p) * (fxAt(s, under.x, under.y) === FX_SLOW ? SLOW_MULT : 1) * dt;
     const nx = p.x + dx * dist, ny = p.y + dy * dist;
     if (!collides(s, p, nx, ny)) { p.x = nx; p.y = ny; p.moving = true; return; }
 
@@ -432,7 +580,7 @@
     return pool[0];
   }
   function airFreeCell(s, x, y) {
-    return inside(s, x, y) && s.grid[cellIdx(s, x, y)] === 0 && !bombAt(s, x, y) && !itemAt(s, x, y) && !flameAt(s, x, y);
+    return inside(s, x, y) && s.grid[cellIdx(s, x, y)] === 0 && !bombAt(s, x, y) && !itemAt(s, x, y) && !flameAt(s, x, y) && fxAt(s, x, y) !== FX_SPIKE;
   }
   /** 空投機起飛：沿隨機一列橫越地圖，道具就投在飛過的那一列（1～2 個） */
   function launchPlane(s) {
@@ -467,7 +615,7 @@
       for (let k = 0; k < n; k++) {
         const free = [];
         for (let y = 1; y < s.h - 1; y++) for (let x = 1; x < s.w - 1; x++) {
-          if (s.grid[cellIdx(s, x, y)] !== 0 || bombAt(s, x, y) || flameAt(s, x, y)) continue;
+          if (s.grid[cellIdx(s, x, y)] !== 0 || bombAt(s, x, y) || flameAt(s, x, y) || fxAt(s, x, y) === FX_SPIKE) continue;
           if (s.players.some(q => q.alive && overlapsCell(q, x, y))) continue;
           free.push(y * s.w + x);
         }
@@ -674,6 +822,7 @@
       if (p.curse) { p.curse.t -= dt; if (p.curse.t <= 0) p.curse = null; }
       movePlayer(s, p, inp ? inp.dir : null, dt);
       if (inp && inp.dir2 && inp.dir2 !== inp.dir && !p.moving) movePlayer(s, p, inp.dir2, dt);
+      conveyPlayer(s, p, dt);
       if (inp && inp.bomb) { placeBomb(s, p); }
       if (inp) inp.bomb = false;
       if (playing && p.curse && p.curse.type === 'c_auto') {
@@ -697,6 +846,8 @@
           if (slideFree(s, nx, ny)) { b.cx = nx; b.cy = ny; } else { b.sl = null; }
         }
       }
+      /* 尖刺：炸彈放在上面、被踢上去（踢的當下就算進到那一格）、或滑到上面，立刻爆炸，歸放炸彈的人 */
+      if (b.t > 0 && fxAt(s, b.cx, b.cy) === FX_SPIKE) { b.t = 0; b.sl = null; s.events.push({ t: 'spike', x: b.cx, y: b.cy }); }
     }
     explodeAll(s);
 
@@ -776,7 +927,7 @@
       seed: s.seed, w: s.w, h: s.h, layout: s.layout, themeId: s.themeId, timeLimit: s.timeLimit,
       items: s.items, curses: s.curses,
       players: s.players.map(p => ({ slot: p.slot, name: p.name, animal: p.animal, kind: p.kind, level: p.level })),
-      g: gridString(s)
+      g: gridString(s), fx: s.fx.join('')
     };
   }
 
@@ -785,7 +936,7 @@
     return {
       seed: info.seed, w: info.w, h: info.h, layout: info.layout, themeId: info.themeId, timeLimit: info.timeLimit,
       items: info.items, curses: info.curses,
-      grid: info.g.split('').map(Number), gridVer: 1,
+      grid: info.g.split('').map(Number), gridVer: 1, fx: info.fx ? info.fx.split('').map(Number) : new Array(info.w * info.h).fill(0),
       phase: 'countdown', countdown: COUNTDOWN, time: 0, result: null,
       players: info.players.map((p, i) => Object.assign({
         idx: i, x: 0, y: 0, dir: 'D', moving: false, alive: true, shield: false, left: false,
@@ -826,7 +977,8 @@
     mulberry32, rand, sizeFor, spawnCount, MAP_SMALL, MAP_LARGE, spawnPoints, generateMap, connected, createGame, step,
     blast, bombAt, itemAt, flameAt, cellOf, cellIdx, inside, speedOf, rangeOf, maxBombsOf, fireOf, speedLvlOf, flipDir, hideInSnapshot,
     canPlaceBomb, placeBomb, overlapsCell, movePlayer, slideFree, getPlayer, alivePlayers, collides, removePlayer, finish,
-    snapshot, startInfo, viewFromStart, applySnapshot, gridString
+    snapshot, startInfo, viewFromStart, applySnapshot, gridString,
+    FX_GRASS, FX_SLOW, FX_SPIKE, FX_BELT, BELT_VEC, SLOW_MULT, BELT_SPEED, GRASS_REVEAL, THEME_FX, generateFx, fxAt, isBelt, conveyPlayer, hiddenInGrass
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = root.Rules;
 })(typeof self !== 'undefined' ? self : (typeof globalThis !== 'undefined' ? globalThis : this));

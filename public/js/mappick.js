@@ -30,13 +30,18 @@
     const lay = layout === 'random' ? R.RANDOM_LAYOUTS[seed % R.RANDOM_LAYOUTS.length] : layout;
     const w = size ? size.w : 15, hh = size ? size.h : 13;
     const grid = R.generateMap(seed, w, hh, lay);
+    const fx = R.generateFx(seed, w, hh, grid, tid);
     const ts = tiles(tid, T);
     canvas.width = w * T; canvas.height = hh * T;
     const g = canvas.getContext('2d');
     for (let y = 0; y < hh; y++) for (let x = 0; x < w; x++) {
       const edge = x === 0 || y === 0 || x === w - 1 || y === hh - 1;
       g.drawImage(edge ? ts.border : ((x + y) % 2 ? ts.floorB : ts.floorA), x * T, y * T);
-      const v = grid[y * w + x];
+      const v = grid[y * w + x], f = fx[y * w + x];
+      if (f && v !== 1 && !edge) {      /* 地圖機關（預覽也畫出來，軟磚疊在上面） */
+        const img = f === R.FX_GRASS ? ts.fx.grassBack : f === R.FX_SLOW ? ts.fx.slow : f === R.FX_SPIKE ? ts.fx.spike : ts.fx.belt && ts.fx.belt[f - R.FX_BELT];
+        if (img) g.drawImage(img, x * T, y * T);
+      }
       if (v === 1 && !edge) g.drawImage(ts.hardV[Art.variantIndex(seed, x, y, ts.hardV.length)], x * T, y * T);
       else if (v === 2) g.drawImage(ts.softV[Art.variantIndex(seed + 5, x, y, ts.softV.length)], x * T, y * T);
     }
