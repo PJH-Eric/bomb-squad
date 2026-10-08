@@ -230,6 +230,7 @@ body.calm *, body.calm *::before, body.calm *::after { animation: none !importan
 .game.side-closed .game-side { display: none; }
 .side-head { display: flex; align-items: center; gap: 8px; }
 .side-head h3 { flex: 1; font-size: 1.05rem; font-weight: 900; }
+.map-info { margin: -2px 0 2px; padding: 4px 12px; border-radius: 999px; background: #f4ecff; color: var(--grape-d); font-size: .8rem; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* 真正的一行：放不下就用刪節號 */
 .summary { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; min-height: 60px; flex: 0 1 auto; max-height: 46%; }
 .sum-row { display: flex; align-items: center; gap: 8px; padding: 4px 8px 4px 4px; border-radius: 16px; background: #faf6ff; border: 3px solid transparent; }
 .sum-row.me { border-color: var(--grape); background: #f0e9ff; }

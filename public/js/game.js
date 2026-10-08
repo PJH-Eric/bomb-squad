@@ -90,7 +90,8 @@
       const exitLabel = online ? '離開對局' : '暫停選單';
       this.sideHead = h('div', { class: 'side-head' }, h('h3', null, '對局'), root.UI.iconBtn(online ? 'close' : 'pause', exitLabel, () => this.cfg.onEsc && this.cfg.onEsc(), 'sm exit-in'), closeBtn);
       this.exitBtn = root.UI.iconBtn(online ? 'close' : 'pause', exitLabel, () => this.cfg.onEsc && this.cfg.onEsc(), 'exit-btn');
-      this.side = h('aside', { class: 'game-side', 'aria-label': '對局資訊與聊天室' }, this.sideHead, this.sumEl, this.statsEl, this.buffEl, this.curseEl, this.specEl);
+      this.mapEl = this.buildMapInfo();
+      this.side = h('aside', { class: 'game-side', 'aria-label': '對局資訊與聊天室' }, this.sideHead, this.mapEl, this.sumEl, this.statsEl, this.buffEl, this.curseEl, this.specEl);
 
       if (this.kind === 'online' && this.cfg.chat) {
         this.chat = createChat({ send: t => this.cfg.chat.send(t) });
@@ -121,6 +122,13 @@
       const narrow = root.innerWidth < 860 || root.innerHeight > root.innerWidth || this.touchVisible();
       if (narrow) this.root.classList.add('side-closed');
       this.applyTheme();
+    }
+
+    /** 「對局」標題下面一行：目前地圖的主題・版型（放不下的部分用刪節號，完整內容在滑過時顯示） */
+    buildMapInfo() {
+      const v = this.view, th = Art.THEMES[v.themeId] || Art.THEMES[0];
+      const layout = (R.LAYOUT_NAMES[v.layout] || '') + '版型';
+      return h('div', { class: 'map-info', 'aria-label': '地圖資訊', title: '地圖：' + th.name + '／' + layout }, th.name + '・' + layout);
     }
 
     applyTheme() {
