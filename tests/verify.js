@@ -634,6 +634,21 @@ test('踢炸彈：有踢炸彈能力才會滑，沒有就被擋住', () => {
   assert(mkKick(true).bombs[0].cx > 4, '炸彈沒被踢走');
   assert.strictEqual(mkKick(false).bombs[0].cx, 3, '沒能力卻推動了炸彈');
 });
+test('踢炸彈：被踢的炸彈滑行速度是 SLIDE_SPEED（15 格／秒），撞到牆就停', () => {
+  assert.strictEqual(R.SLIDE_SPEED, 15);
+  const s = mk(2); arena(s); const p = s.players[0]; p.kick = true; put(p, 2, 3); put(s.players[1], 1, 11);
+  s.bombs.push({ id: 1, owner: 1, cx: 3, cy: 3, t: 9, range: 2, pass: [], sl: null });
+  let kickedAt = null;
+  for (let i = 0; i < 90 && kickedAt == null; i++) { R.step(s, { 0: { dir: 'R' } }, R.DT); if (s.bombs[0].sl) kickedAt = s.time; }
+  assert(kickedAt != null, '要先踢得動');
+  const x0 = s.bombs[0].cx;
+  for (let i = 0; i < 30; i++) R.step(s, {}, R.DT);      /* 0.5 秒 */
+  const moved = s.bombs[0].cx - x0;
+  assert(moved >= 6 && moved <= 8, '0.5 秒應該滑約 7.5 格（15 格／秒），實際 ' + moved);
+  for (let i = 0; i < 90; i++) R.step(s, {}, R.DT);
+  assert.strictEqual(s.bombs[0].cx, s.w - 2, '最後停在牆邊');
+  assert(!s.bombs[0].sl, '撞牆後不再滑');
+});
 test('踢炸彈：身體有 30% 壓在炸彈線上就踢得到（偏 0.64 格以內，比半個身體寬鬆很多），偏太多就踢不到；同時碰到兩顆踢最對準的那顆', () => {
   const kickAt = (off, extra) => {
     const s = mk(2); arena(s); const p = s.players[0]; p.kick = true; p.x = 2.5; p.y = 3.5 + off;

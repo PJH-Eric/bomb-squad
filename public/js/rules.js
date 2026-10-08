@@ -60,7 +60,7 @@
   const SUPER_T = 8;           /* 超人標誌持續秒數 */
   const SHIELD_T = 1.2;        /* 護盾破掉後的無敵秒數 */
   const COUNTDOWN = 3;
-  const SLIDE_SPEED = 7;       /* 被踢的炸彈滑行格/秒 */
+  const SLIDE_SPEED = 15;      /* 被踢的炸彈滑行格/秒（原本 7，加快） */
   const AUTO_BOMB_EVERY = 0.7; /* 手滑詛咒：自動放炸彈的間隔 */
   const END_HOLD = 2.2;        /* 分出勝負後，畫面多跑幾秒讓爆炸演完 */
 
