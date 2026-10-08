@@ -95,7 +95,7 @@ test('角色初始能力都在 1～2 之間，而且彼此平衡（沒有哪隻�
     assert.strictEqual(p.fire, st.fire); assert.strictEqual(p.maxBombs, st.bomb);
     for (const k of ['fire', 'bomb', 'speed']) assert(st[k] >= 1 && st[k] <= 2, p.animal + ' 的 ' + k + ' 超出 1～2');
     assert.strictEqual(st.fire + st.bomb + 2 * st.speed, 6, p.animal + ' 的開場總強度跟別隻不一樣');
-    assert.strictEqual(st.max.fire + st.max.bomb + st.max.speed, 25, p.animal + ' 的上限總和跟別隻不一樣');
+    assert.strictEqual(st.max.fire + st.max.bomb + st.max.speed, 27, p.animal + ' 的上限總和跟別隻不一樣');
   }
   /* 把開場＋上限當成六個數字：每隻都不一樣，而且沒有哪隻六項全都不輸另一隻 */
   const vec = a => { const t = R.ANIMAL_STATS[a]; return [t.fire, t.bomb, t.speed, t.max.fire, t.max.bomb, t.max.speed]; };
@@ -704,6 +704,7 @@ test('軟磚掉寶：關閉道具就不掉；掉出的寶可以被撿起', () =>
   run(t, { 0: { dir: 'R' } }, 0.9);
   assert.strictEqual(t.players[0].fire, R.statsOf('cat').fire + 1);
   assert(t.players[0].curse && t.players[0].curse.type === 'c_slow');
+  assert(t.players[0].curse.t > 4.5 && t.players[0].curse.t <= 6, '遲緩詛咒只持續 6 秒：' + t.players[0].curse.t);
 });
 test('詛咒限時消失；縮短火力讓炸彈只剩 1 格；手滑會自動放炸彈', () => {
   const s = mk(2); arena(s); const p = s.players[0]; put(p, 3, 3); p.fire = 4;
@@ -963,10 +964,10 @@ test('輸送帶：炸彈放在上面也被載走（速度同人、沿路轉彎�
   const mkBomb = (x, y) => { const b = { id: s.nextId++, owner: 0, cx: x, cy: y, t: 30, range: 2, pass: [], sl: null }; s.bombs.push(b); return b; };
   const b = mkBomb(3, 3), c = mkBomb(7, 3);
   let maxProg = 0, minProg = 9;
-  for (let i = 0; i < Math.round(0.6 / R.DT); i++) { R.step(s, {}, R.DT); if (b.sl) { maxProg = Math.max(maxProg, b.sl.prog); minProg = Math.min(minProg, b.sl.prog); } }
-  assert.deepStrictEqual([b.cx, b.cy], [4, 3], '0.6 秒（約 1 格）後應該在第二格');
-  for (let i = 0; i < Math.round(2.0 / R.DT); i++) { R.step(s, {}, R.DT); if (b.sl) { maxProg = Math.max(maxProg, b.sl.prog); minProg = Math.min(minProg, b.sl.prog); } }
-  assert.deepStrictEqual([b.cx, b.cy], [3, 3], '繞一圈（4 格 ÷ 1.6）後回到原點：' + b.cx + ',' + b.cy);
+  for (let i = 0; i < Math.round(1.1 / R.BELT_SPEED / R.DT); i++) { R.step(s, {}, R.DT); if (b.sl) { maxProg = Math.max(maxProg, b.sl.prog); minProg = Math.min(minProg, b.sl.prog); } }
+  assert.deepStrictEqual([b.cx, b.cy], [4, 3], '約 1.1 格後應該在第二格');
+  for (let i = 0; i < Math.round((4.2 - 1.1) / R.BELT_SPEED / R.DT); i++) { R.step(s, {}, R.DT); if (b.sl) { maxProg = Math.max(maxProg, b.sl.prog); minProg = Math.min(minProg, b.sl.prog); } }
+  assert.deepStrictEqual([b.cx, b.cy], [3, 3], '繞一圈（4 格 ÷ BELT_SPEED）後回到原點：' + b.cx + ',' + b.cy);
   assert(maxProg <= 1.5 + 1e-9 && minProg >= 0.5 - 1e-9, '畫面用的位移要在 0.5～1.5 之間：' + minProg + '～' + maxProg);
   assert.deepStrictEqual([c.cx, c.cy], [9, 3], '離開輸送帶就停在帶子外');
   assert(!c.sl && b.sl, '停下來的沒有滑行狀態，繞圈的還在走');

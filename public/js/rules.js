@@ -44,27 +44,28 @@
   const HURT_LIFT = (BODY_UP - BODY_DOWN) / 2;     /* 身體中心比判定點高多少（約 0.285） */
   const HALF = 0.36;           /* 玩家碰撞半寬（比格子小，轉角才好過） */
   const START = { fire: 2, bomb: 1 };
-  const MAX = { fire: 11, bomb: 8, speed: 6 };
-  const SPEED = { base: 3.5, step: 0.5, slow: 1.7, trait: 0.8 };
+  const MAX = { fire: 11, bomb: 8, speed: 8 };
+  const SPEED = { base: 3.0, step: 0.5, slow: 1.5, trait: 1.0 };
   /* 各角色的能力（兩層平衡）：
-   *   初始：火力、炸彈數 1～2；跑速 1～2（1.5 是標準 3.5 格／秒，2 是 3.9、1 是 3.1）。
+   *   初始：火力、炸彈數 1～2；跑速 1～2（1.5 是標準 3.0 格／秒，2 是 3.5、1 是 2.5；每次加速 +0.5 格／秒，加速上限一律 8 次：最高 6.5／7／7.5）。
    *         四種組合（九隻分在這四組），火力＋炸彈每多 1，跑速就少 0.5（火力＋炸彈＋2×跑速 都是 6）。
-   *   上限：撿道具最多能升到的火力格數／炸彈顆數／加速次數，三項加起來每隻都是 25（地圖變大後，比原本的 19 多給火力 3、炸彈 2、加速 1），
+   *   上限：撿道具最多能升到的火力格數／炸彈顆數／加速次數，三項加起來每隻都是 27（加速上限一律 8 次，所以火力＋炸彈每隻都是 19），
    *         同一種初始組合的幾隻靠上限走不同路線，所以 9 隻都不一樣，也沒有哪隻全面比別隻強。 */
   const ANIMAL_STATS = {
-    cat:     { fire: 1, bomb: 1, speed: 2,   max: { fire: 10, bomb: 9, speed: 6 } },
-    dog:     { fire: 1, bomb: 2, speed: 1.5, max: { fire: 9, bomb: 10, speed: 6 } },
-    bunny:   { fire: 1, bomb: 1, speed: 2,   max: { fire: 9, bomb: 8, speed: 8 } },
-    bear:    { fire: 2, bomb: 1, speed: 1.5, max: { fire: 12, bomb: 7, speed: 6 } },
-    panda:   { fire: 2, bomb: 2, speed: 1,   max: { fire: 11, bomb: 9, speed: 5 } },
-    fox:     { fire: 1, bomb: 2, speed: 1.5, max: { fire: 10, bomb: 8, speed: 7 } },
-    frog:    { fire: 2, bomb: 1, speed: 1.5, max: { fire: 11, bomb: 7, speed: 7 } },
-    penguin: { fire: 2, bomb: 2, speed: 1,   max: { fire: 10, bomb: 10, speed: 5 } },
-    chick:   { fire: 1, bomb: 1, speed: 2,   max: { fire: 8, bomb: 10, speed: 7 } }
+    cat:     { fire: 1, bomb: 1, speed: 2,   max: { fire: 10, bomb: 9, speed: 8 } },
+    dog:     { fire: 1, bomb: 2, speed: 1.5, max: { fire: 9, bomb: 10, speed: 8 } },
+    bunny:   { fire: 1, bomb: 1, speed: 2,   max: { fire: 9, bomb: 10, speed: 8 } },
+    bear:    { fire: 2, bomb: 1, speed: 1.5, max: { fire: 12, bomb: 7, speed: 8 } },
+    panda:   { fire: 2, bomb: 2, speed: 1,   max: { fire: 11, bomb: 8, speed: 8 } },
+    fox:     { fire: 1, bomb: 2, speed: 1.5, max: { fire: 10, bomb: 9, speed: 8 } },
+    frog:    { fire: 2, bomb: 1, speed: 1.5, max: { fire: 11, bomb: 8, speed: 8 } },
+    penguin: { fire: 2, bomb: 2, speed: 1,   max: { fire: 10, bomb: 9, speed: 8 } },
+    chick:   { fire: 1, bomb: 1, speed: 2,   max: { fire: 11, bomb: 8, speed: 8 } }
   };
   const START_STATS = { fire: START.fire, bomb: START.bomb, speed: 1.5, max: MAX };
   const statsOf = animal => ANIMAL_STATS[animal] || START_STATS;
   const CURSE_T = 8;           /* 負面道具持續秒數 */
+  const CURSE_DUR = { c_slow: 6 };   /* 個別詛咒的持續秒數（沒列的用 CURSE_T）：遲緩 6 秒 */
   const GHOST_T = 8;           /* 隱身持續秒數 */
   const SUPER_T = 8;           /* 超人標誌持續秒數 */
   const SHIELD_T = 1.2;        /* 護盾破掉後的無敵秒數 */
@@ -260,8 +261,8 @@
    *   尖刺：不傷人；炸彈放在上面、或被踢到上面，會立刻爆炸 */
   const FX_GRASS = 1, FX_SLOW = 2, FX_SPIKE = 3, FX_BELT = 4;     /* 輸送帶 4 上、5 下、6 左、7 右 */
   const BELT_VEC = { 4: [0, -1], 5: [0, 1], 6: [-1, 0], 7: [1, 0] };
-  const SLOW_MULT = 0.6;       /* 緩速格上的速度倍率 */
-  const BELT_SPEED = 1.6;      /* 輸送帶推人的速度（格／秒） */
+  const SLOW_MULT = 0.5;       /* 緩速格上的速度倍率 */
+  const BELT_SPEED = 1.33;      /* 輸送帶推人的速度（格／秒） */
   const FX_KEEP = 0.87;        /* 主題有機關的話，每張圖有 87% 機率出現（所以偶爾一張圖都沒有）；每個主題最多 1 種，機關太多會干擾玩家自己的操作 */
   /* 各主題適合的機關（外觀風格在 art.js 的 FX_STYLE）；不適合的主題留空，不是每個主題都有機關：grass 草叢、belt 輸送帶、slow 緩速格、spike 尖刺 */
   const THEME_FX = [
@@ -876,7 +877,7 @@
       case 'ghost': p.ghostT = GHOST_T; break;
       case 'super': p.superT = SUPER_T; break;
       case 'ultra': p.fire = Math.max(p.fire, statsOf(p.animal).max.fire); break;   /* 永久：火力直接升到這隻角色的上限 */
-      default: p.curse = { type: it.type, t: CURSE_T }; p.autoT = 0;
+      default: p.curse = { type: it.type, t: CURSE_DUR[it.type] || CURSE_T }; p.autoT = 0;
     }
     s.events.push({ t: 'item', slot: p.slot, type: it.type, x: it.cx, y: it.cy });
   }
@@ -1107,7 +1108,7 @@
   }
 
   root.Rules = {
-    DT, DIRS, FUSE, AIR_EVERY, SKY_START, SKY_EVERY, SKY_STEP, SKY_MAX, SKY_FUSE, SKY_RANGE, SKY_LAST, skyStartFor, skyCount, PLANE_SPEED, FLAME_T, HALF, HALF_BODY, SIDE_LEFT, SIDE_RIGHT, BODY_UP, BODY_DOWN, FEET_REACH, FEET_HIT, HURT_LIFT, hurtCells, START, MAX, SPEED, ANIMAL_STATS, statsOf, CURSE_T, GHOST_T, SUPER_T, COUNTDOWN, SLIDE_SPEED,
+    DT, DIRS, FUSE, AIR_EVERY, SKY_START, SKY_EVERY, SKY_STEP, SKY_MAX, SKY_FUSE, SKY_RANGE, SKY_LAST, skyStartFor, skyCount, PLANE_SPEED, FLAME_T, HALF, HALF_BODY, SIDE_LEFT, SIDE_RIGHT, BODY_UP, BODY_DOWN, FEET_REACH, FEET_HIT, HURT_LIFT, hurtCells, START, MAX, SPEED, ANIMAL_STATS, statsOf, CURSE_T, CURSE_DUR, GHOST_T, SUPER_T, COUNTDOWN, SLIDE_SPEED,
     KICK_OVERLAP, KICK_REACH, ITEM_TYPES, POSITIVE, CURSES, LAYOUTS, RANDOM_LAYOUTS, FAB_THEME, LAYOUT_NAMES, THEME_COUNT, SHAPES, SLOT_COLORS, DROP_WEIGHTS,
     mulberry32, rand, sizeFor, spawnCount, MAP_SMALL, MAP_LARGE, spawnPoints, generateMap, connected, createGame, step,
     blast, bombAt, itemAt, flameAt, cellOf, cellIdx, inside, speedOf, rangeOf, maxBombsOf, fireOf, speedLvlOf, flipDir, hideInSnapshot,
