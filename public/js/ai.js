@@ -16,10 +16,10 @@
     /* interval 決策間隔（秒，越大反應越慢）、hunt 追人機率、chase 追人最遠格數、react 發現危險時每次決策會逃的機率、notice 發現危險後要多久才反應得過來（秒）、
        wander 發呆亂走機率、sloppy 放了炸彈卻沒先確認退路的機率。
        （margin 走位安全餘裕：校準顯示留越多反而越保守越弱，所以所有等級都用預設 0.1，不列入強度權重） */
-    toddler: { name: '幼幼班', interval: 0.62, bombProb: 0.31, hunt: 0.04, chase: 2, chain: false, react: 0.45, notice: 0.23, itemRange: 4, itemProb: 0.34, wander: 0.46, sloppy: 0.4, curseOk: true },
-    easy:    { name: '簡單', interval: 0.55, bombProb: 0.54, hunt: 0.21, chase: 5, chain: false, react: 0.59, notice: 0.21, itemRange: 5, itemProb: 0.45, wander: 0.3, sloppy: 0.24, curseOk: true },
-    normal:  { name: '普通', interval: 0.38, bombProb: 0.74, hunt: 0.36, chase: 7, chain: true, react: 0.71, notice: 0.48, itemRange: 8, itemProb: 0.77, wander: 0.16, sloppy: 0.11, curseOk: false },
-    hard:    { name: '困難', interval: 0.22, bombProb: 0.92, hunt: 0.9, chase: 14, chain: true, react: 0.75, notice: 0.29, itemRange: 17, itemProb: 0.79, wander: 0.11, sloppy: 0.11, curseOk: false, trap: true },
+    toddler: { name: '幼幼班', interval: 0.64, bombProb: 0.3, hunt: 0.04, chase: 2, chain: false, react: 0.41, notice: 0.3, itemRange: 4, itemProb: 0.31, wander: 0.47, sloppy: 0.41, curseOk: true },
+    easy:    { name: '簡單', interval: 0.57, bombProb: 0.52, hunt: 0.2, chase: 5, chain: false, react: 0.55, notice: 0.26, itemRange: 5, itemProb: 0.42, wander: 0.32, sloppy: 0.26, curseOk: true },
+    normal:  { name: '普通', interval: 0.41, bombProb: 0.7, hunt: 0.33, chase: 6, chain: true, react: 0.65, notice: 0.52, itemRange: 7, itemProb: 0.71, wander: 0.2, sloppy: 0.14, curseOk: false },
+    hard:    { name: '困難', interval: 0.23, bombProb: 0.9, hunt: 0.88, chase: 14, chain: true, react: 0.73, notice: 0.31, itemRange: 17, itemProb: 0.77, wander: 0.12, sloppy: 0.12, curseOk: false, trap: true },
     /* 神話：逃得最準、追人與撿道具距離最遠、幾乎不發呆與失誤。決策間隔訂在 0.2 秒：新的下半身判定下，決策比這更頻繁（0.11～0.17 秒）會讓走位不停改方向、位置偏離格子中心，
        反而更常被炸（實測被炸率 81% → 59%），所以不再靠「決策更快」變強，改把其他能力拉到接近滿，強度約 92 */
     myth:    { name: '神話', interval: 0.2, bombProb: 0.98, hunt: 0.98, chase: 40, chain: true, react: 0.98, notice: 0.02, itemRange: 40, itemProb: 0.98, wander: 0.02, sloppy: 0.02, curseOk: false, trap: true, precise: true }
@@ -47,7 +47,7 @@
   const POWER_TOTAL = Object.keys(POWER_WEIGHTS).reduce((a, k) => a + POWER_WEIGHTS[k].w, 0);
   /* 各等級的目標強度（33、45、58、75、92：級距 12、13、17、17，越高級略微拉開）；改這張表就能整體調整難度的級距。
      半身機制改成 40%（更容易被火波及）後，整體再加了 3 點，讓電腦稍微聰明一點 */
-  const LEVEL_POWER = { toddler: 33, easy: 45, normal: 58, hard: 75, myth: 92 };
+  const LEVEL_POWER = { toddler: 30, easy: 42, normal: 53, hard: 73, myth: 92 };
   const POWER_DEFAULT = { notice: 0 };
 
   function paramValue(cfg, k) {

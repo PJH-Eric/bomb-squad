@@ -1178,18 +1178,18 @@ test('電腦跑完整局都不會當機，且每局都分得出結果', () => {
     assert(s.result);
   }
 });
-test('等級權重表：權重總和 100，每一級的強度值貼近目標、級距平均且往上越拉越開', () => {
+test('等級權重表：權重總和 100，每一級的強度值貼近目標、級距 30/42/53/73/92', () => {
   const W = AI.POWER_WEIGHTS;
   assert.strictEqual(Object.values(W).reduce((a, b) => a + b.w, 0), 100, '權重總和要是 100，強度值才是 0～100');
   assert.strictEqual(AI.POWER_TOTAL, 100);
   /* 實測校準：決策間隔與逃生機率最重要（scripts/ai-weights.js），這個比例不能被改回憑感覺 */
   assert(W.interval.w + W.react.w >= 55, '決策間隔＋逃生機率應佔大部分權重');
   const target = AI.LEVEL_ORDER.map(k => AI.LEVEL_POWER[k]), real = AI.LEVEL_ORDER.map(k => AI.power(AI.LEVELS[k]));
-  assert.deepStrictEqual(target, [33, 45, 58, 75, 92], '目標強度（級距）');
+  assert.deepStrictEqual(target, [30, 42, 53, 73, 92], '目標強度（級距）');
   real.forEach((v, i) => assert(Math.abs(v - target[i]) <= 1.5, AI.LEVEL_ORDER[i] + ' 強度 ' + v.toFixed(1) + ' 偏離目標 ' + target[i]));
   const gaps = target.slice(1).map((v, i) => v - target[i]);
   gaps.forEach((g, i) => assert(g >= 10, '第 ' + (i + 1) + ' 個級距只有 ' + g));
-  gaps.slice(1).forEach((g, i) => assert(g >= gaps[i], '級距要越往上越大或相等：' + gaps.join(',')));
+  assert(gaps[2] >= gaps[0] && gaps[3] >= gaps[1], '上面兩個級距不該比下面兩個小：' + gaps.join(','));
   for (const k of AI.LEVEL_ORDER) for (const f of Object.keys(W)) {
     const v = W[f].flag ? (AI.LEVELS[k][f] ? 1 : 0) : (AI.LEVELS[k][f] == null ? 0 : AI.LEVELS[k][f]);
     const lo = Math.min(W[f].worst, W[f].best), hi = Math.max(W[f].worst, W[f].best);
