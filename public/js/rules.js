@@ -40,6 +40,7 @@
      下半身只允許壓到「一點點」不被波及——腳、影子圈與火焰光暈一起算「下半身」，從判定點往下 FEET_REACH 格，
      下半身壓進火線格 FEET_HIT（20%，約 0.1 格）就被炸。站在火線正上方那一格、腳貼到火線時一定會被炸；
      剛好站在格子正中間（下半身剛好碰到格線）仍然安全 */
+  const SLIVER = 0.15;     /* 並排判定：壓到面積小於這個比例的火焰格，不拿來判斷是不是同一條線 */
   const FEET_REACH = 0.5, FEET_HIT = 0.20;
   const HURT_LIFT = (BODY_UP - BODY_DOWN) / 2;     /* 身體中心比判定點高多少（約 0.285） */
   const HALF = 0.36;           /* 玩家碰撞半寬（比格子小，轉角才好過） */
@@ -497,7 +498,10 @@
        只有一條線（同一條線上各壓一半）不算並排，維持半身機制 */
     const touch = cells.filter(c => c.fx * c.fy > 1e-9);        /* 只算身體真的有壓到（面積 > 0）的火焰格，擦邊沒壓到的不算 */
     if (touch.length >= 2) {
-      const sameRow = touch.every(c => c.cy === touch[0].cy && c.f.h), sameCol = touch.every(c => c.cx === touch[0].cx && c.f.v);
+      /* 壓到的面積不到 SLIVER 的小角落不拿來判斷「是不是同一條線」：身體整個在一排橫火裡（炸彈格＋旁邊那格各一半），
+         腳尖／頭頂只擦到另一條火線一點點，不該因此變成「並排」而被炸（十字斜角站半身） */
+      const major = touch.filter(c => c.fx * c.fy >= SLIVER), ref = major.length ? major : touch;
+      const sameRow = ref.every(c => c.cy === ref[0].cy && c.f.h), sameCol = ref.every(c => c.cx === ref[0].cx && c.f.v);
       if (!sameRow && !sameCol) {
         let area = 0; for (const c of touch) area += c.fx * c.fy;
         if (area >= th) return touch[0].f;

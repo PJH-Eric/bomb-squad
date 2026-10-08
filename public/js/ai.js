@@ -247,6 +247,7 @@
     const c = R.cellOf(p);
     const me = c.y * s.w + c.x;
     const dm = dangerMap(s, cfg.chain, cfg.margin, cfg.precise);
+    brain.dm = dm;
     /* 被火燒是看身體壓到的格子（半身機制），走在格子邊緣時要提早躲 */
     const inDanger = dm.danger[me] < Infinity || dm.burn[me] > 0 || R.hurtCells(p).some(k => R.inside(s, k.x, k.y) && (dm.danger[k.y * s.w + k.x] < Infinity || dm.burn[k.y * s.w + k.x] > 0));
 
@@ -356,6 +357,19 @@
     brain.path = opts.length ? [opts[Math.floor(brain.rnd() * opts.length)]] : [];
   }
 
+  /* 精準走位：要同時走橫向與直向時（斜著走過去），先走「走完身體壓到的危險格比較少」的那一軸，
+     不要為了走比較遠的那一軸，讓腳／頭還留在火線那一排裡 */
+  function safeAxis(dm, s, p, dx, dy, pref) {
+    const hd = dx > 0 ? 'R' : 'L', vd = dy > 0 ? 'D' : 'U', step = 0.3;
+    const bad = d => {
+      const q = { x: p.x + (d === 'R' ? step : d === 'L' ? -step : 0), y: p.y + (d === 'D' ? step : d === 'U' ? -step : 0) };
+      return R.hurtCells(q).filter(k => R.inside(s, k.x, k.y) && (dm.danger[k.y * s.w + k.x] < Infinity || dm.burn[k.y * s.w + k.x] > 0)).length;
+    };
+    const bh = bad(hd), bv = bad(vd);
+    if (bh === bv) return pref;
+    return bh < bv ? hd : vd;
+  }
+
   /* ---------- 每個 tick 呼叫 ---------- */
   function think(brain, s, p, dt) {
     if (!p.alive || s.phase !== 'play') { brain.path = []; return { dir: null, bomb: false }; }
@@ -373,6 +387,7 @@
       const dx = tx - p.x, dy = ty - p.y;
       if (Math.abs(dx) < 0.07 && Math.abs(dy) < 0.07) { brain.path.shift(); continue; }
       if (Math.abs(dx) >= Math.abs(dy)) dir = dx > 0 ? 'R' : 'L'; else dir = dy > 0 ? 'D' : 'U';
+      if (brain.cfg.precise && brain.dm && Math.abs(dx) >= 0.07 && Math.abs(dy) >= 0.07) dir = safeAxis(brain.dm, s, p, dx, dy, dir);
       break;
     }
     /* 卡住（被炸彈或別人擋到）就重新想 */
