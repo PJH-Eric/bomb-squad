@@ -234,7 +234,8 @@
   /* ---------- 地圖機關 ----------
    * 地板上的裝置，整局固定不變，存在 state.fx（跟 grid 同長的陣列，不動 grid，所以磚牆規則、碰撞、AI 的判斷都不受影響）。
    * 機關可以和軟磚疊在一起（磚炸掉才露出來）；位置四向鏡像，每個出生點的處境一樣公平，也不會放在出生點旁。
-   *   草叢：站在裡面，離你 GRASS_REVEAL 格以外的對手（含電腦）看不到你，只剩淡淡身形
+   *   草叢：站在裡面的人，任何人（對手、電腦、觀戰、淘汰的，連自己）都看不到，放在草叢裡的炸彈本體也一樣（火力線的危險預警照樣會顯示）；
+   *         只放在走道格（左右都是硬牆，或上下都是硬牆），所以裡面的炸彈只會往一個方向炸
    *   輸送帶：踩上去被往帶子的方向推，頭尾相連的環；停在帶子上的炸彈也被載著走
    *   緩速格：走過去只剩 SLOW_MULT 倍速度
    *   尖刺：不傷人；炸彈放在上面、或被踢到上面，會立刻爆炸 */
@@ -242,7 +243,6 @@
   const BELT_VEC = { 4: [0, -1], 5: [0, 1], 6: [-1, 0], 7: [1, 0] };
   const SLOW_MULT = 0.6;       /* 緩速格上的速度倍率 */
   const BELT_SPEED = 1.6;      /* 輸送帶推人的速度（格／秒） */
-  const GRASS_REVEAL = 1.6;    /* 草叢裡的人，距離觀看者在這個格數以內就看得到 */
   const FX_KEEP = 0.87;        /* 主題有機關的話，每張圖有 87% 機率出現（所以偶爾一張圖都沒有）；每個主題最多 1 種，機關太多會干擾玩家自己的操作 */
   /* 各主題適合的機關（外觀風格在 art.js 的 FX_STYLE）；不適合的主題留空，不是每個主題都有機關：grass 草叢、belt 輸送帶、slow 緩速格、spike 尖刺 */
   const THEME_FX = [
@@ -265,7 +265,7 @@
 
   /**
    * 依 seed 與主題產生機關；用自己的亂數，不影響地圖與掉寶的亂數序列。唯一會動到 grid 的是：尖刺、草叢所在格的軟磚會被拿掉（只會多開路，連通不受影響）。
-   * 尖刺總數：小圖 2～6 個、大圖 4～8 個（偶數，四向鏡像）；草叢、緩速格是一小塊一小塊；輸送帶是頭尾相連的環形（6～10 格，多半不是單純的長方形），每個角落一圈。
+   * 尖刺總數：小圖 2～6 個、大圖 4～8 個（偶數，四向鏡像）；緩速格是一小塊；草叢數量規則同尖刺；輸送帶是頭尾相連的環形（6～10 格，多半不是單純的長方形），每個角落一圈。
    */
   function generateFx(seed, w, h, grid, themeId) {
     const fx = new Array(w * h).fill(0);
@@ -336,19 +336,26 @@
           });
           break;
         }
-      } else if (kind === 'spike') {
+      } else if (kind === 'spike' || kind === 'grass') {
+        /* 尖刺和草叢數量規則一樣（草叢一多，躲進去就完全看不到人和炸彈，所以不能太多）：小圖 2～6 格、大圖 4～8 格，一格一格散開 */
+        const code = kind === 'spike' ? FX_SPIKE : FX_GRASS;
         const target = large ? 2 * (2 + Math.floor(rnd() * 3)) : 2 * (1 + Math.floor(rnd() * 3));
+        /* 草叢只放走道格：左右都是硬牆、或上下都是硬牆（邊框也算），裡面的炸彈就只會往一個方向炸；符合的格子不夠就少放，甚至這張圖沒有草叢 */
+        const wall = (x, y) => grid[at(x, y)] === 1;
+        const corridor = (x, y) => (wall(x - 1, y) && wall(x + 1, y)) || (wall(x, y - 1) && wall(x, y + 1));
+        const cands = [];
+        for (let y = 1; y <= Math.floor(cy); y++) for (let x = 1; x <= Math.floor(cx); x++) if (free(x, y, true) && (kind === 'spike' || corridor(x, y))) cands.push([x, y]);
+        for (let i = cands.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); const tmp = cands[i]; cands[i] = cands[j]; cands[j] = tmp; }
         let count = 0;
-        for (let t = 0; t < 120 && count < target; t++) {
-          const c = pickCell(Math.floor(cx), Math.floor(cy), (x, y) => free(x, y, true));
-          if (!c) break;
+        for (const c of cands) {
+          if (count >= target) break;
           const g = group(c[0], c[1]);
           if (g.length < 2 || count + g.length > target) continue;     /* 正中央那一格（只有 1 個）不放，免得總數變奇數 */
-          for (const [gx, gy] of g) { fx[at(gx, gy)] = FX_SPIKE; if (grid[at(gx, gy)] === 2) grid[at(gx, gy)] = 0; }   /* 尖刺是要讓人看見、避開（或拿來用）的，所以開局就不蓋軟磚 */
+          for (const [gx, gy] of g) { fx[at(gx, gy)] = code; if (grid[at(gx, gy)] === 2) grid[at(gx, gy)] = 0; }   /* 尖刺、草叢都要讓人看得見，所以開局不蓋軟磚 */
           count += g.length;
         }
       } else {
-        const code = kind === 'grass' ? FX_GRASS : FX_SLOW;
+        const code = FX_SLOW;
         const patches = 1;
         for (let n = 0; n < patches; n++) {
           const start = pickCell(Math.floor(cx), Math.floor(cy), (x, y) => free(x, y));
@@ -362,7 +369,6 @@
           }
           for (const [bx, by] of cells) for (const [gx, gy] of group(bx, by)) {
             fx[at(gx, gy)] = code;
-            if (code === FX_GRASS && grid[at(gx, gy)] === 2) grid[at(gx, gy)] = 0;   /* 草叢也不蓋軟磚（要看得到才躲得進去） */
           }
         }
       }
@@ -496,13 +502,14 @@
     return true;
   }
 
-  /** 草叢：viewer 看不看得到 q（q 在草叢裡、而且離 viewer 夠遠才看不到；自己、淘汰者不受影響） */
-  function hiddenInGrass(s, viewer, q) {
-    if (!viewer || !q || viewer.slot === q.slot || !viewer.alive || !q.alive) return false;
+  /** 草叢：站在草叢裡的活人，任何人都看不到（對手、電腦、旁觀的、淘汰的，連自己也看不到自己），沒有例外 */
+  function hiddenInGrass(s, q) {
+    if (!q || !q.alive) return false;
     const c = cellOf(q);
-    if (fxAt(s, c.x, c.y) !== FX_GRASS) return false;
-    return Math.hypot(viewer.x - q.x, viewer.y - q.y) > GRASS_REVEAL;
+    return fxAt(s, c.x, c.y) === FX_GRASS;
   }
+  /** 草叢：在草叢裡的炸彈任何人都看不到（包括放的人自己、電腦、觀戰的）；它的火力線預警另外照樣顯示 */
+  function bombHiddenInGrass(s, b) { return fxAt(s, b.cx, b.cy) === FX_GRASS; }
   /** 輸送帶：站在帶子上被往帶子方向推，同時慢慢拉回格子中線（才不會貼著牆卡住）；撞到東西就不動 */
   function conveyPlayer(s, p, dt) {
     const c = cellOf(p), f = fxAt(s, c.x, c.y);
@@ -1017,7 +1024,7 @@
     blast, bombAt, itemAt, flameAt, cellOf, cellIdx, inside, speedOf, rangeOf, maxBombsOf, fireOf, speedLvlOf, flipDir, hideInSnapshot,
     canPlaceBomb, placeBomb, overlapsCell, movePlayer, slideFree, getPlayer, alivePlayers, collides, removePlayer, finish,
     snapshot, startInfo, viewFromStart, applySnapshot, gridString,
-    FX_GRASS, FX_SLOW, FX_SPIKE, FX_BELT, BELT_VEC, SLOW_MULT, BELT_SPEED, GRASS_REVEAL, THEME_FX, generateFx, fxAt, isBelt, conveyPlayer, hiddenInGrass
+    FX_GRASS, FX_SLOW, FX_SPIKE, FX_BELT, BELT_VEC, SLOW_MULT, BELT_SPEED, THEME_FX, FX_KEEP, generateFx, fxAt, isBelt, conveyPlayer, hiddenInGrass, bombHiddenInGrass
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = root.Rules;
 })(typeof self !== 'undefined' ? self : (typeof globalThis !== 'undefined' ? globalThis : this));

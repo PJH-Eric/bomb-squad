@@ -149,7 +149,7 @@
         if (!R.inside(s, nx, ny)) continue;
         const j = ny * s.w + nx;
         if (dist[j] >= 0 || s.grid[j] !== 0) continue;
-        if (R.bombAt(s, nx, ny)) continue;
+        if (seenBomb(s, nx, ny)) continue;
         if (avoid && avoid[j]) continue;
         if (strict && (dm.danger[j] < Infinity || dm.burn[j] > 0)) continue;   /* 平時不踩任何會被炸到的格子 */
         if (unsafeAt(dm, j, dist[i] + 1, tile)) continue;
@@ -181,8 +181,11 @@
     try { return fn(); } finally { s.bombs.pop(); }
   }
 
+  /* 草叢裡的炸彈電腦也看不到，所以走路規劃時不會把它當障礙（可能撞上去，卡住了會重想）；火力線的危險仍然算進去 */
+  function seenBomb(s, x, y) { const b = R.bombAt(s, x, y); return !!b && !R.bombHiddenInGrass(s, b); }
+
   /* 隱身的對手電腦也「看不到」，不然就變成開外掛 */
-  function enemiesOf(s, p) { return s.players.filter(q => q.alive && q.slot !== p.slot && !(q.ghostT > 0) && !R.hiddenInGrass(s, p, q)); }   /* 躲在遠處草叢裡的也看不到 */
+  function enemiesOf(s, p) { return s.players.filter(q => q.alive && q.slot !== p.slot && !(q.ghostT > 0) && !R.hiddenInGrass(s, q)); }   /* 躲在遠處草叢裡的也看不到 */
 
   /* ---------- 判斷：這裡放炸彈划不划算 ---------- */
   function bombWanted(brain, s, p, me, dm) {
@@ -235,7 +238,7 @@
         let best = null, bestT = dm.danger[me];
         for (const d of FOUR) {
           const nx = c.x + d[0], ny = c.y + d[1];
-          if (!R.inside(s, nx, ny) || s.grid[ny * s.w + nx] !== 0 || R.bombAt(s, nx, ny)) continue;
+          if (!R.inside(s, nx, ny) || s.grid[ny * s.w + nx] !== 0 || seenBomb(s, nx, ny)) continue;
           if (dm.burn[ny * s.w + nx] > 0) continue;   /* 還在燒的格子沒有炸彈指著，danger 是 Infinity，不擋掉會直接走進火裡 */
           const t = dm.danger[ny * s.w + nx];
           if (t > bestT) { bestT = t; best = ny * s.w + nx; }
@@ -319,7 +322,7 @@
     const opts = [];
     for (const d of FOUR) {
       const nx = x + d[0], ny = y + d[1];
-      if (!R.inside(s, nx, ny) || s.grid[ny * s.w + nx] !== 0 || R.bombAt(s, nx, ny)) continue;
+      if (!R.inside(s, nx, ny) || s.grid[ny * s.w + nx] !== 0 || seenBomb(s, nx, ny)) continue;
       const j = ny * s.w + nx;
       if (dm.danger[j] < Infinity || dm.burn[j] > 0) continue;
       opts.push(j);

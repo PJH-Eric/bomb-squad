@@ -659,6 +659,13 @@ body {
 .map-big { width: min(100%, 420px); height: auto; aspect-ratio: 15 / 13; border: 3px solid #17122b; border-radius: 10px; box-shadow: 3px 3px 0 #17122b; }
 .map-preview-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; min-width: 0; }
 .map-preview-bar .btn { flex: 0 0 auto; }
+.map-fx { display: flex; gap: 10px; align-items: flex-start; padding: 10px; background: #fff; border: 3px solid #17122b; border-radius: 14px; min-width: 0; }
+.map-fx-ico { flex: 0 0 auto; width: 96px; height: 48px; border: 2px solid #17122b; border-radius: 8px; background: #f3edff; }
+.map-fx-body { display: grid; gap: 4px; min-width: 0; font-size: .86rem; font-weight: 700; line-height: 1.45; }
+.map-fx-body b { font-size: 1rem; font-weight: 900; }
+.map-fx-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.map-fx-chip { padding: 2px 8px; font-size: .78rem; font-weight: 800; background: #f3edff; border: 2px solid #17122b; border-radius: 999px; white-space: nowrap; }
+@media (max-width: 480px) { .map-fx { flex-direction: column; } }
 .map-h { margin: 4px 0 0; font-size: 1rem; font-weight: 900; }
 .map-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px; }
 .map-card { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 4px; padding: 5px; font: inherit; color: #17122b; background: #fff; border: 3px solid #17122b; border-radius: 12px; box-shadow: 2px 2px 0 #17122b; cursor: pointer; min-width: 0; }

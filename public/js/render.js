@@ -220,6 +220,9 @@
         }
       }
 
+      /* 草叢裡的炸彈本體誰都看不到（seen 是看得到的），但火力線的危險預警照樣要畫，才有機會閃躲 */
+      const seen = view.bombs.filter(b => !R.bombHiddenInGrass(view, b));
+
       /* 危險預警：即將爆炸的格子先亮紅色斜紋，越接近爆炸越明顯 */
       if (view.bombs.length) {
         const danger = new Map();
@@ -282,7 +285,7 @@
 
       /* 炸彈 */
       const bombImg = this.bombSprite();
-      for (const b of view.bombs) {
+      for (const b of seen) {
         if (falling.has(b.cy * view.w + b.cx)) continue;
         let px = b.cx + 0.5, py = b.cy + 0.5;
         if (b.sl) { px -= b.sl.dx * (1 - b.sl.prog); py -= b.sl.dy * (1 - b.sl.prog); }
@@ -335,7 +338,7 @@
 
       /* 人物站在炸彈上（剛放下還沒走開）時，再把炸彈以 25% 不透明度疊在人物上面（BOMB_OVER_ALPHA）：人物看得清楚，炸彈的輪廓也淡淡浮在上面，不會被整個藏起來 */
       if (bombImg) {
-        for (const b of view.bombs) {
+        for (const b of seen) {
           const bx = b.cx + 0.5, by = b.cy + 0.5;
           if (!view.players.some(p => p.alive && !p.hidden && Math.abs(p.x - bx) < 0.7 && Math.abs(p.y - by) < 0.7)) continue;
           let px = bx, py = by;
@@ -470,9 +473,10 @@
       const ghostOn = p.alive && p.ghostT > 0;
       /* 隱身：還活著的對手只看得到淡淡的身形（沒有名牌、護盾等細節）；自己、觀戰者、淘汰者看到的是半透明 */
       const ghostFaint = p.hidden || (ghostOn && p.slot !== o.selfSlot && selfP && selfP.alive);
-      /* 草叢：躲在草叢裡、離你超過 GRASS_REVEAL 格的對手也只剩淡淡身形（比隱身稍明顯一點）；貼近了就現形 */
-      const grassHid = !!(selfP && p.alive && R.hiddenInGrass(view, selfP, p));
-      const faint = p.alive && (ghostFaint || grassHid);
+      /* 草叢：站在草叢裡的活人誰都看不到（對手、觀戰、淘汰的、連自己，沒有例外） */
+      const grassHid = p.alive && R.hiddenInGrass(view, p);
+      if (grassHid) return;      /* 人物、影子、自己的光圈、名牌都不畫 */
+      const faint = p.alive && ghostFaint;
 
       let death = 0;
       if (!p.alive) {
@@ -492,7 +496,7 @@
       const color = R.SLOT_COLORS[p.slot % 8];
       let alpha = p.alive && p.invuln > 0 && Math.floor(now * 12) % 2 === 0 ? 0.45 : 1;
       if (ghostOn) alpha = Math.min(alpha, 0.4);
-      if (faint) alpha = (ghostFaint ? SPRITE.ghostFaint : 0.32) * (o.reduceMotion ? 1 : 0.82 + 0.18 * Math.sin(now * 5 + p.slot));   /* 微微閃爍，像空氣扭曲 */
+      if (faint) alpha = SPRITE.ghostFaint * (o.reduceMotion ? 1 : 0.82 + 0.18 * Math.sin(now * 5 + p.slot));   /* 微微閃爍，像空氣扭曲 */
 
       ctx.save();
       /* 影子與自己的光環 */

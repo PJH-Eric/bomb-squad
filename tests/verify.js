@@ -613,13 +613,13 @@ test('機關：同 seed 一樣、四向鏡像（輸送帶方向跟著翻）、�
       const mx = fx[y * w + (w - 1 - x)], my = fx[(h - 1 - y) * w + x];
       if (R.isBelt(v)) { assert.strictEqual(mx, flipX(v), '左右鏡像方向錯'); assert.strictEqual(my, flipY(v), '上下鏡像方向錯'); }
       else { assert.strictEqual(mx, v, '左右不對稱'); assert.strictEqual(my, v, '上下不對稱'); }
-      if (v === R.FX_SPIKE) {
+      if (v === R.FX_SPIKE || v === R.FX_GRASS) {
         spikes++;
-        for (const [sx, sy] of R.spawnPoints(w, h).slice(0, R.spawnCount(w, h))) assert(Math.abs(x - sx) + Math.abs(y - sy) > 2, '尖刺離出生點太近');
+        for (const [sx, sy] of R.spawnPoints(w, h).slice(0, R.spawnCount(w, h))) assert(Math.abs(x - sx) + Math.abs(y - sy) > 2, '尖刺、草叢離出生點太近');
       }
     }
     assert(allowed.length <= 1, '每個主題最多 1 種機關');
-    if (spikes) { const lo = h > 13 ? 4 : 2, hi = h > 13 ? 8 : 6; assert(spikes >= lo && spikes <= hi && spikes % 2 === 0, `尖刺數量 ${spikes}（${w}x${h}）`); total++; }
+    if (spikes) { const lo = allowed[0] === 'grass' ? 2 : (h > 13 ? 4 : 2), hi = h > 13 ? 8 : 6; assert(spikes >= lo && spikes <= hi && spikes % 2 === 0, `尖刺、草叢數量 ${spikes}（${w}x${h}）`); total++; }
   }
   assert(total > 50, '尖刺出現的次數太少：' + total);
 });
@@ -678,6 +678,23 @@ test('輸送帶：炸彈放在上面也被載走（速度同人、沿路轉彎�
   /* 經過快照再還原，畫面位移不變 */
   const snap = R.snapshot(s), v = R.applySnapshot(R.viewFromStart(R.startInfo(s)), JSON.parse(JSON.stringify(snap)));
   assert(v.bombs.every((vb, i) => !!vb.sl === !!s.bombs[i].sl));
+});
+test('草叢：只放在走道格（左右都是硬牆，或上下都是硬牆），開局沒有軟磚，數量不超過尖刺的規則；符合的格子不夠就少放', () => {
+  let seen = 0;
+  for (const themeId of [3, 11]) for (const [w, h] of [[17, 13], [19, 15]]) for (const layout of R.LAYOUTS) for (let seed = 1; seed <= 40; seed++) {
+    const grid = R.generateMap(seed, w, h, layout), fx = R.generateFx(seed, w, h, grid, themeId);
+    let n = 0;
+    for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+      if (fx[y * w + x] !== R.FX_GRASS) continue;
+      n++;
+      const wl = (a, b) => grid[b * w + a] === 1;
+      assert((wl(x - 1, y) && wl(x + 1, y)) || (wl(x, y - 1) && wl(x, y + 1)), `草叢不在走道上：${x},${y}`);
+      assert.notStrictEqual(grid[y * w + x], 2, '草叢上有軟磚');
+    }
+    assert(n <= (h > 13 ? 8 : 6) && n % 2 === 0, '草叢數量 ' + n);
+    if (n) seen++;
+  }
+  assert(seen > 100, '草叢太少出現：' + seen);
 });
 test('機關：各主題的機關種類符合風格（草叢、輸送帶、緩速、尖刺都有主題用得到），沒有機關的選項不會產生', () => {
   const has = k => R.THEME_FX.filter(a => a.indexOf(k) >= 0).length;
@@ -756,17 +773,20 @@ test('尖刺：被踢的炸彈碰到尖刺立刻爆炸，不會繼續滑；空�
   assert(k.bombs.every(b => b.owner !== -1 || (b.cx === 7 && b.cy === 7)) || k.flames.length >= 0);
   for (const b of k.bombs) if (b.owner === -1) assert(k.fx[b.cy * k.w + b.cx] !== R.FX_SPIKE, '空襲炸彈掉在尖刺上');
 });
-test('草叢：離遠的對手看不到草叢裡的人，貼近就現形；自己、不在草叢的人不受影響；電腦也看不到', () => {
+test('草叢：裡面的活人與炸彈，任何人（貼在旁邊的、自己、觀戰的）都看不到；不在草叢的看得到；電腦也看不到', () => {
   const s = fxOn(2); arena(s);
   s.fx.fill(0); s.fx[5 * s.w + 5] = R.FX_GRASS;
   const [a, b] = s.players; put(a, 5, 5); put(b, 12, 5);
-  assert(R.hiddenInGrass(s, b, a), '遠處應看不到');
-  assert(!R.hiddenInGrass(s, a, a), '自己看得到自己');
-  put(b, 6, 5);
-  assert(!R.hiddenInGrass(s, b, a), '貼近要現形');
-  put(b, 12, 5); put(a, 8, 5);
-  assert(!R.hiddenInGrass(s, b, a), '不在草叢就看得到');
-  put(a, 5, 5);
+  assert(R.hiddenInGrass(s, a), '草叢裡的人看不到（對所有人，包括自己）');
+  assert(!R.hiddenInGrass(s, b), '不在草叢的看得到');
+  b.alive = false; put(b, 5, 5);
+  assert(!R.hiddenInGrass(s, b), '已淘汰的不畫（走淘汰動畫）');
+  b.alive = true; put(b, 12, 5);
+  const bomb = { owner: 0, cx: 5, cy: 5 };
+  assert(R.bombHiddenInGrass(s, bomb), '草叢裡的炸彈誰都看不到');
+  assert(R.bombHiddenInGrass(s, { owner: -1, cx: 5, cy: 5 }), '空襲炸彈掉進草叢也一樣');
+  assert(!R.bombHiddenInGrass(s, { owner: 0, cx: 6, cy: 6 }), '不在草叢的炸彈看得到');
+  assert.deepStrictEqual(s.players.filter(q => q.alive && q.slot !== b.slot && !R.hiddenInGrass(s, q)).length, 0, '電腦的敵人清單要排除草叢裡的人');
   const brain = AI.createBrain('hard', 1);
   assert.strictEqual(typeof AI.think(brain, s, b).bomb, 'boolean');
 });

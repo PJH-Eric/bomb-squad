@@ -65,6 +65,39 @@
     return canvas;
   }
 
+  /* 各種機關的白話說明（選地圖時顯示）；數字跟 rules.js 的規則一致 */
+  const FX_INFO = {
+    grass: { name: '草叢', lines: [
+      '躲進草叢，其他人（電腦也一樣）就完全看不到你，連你放在草叢裡的炸彈也看不到（但炸彈的火力線警示還是看得到）；沒有例外，貼在旁邊、你自己、淘汰後或觀戰的人也都看不到。',
+      '草叢只在兩側都是硬牆的走道上（左右或上下），所以裡面的炸彈只會往一個方向炸。每張圖最多 2～8 格，有的圖沒有，開局就看得見，不蓋軟磚。'] },
+    belt: { name: '輸送帶', lines: [
+      '頭尾相連、形狀不規則的環形輸送帶：踩上去會被順著帶子一路繞圈帶走，停在上面的炸彈也會被載走。',
+      '炸彈前面有人或障礙就停住，離開帶子就停下。四個角落各一圈，可以和軟磚疊在一起，磚炸掉才露出來。'] },
+    slow: { name: '緩速格', lines: [
+      '踩上去速度只剩 6 成，離開就恢復；格子右下角有蝸牛記號。',
+      '每個角落各一小塊，可以和軟磚疊在一起，磚炸掉才露出來。'] },
+    spike: { name: '尖刺', lines: [
+      '固定的尖刺，不會傷人；但炸彈放在上面、或被踢到（滑到）上面，會當場爆炸。',
+      '每張圖只有 2～8 個，開局就看得見，不蓋軟磚；空投與空襲也不會落在上面。'] }
+  };
+  /* 每個主題專屬的機關名稱（一個主題最多 1 種，競技場沒有） */
+  const FX_NAME = { 0: '糖漿', 1: '洋流', 2: '磁浮輸送帶', 3: '草叢', 4: '流沙', 5: '積雪', 7: '產線輸送帶', 8: '石筍', 9: '骨刺', 10: '黑曜石刺', 11: '聖誕樹叢', 12: '旋轉輸送台' };
+  const fxKind = tid => (R.THEME_FX[tid] || [])[0] || null;
+
+  /** 機關示意圖：兩格並排（輸送帶畫上流動箭頭，草叢畫上前排葉子） */
+  function paintFxIcon(cv, tid) {
+    const T = 40, kind = fxKind(tid), ts = tiles(tid, T), f = ts.fx;
+    cv.width = T * 2; cv.height = T;
+    const g = cv.getContext('2d');
+    for (let k = 0; k < 2; k++) {
+      g.drawImage(k ? ts.floorB : ts.floorA, k * T, 0);
+      const img = kind === 'grass' ? f.grassBack : kind === 'slow' ? f.slow : kind === 'spike' ? f.spike : f.belt && f.belt[3];
+      if (img) g.drawImage(img, k * T, 0);
+      if (kind === 'belt' && f.style.belt) { g.save(); g.translate(k * T, 0); Art.drawBeltArrows(g, T, f.style.belt, 7, 0.3); g.restore(); }
+      if (kind === 'grass' && f.grassFront) g.drawImage(f.grassFront, k * T, 0);
+    }
+  }
+
   const THUMB_T = 8, BIG_T = 18, THUMB_SEED = 7;
 
   /** 設定面板上的「地圖」按鈕：縮圖＋名稱＋版型，點了打開選擇視窗 */
@@ -110,7 +143,34 @@
       h('b', null, l.label), h('small', null, l.hint)));
     const syncLayout = () => layoutBtns.forEach((b, i) => b.setAttribute('aria-checked', LAYOUTS[i].v === layout ? 'true' : 'false'));
 
+    /* 機關說明：選了主題就講這個主題的機關；選「隨機」就列出每個主題各有什麼 */
+    const fxBox = h('div', { class: 'map-fx' });
+    function paintFx() {
+      fxBox.textContent = '';
+      const keep = Math.round(R.FX_KEEP * 100);
+      if (theme < 0) {
+        const chips = Art.THEMES.filter(x => fxKind(x.id)).map(x => h('span', { class: 'map-fx-chip' }, x.name + '：' + FX_NAME[x.id]));
+        fxBox.append(h('div', { class: 'map-fx-body' },
+          h('b', null, '地圖機關'),
+          h('span', null, '每個主題最多有 1 種專屬機關（競技場沒有），機關不多，免得干擾你自己的操作；有機關的主題，每張圖約 ' + keep + '% 會出現，位置左右上下對稱，對每個出生點都公平。'),
+          h('div', { class: 'map-fx-chips' }, chips)));
+        return;
+      }
+      const kind = fxKind(theme), nm = themeName(theme);
+      if (!kind) {
+        fxBox.append(h('div', { class: 'map-fx-body' }, h('b', null, nm + '：沒有機關'), h('span', null, '單純的比賽場地，只有硬牆、軟磚和道具。')));
+        return;
+      }
+      const info = FX_INFO[kind], ico = h('canvas', { class: 'map-fx-ico', 'aria-hidden': 'true' });
+      paintFxIcon(ico, theme);
+      fxBox.append(ico, h('div', { class: 'map-fx-body' },
+        h('b', null, nm + '的機關：' + FX_NAME[theme] + (FX_NAME[theme] === info.name ? '' : '（' + info.name + '）')),
+        info.lines.map(l => h('span', null, l)),
+        h('small', { class: 'muted' }, '這個主題每張圖約 ' + keep + '% 會出現機關（也可能這一張沒有）；預覽換一張可以看到不同的配置。')));
+    }
+
     function paintBig() {
+      paintFx();
       paintMap(big, theme, layout, seed, BIG_T);
       const shown = theme < 0 ? Art.THEMES[seed % R.THEME_COUNT].name : themeName(theme);
       big.setAttribute('aria-label', '地圖預覽：' + shown + '，' + layoutName(layout) + '版型');
@@ -121,6 +181,7 @@
     const m = modal({ title: '選擇地圖', cls: 'dialog-lg map-dialog',
       content: h('div', { class: 'map-pick' },
         h('div', { class: 'map-preview' }, big, h('div', { class: 'map-preview-bar' }, h('div', null, bigTitle, h('br'), bigSub), reroll)),
+        fxBox,
         h('h3', { class: 'map-h' }, '主題'),
         h('div', { class: 'map-grid', role: 'radiogroup', 'aria-label': '地圖主題' }, themeBtns),
         h('h3', { class: 'map-h' }, '版型'),
