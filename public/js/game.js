@@ -164,8 +164,8 @@
       this.stick.addEventListener('pointermove', e => { if (e.pointerId === activeId) update(e); });
       const end = e => { if (e.pointerId !== activeId) return; activeId = null; this.stickDir = null; this.stickDir2 = null; this.knob.style.transform = ''; this.refreshDir(); };
       this.stick.addEventListener('pointerup', end); this.stick.addEventListener('pointercancel', end);
-      this.bombBtn.addEventListener('pointerdown', e => { e.preventDefault(); this.bombBtn.classList.add('down'); this.pressBomb(); this.btnHold = true; this.setHold(true); });
-      const up = () => { this.bombBtn.classList.remove('down'); if (this.btnHold) { this.btnHold = false; this.setHold(false); } };
+      this.bombBtn.addEventListener('pointerdown', e => { e.preventDefault(); this.bombBtn.classList.add('down'); this.pressBomb(); });
+      const up = () => this.bombBtn.classList.remove('down');
       this.bombBtn.addEventListener('pointerup', up); this.bombBtn.addEventListener('pointercancel', up); this.bombBtn.addEventListener('pointerleave', up);
       this.bombBtn.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.pressBomb(); } });
     }
@@ -180,7 +180,6 @@
 
     /* ----- 輸入 ----- */
     bind() {
-      this.bombKeys = new Set();            /* 現在按著的放炸彈鍵（空白、Enter、J、Z） */
       this.onKeyDown = e => {
         if (UI_open()) return;
         const t = e.target;
@@ -197,17 +196,16 @@
         if (k === ' ' || k === 'Enter' || k === 'j' || k === 'J' || k === 'z' || k === 'Z') {
           if (t && t.tagName === 'BUTTON' && (k === ' ' || k === 'Enter')) return;
           e.preventDefault();
-          if (!e.repeat) { this.pressBomb(); this.bombKeys.add(k); this.setHold(true); }      /* 一直按住就一直放炸彈 */
+          if (!e.repeat) this.pressBomb();
         }
       };
       this.onKeyUp = e => {
-        if (this.bombKeys.delete(e.key)) { if (!this.bombKeys.size) this.setHold(false); return; }
         const d = { ArrowUp: 'U', w: 'U', W: 'U', ArrowDown: 'D', s: 'D', S: 'D', ArrowLeft: 'L', a: 'L', A: 'L', ArrowRight: 'R', d: 'R', D: 'R' }[e.key];
         if (!d) return;
         const i = this.keys.indexOf(d); if (i >= 0) this.keys.splice(i, 1);
         this.refreshDir();
       };
-      this.onBlur = () => { this.keys = []; this.stickDir = null; this.stickDir2 = null; this.bombKeys.clear(); this.setHold(false); this.refreshDir(); };
+      this.onBlur = () => { this.keys = []; this.stickDir = null; this.stickDir2 = null; this.refreshDir(); };
       this.onResize = () => this.layout();
       document.addEventListener('keydown', this.onKeyDown);
       document.addEventListener('keyup', this.onKeyUp);
@@ -228,19 +226,8 @@
       this.dir = d; this.dir2 = d2;
       if (this.kind === 'solo' && this.slot != null) { this.inputs[this.slot].dir = d; this.inputs[this.slot].dir2 = d2; }
       else if (this.kind === 'online' && this.slot != null) {
-        const sig = d + '/' + d2 + '/' + !!this.hold;
-        if (sig !== this.sentDir) { this.sentDir = sig; this.cfg.send({ type: 'input', dir: d, dir2: d2, hold: !!this.hold }); }
-      }
-    }
-    /** 按住放炸彈：鍵盤與按鈕共用；單機直接寫進輸入，連線就把方向連同「按住」狀態一起送給伺服器 */
-    setHold(v) {
-      v = !!v && (this.bombKeys.size > 0 || !!this.btnHold);
-      if (v === !!this.hold) return;
-      this.hold = v;
-      if (this.kind === 'solo' && this.slot != null) this.inputs[this.slot].hold = v;
-      else if (this.kind === 'online' && this.slot != null) {
-        this.sentDir = this.dir + '/' + this.dir2 + '/' + v;
-        this.cfg.send({ type: 'input', dir: this.dir, dir2: this.dir2, hold: v });
+        const sig = d + '/' + d2;
+        if (sig !== this.sentDir) { this.sentDir = sig; this.cfg.send({ type: 'input', dir: d, dir2: d2 }); }
       }
     }
     pressBomb() {

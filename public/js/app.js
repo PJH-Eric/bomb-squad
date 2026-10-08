@@ -5,7 +5,7 @@
   const R = root.Rules, Art = root.Art, AI = root.AI;
   const $ = id => document.getElementById(id);
 
-  const LAYOUT_OPTS = [{ v: 'random', label: '隨機' }, { v: 'classic', label: '經典' }, { v: 'open', label: '空曠' }, { v: 'dense', label: '密集' }, { v: 'fab', label: '產線' }];
+  const LAYOUT_OPTS = [{ v: 'random', label: '隨機' }, { v: 'classic', label: '經典' }, { v: 'open', label: '空曠' }, { v: 'dense', label: '密集' }];
   const TIME_OPTS = [{ v: 120, label: '2 分' }, { v: 180, label: '3 分' }, { v: 300, label: '5 分' }, { v: 0, label: '不限時' }];
   const THEME_OPTS = [{ v: -1, label: '隨機' }].concat(Art.THEMES.map(t => ({ v: t.id, label: t.name })));
   const LEVEL_OPTS = AI.LEVEL_ORDER.map(k => ({ v: k, label: AI.LEVELS[k].name }));
@@ -142,7 +142,7 @@
         h('section', { class: 'card' }, h('h3', null, '操作'),
           h('p', null, '電腦鍵盤：'),
           h('p', { style: { margin: '6px 0' } }, '移動　', keycap('W'), keycap('A'), keycap('S'), keycap('D'), ' 或 ', keycap('方向鍵', 'wide')),
-          h('p', { style: { margin: '6px 0' } }, '放炸彈 ', keycap('空白鍵', 'wide'), ' 或 ', keycap('Enter', 'wide'), '（一直按住就會一直放）'),
+          h('p', { style: { margin: '6px 0' } }, '放炸彈 ', keycap('空白鍵', 'wide'), ' 或 ', keycap('Enter', 'wide')),
           h('p', { class: 'muted' }, '平板與手機：左下角搖桿移動、右下角粉紅按鈕放炸彈（設定裡可以換左右手）。'))),
       h('section', { class: 'card' }, h('h3', null, '炸彈怎麼炸'),
         h('div', { class: 'row gap-lg' },
@@ -214,7 +214,7 @@
   }
   function rulesSummary(r) {
     const pick = (opts, v) => { const o = opts.find(x => x.v === v); return o ? o.label : ''; };
-    return [pick(TIME_OPTS, r.timeLimit), pick(ITEM_MODE_OPTS, itemMode(r)), pick(THEME_OPTS, r.theme), pick(LAYOUT_OPTS, r.layout) + '版型'];
+    return [pick(TIME_OPTS, r.timeLimit), pick(ITEM_MODE_OPTS, itemMode(r)), pick(THEME_OPTS, r.theme), (r.theme === root.Rules.FAB_THEME ? '產線' : pick(LAYOUT_OPTS, r.layout)) + '版型'];
   }
 
   App.screens.solo = function () {

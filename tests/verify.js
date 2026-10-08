@@ -638,27 +638,6 @@ test('詛咒限時消失；縮短火力讓炸彈只剩 1 格；手滑會自動�
   run(t, { 0: { dir: 'R' } }, 1.5);
   assert(t.bombs.length >= 2, '手滑沒有自動放炸彈');
 });
-test('按住放炸彈（hold）：一直按著，站著只放一顆、走動就一路放，炸彈數用完就停；放開（hold=false）就不放了', () => {
-  const s = mk(2); arena(s); const p = s.players[0]; put(p, 3, 3); put(s.players[1], 15, 11);
-  p.maxBombs = 3;
-  const inp = { 0: { dir: null, bomb: false, hold: true } };
-  for (let i = 0; i < 30; i++) R.step(s, inp, R.DT);                         /* 站著按住 0.5 秒：這格只放得下一顆 */
-  assert.strictEqual(s.bombs.length, 1, '站著按住只放一顆');
-  assert.strictEqual(inp[0].hold, true, 'hold 不會被消耗');
-  inp[0].dir = 'R';
-  for (let i = 0; i < 60; i++) R.step(s, inp, R.DT);                         /* 邊走邊按住 1 秒：一路放到炸彈數用完 */
-  assert.strictEqual(s.bombs.length, 3, '走動時一路放，到炸彈數上限 3 顆為止');
-  const cells = new Set(s.bombs.map(b => b.cx + ',' + b.cy)); assert.strictEqual(cells.size, 3, '三顆在不同格子');
-  inp[0].hold = false; inp[0].dir = 'D';
-  const before = s.bombs.length;
-  for (let i = 0; i < 30; i++) R.step(s, inp, R.DT);
-  assert.strictEqual(s.bombs.length, before, '放開後不再放');
-  /* 一般按一下（邊緣）仍然只放一顆 */
-  const t2 = mk(2); arena(t2); put(t2.players[0], 3, 3); put(t2.players[1], 15, 11); t2.players[0].maxBombs = 3;
-  const i2 = { 0: { dir: null, bomb: true } };
-  R.step(t2, i2, R.DT); for (let i = 0; i < 30; i++) R.step(t2, i2, R.DT);
-  assert.strictEqual(t2.bombs.length, 1, '按一下只放一顆');
-});
 test('踢炸彈：有踢炸彈能力才會滑，沒有就被擋住', () => {
   const mkKick = kick => {
     const s = mk(2); arena(s); const p = s.players[0]; put(p, 2, 3); p.kick = kick;
@@ -829,7 +808,7 @@ test('輸送帶：每一圈都頭尾相連（順著方向走一定繞回原點�
   assert(loops > 100, '環太少：' + loops);
   assert(irregular > loops * 0.4, '不規則的環太少：' + irregular + '/' + loops);
 });
-test('產線一定有輸送帶：產線版型（任何主題）、日月光廠房（任何版型）每張圖都有，而且只有輸送帶；其他組合照主題規則', () => {
+test('產線一定有輸送帶：日月光廠房（任何版型）每張圖都有，而且只有輸送帶；產線版型只有日月光有，其他主題選 fab 會當成隨機版型', () => {
   const hasBelt = fx => fx.some(v => R.isBelt(v)), only = fx => fx.every(v => v === 0 || R.isBelt(v));
   for (const [w, h] of [[17, 13], [19, 15]]) for (let seed = 1; seed <= 30; seed++) {
     for (let themeId = 0; themeId < R.THEME_COUNT; themeId++) {
@@ -845,7 +824,9 @@ test('產線一定有輸送帶：產線版型（任何主題）、日月光廠�
   assert(!hasBelt(R.generateFx(3, 17, 13, R.generateMap(3, 17, 13, 'classic'), 3, 'classic')));
   /* createGame：隨機版型的日月光會用產線版型，所以一定有輸送帶 */
   for (let seed = 1; seed <= 20; seed++) { const g = mk(2, { seed, themeId: R.FAB_THEME, layout: 'random', fx: true }); assert.strictEqual(g.layout, 'fab'); assert(hasBelt(g.fx), '日月光隨機版型沒有輸送帶'); }
-  for (const themeId of [0, 3, 6, 9]) { const g = mk(2, { seed: 5, themeId, layout: 'fab', fx: true }); assert(hasBelt(g.fx), '產線版型主題 ' + themeId + ' 沒有輸送帶'); }
+  /* 日月光不管選什麼版型都是產線；其他主題選 fab（舊設定）會當成隨機版型，不會是產線 */
+  for (const layout of ['random', 'classic', 'open', 'dense', 'fab']) for (let seed = 1; seed <= 10; seed++) { const g = mk(2, { seed, themeId: R.FAB_THEME, layout, fx: true }); assert.strictEqual(g.layout, 'fab', '日月光選 ' + layout + ' 也要是產線'); assert(hasBelt(g.fx)); }
+  for (const themeId of [0, 3, 6, 9]) for (let seed = 1; seed <= 20; seed++) { const g = mk(2, { seed, themeId, layout: 'fab', fx: true }); assert.notStrictEqual(g.layout, 'fab', '主題 ' + themeId + ' 不能是產線版型'); assert(R.RANDOM_LAYOUTS.indexOf(g.layout) >= 0); }
 });
 test('輸送帶：每格找得到前一格（進來的方向），環上有轉角、直的格子進出同方向', () => {
   let corners = 0, straight = 0;

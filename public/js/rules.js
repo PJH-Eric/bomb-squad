@@ -74,7 +74,7 @@
 
   const LAYOUTS = ['classic', 'open', 'dense', 'fab'];
   const RANDOM_LAYOUTS = ['classic', 'open', 'dense'];
-  const FAB_THEME = 7;          /* 日月光廠房主題：隨機版型時固定用「產線」版型 */
+  const FAB_THEME = 7;          /* 日月光廠房主題：固定用「產線」版型（產線版型只有它有，不開放給其他主題選） */
   const LAYOUT_NAMES = { classic: '經典', open: '空曠', dense: '密集', fab: '產線' };
   const THEME_COUNT = 13;
   const SHAPES = ['circle', 'triangle', 'square', 'diamond', 'star', 'cross', 'heart', 'moon'];
@@ -406,7 +406,9 @@
     let themeId = opts.themeId;
     if (themeId == null || themeId < 0) themeId = Math.floor(pick() * THEME_COUNT);
     let layout = opts.layout;
-    if (!layout || layout === 'random') layout = themeId === FAB_THEME ? 'fab' : RANDOM_LAYOUTS[Math.floor(pick() * RANDOM_LAYOUTS.length)];
+    /* 「產線」版型只有日月光廠房主題有：日月光固定用產線版型（不管選了什麼版型）；其他主題不開放產線，舊設定裡的 fab 當成隨機 */
+    if (themeId === FAB_THEME) layout = 'fab';
+    else if (!layout || layout === 'random' || layout === 'fab') layout = RANDOM_LAYOUTS[Math.floor(pick() * RANDOM_LAYOUTS.length)];
     const grid = generateMap(seed, w, h, layout, opts.density, opts.soften);
     /* 每局隨機分配出生點：只在「已清出安全區」的點之間洗牌，所以每個位置一樣公平；同一個 seed 洗出來一樣（連線雙方一致） */
     const spawns = spawnPoints(w, h).slice(0, spawnCount(w, h));
@@ -894,7 +896,7 @@
 
   /* ---------- 主迴圈 ---------- */
   /**
-   * inputs：{ [slot]: { dir: 'U'|'D'|'L'|'R'|null, dir2?: 同上, bomb: boolean, hold?: boolean } }；bomb 是「按下」的邊緣訊號，步進時會被消耗；hold 是「按住」的狀態，不會被消耗。
+   * inputs：{ [slot]: { dir: 'U'|'D'|'L'|'R'|null, dir2?: 同上, bomb: boolean } }；bomb 是「按下」的邊緣訊號，步進時會被消耗。
    * dir2 是「還按著的另一個方向」：dir 被擋住走不動時改走 dir2，提早按轉彎也會沿原方向走到路口再轉。
    */
   function step(s, inputs, dt) {
@@ -928,7 +930,7 @@
       movePlayer(s, p, inp ? inp.dir : null, dt);
       if (inp && inp.dir2 && inp.dir2 !== inp.dir && !p.moving) movePlayer(s, p, inp.dir2, dt);
       conveyPlayer(s, p, dt);
-      if (inp && (inp.bomb || inp.hold)) { placeBomb(s, p); }      /* hold：一直按著放炸彈鍵，每一步只要這格放得下、炸彈數還夠就放（走動時會一路放） */
+      if (inp && inp.bomb) { placeBomb(s, p); }
       if (inp) inp.bomb = false;
       if (playing && p.curse && p.curse.type === 'c_auto') {
         p.autoT -= dt;
