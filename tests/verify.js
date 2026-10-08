@@ -1038,7 +1038,7 @@ test('等級權重表：權重總和 100，每一級的強度值貼近目標、�
   /* 實測校準：決策間隔與逃生機率最重要（scripts/ai-weights.js），這個比例不能被改回憑感覺 */
   assert(W.interval.w + W.react.w >= 55, '決策間隔＋逃生機率應佔大部分權重');
   const target = AI.LEVEL_ORDER.map(k => AI.LEVEL_POWER[k]), real = AI.LEVEL_ORDER.map(k => AI.power(AI.LEVELS[k]));
-  assert.deepStrictEqual(target, [33, 45, 58, 73, 89], '目標強度（級距）');
+  assert.deepStrictEqual(target, [33, 45, 58, 73, 92], '目標強度（級距）');
   real.forEach((v, i) => assert(Math.abs(v - target[i]) <= 1.5, AI.LEVEL_ORDER[i] + ' 強度 ' + v.toFixed(1) + ' 偏離目標 ' + target[i]));
   const gaps = target.slice(1).map((v, i) => v - target[i]);
   gaps.forEach((g, i) => assert(g >= 10, '第 ' + (i + 1) + ' 個級距只有 ' + g));

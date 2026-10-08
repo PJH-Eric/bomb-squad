@@ -21,7 +21,7 @@
     normal:  { name: '普通', interval: 0.38, bombProb: 0.74, hunt: 0.36, chase: 7, chain: true, react: 0.71, notice: 0.48, itemRange: 8, itemProb: 0.77, wander: 0.16, sloppy: 0.11, curseOk: false },
     hard:    { name: '困難', interval: 0.23, bombProb: 0.91, hunt: 0.89, chase: 12, chain: true, react: 0.73, notice: 0.31, itemRange: 15, itemProb: 0.77, wander: 0.12, sloppy: 0.12, curseOk: false, trap: true },
     /* 神話：決策最快、逃得最準、追人與撿道具距離最遠、很少發呆與失誤（參數由強度目標 84 算出） */
-    myth:    { name: '神話', interval: 0.14, bombProb: 0.91, hunt: 0.9, chase: 36, chain: true, react: 0.9, notice: 0.1, itemRange: 36, itemProb: 0.9, wander: 0.06, sloppy: 0.06, curseOk: false, trap: true }
+    myth:    { name: '神話', interval: 0.11, bombProb: 0.93, hunt: 0.93, chase: 37, chain: true, react: 0.93, notice: 0.07, itemRange: 37, itemProb: 0.93, wander: 0.04, sloppy: 0.04, curseOk: false, trap: true }
   };
 
   /* ---------- 等級權重表：把每個參數換算成「強度值」（0～100），用強度值來定級距與調數值 ----------
@@ -44,9 +44,9 @@
     chain:     { w: 1, worst: 0, best: 1, label: '會算連鎖爆炸', flag: true }
   };
   const POWER_TOTAL = Object.keys(POWER_WEIGHTS).reduce((a, k) => a + POWER_WEIGHTS[k].w, 0);
-  /* 各等級的目標強度（33、45、58、73、89：級距 12、13、15、16，越高級略微拉開）；改這張表就能整體調整難度的級距。
+  /* 各等級的目標強度（33、45、58、73、92：級距 12、13、15、19，越高級略微拉開）；改這張表就能整體調整難度的級距。
      半身機制改成 40%（更容易被火波及）後，整體再加了 3 點，讓電腦稍微聰明一點 */
-  const LEVEL_POWER = { toddler: 33, easy: 45, normal: 58, hard: 73, myth: 89 };
+  const LEVEL_POWER = { toddler: 33, easy: 45, normal: 58, hard: 73, myth: 92 };
   const POWER_DEFAULT = { notice: 0 };
 
   function paramValue(cfg, k) {
