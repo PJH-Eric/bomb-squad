@@ -599,11 +599,11 @@ body {
 .dd-caret { width: 8px; height: 8px; border-right: 3px solid #17122b; border-bottom: 3px solid #17122b; transform: rotate(45deg) translateY(-2px); flex: 0 0 auto; transition: transform .15s; }
 .dd[aria-expanded="true"] .dd-caret { transform: rotate(-135deg) translateY(-2px); }
 .pop-layer { position: fixed; inset: 0; z-index: 300; pointer-events: none; }
-.dd-list { position: fixed; pointer-events: auto; display: flex; flex-direction: column; gap: 4px; padding: 6px; overflow-y: auto; background: #fffdf3; border: 3px solid #17122b; border-radius: 14px; box-shadow: 5px 5px 0 #17122b; animation: fade .12s; scrollbar-width: none; }
+.dd-list { position: fixed; pointer-events: auto; display: flex; flex-direction: column; gap: 4px; padding: 6px; overflow-y: auto; overflow-x: hidden; box-sizing: border-box; background: #fffdf3; border: 3px solid #17122b; border-radius: 14px; box-shadow: 5px 5px 0 #17122b; animation: fade .12s; scrollbar-width: none; }
 .dd-list::-webkit-scrollbar { display: none; }
 .dd-opt { display: flex; flex-direction: column; align-items: flex-start; gap: 0; width: 100%; padding: 8px 12px 8px 30px; position: relative; text-align: left; font: inherit; color: #17122b; background: transparent; border: 2px solid transparent; border-radius: 10px; cursor: pointer; }
-.dd-opt .dd-name { font-weight: 900; white-space: nowrap; flex: 0 0 auto; }
-.dd-opt small { color: #5b5378; font-weight: 700; font-size: .76rem; white-space: nowrap; }
+.dd-opt .dd-name { font-weight: 900; white-space: nowrap; flex: 0 0 auto; max-width: 100%; }
+.dd-opt small { color: #5b5378; font-weight: 700; font-size: .76rem; white-space: normal; overflow-wrap: anywhere; line-height: 1.35; min-width: 0; max-width: 100%; }   /* 說明文字比較長時換行，不要被選單右緣切掉（電腦難度的說明最長） */
 .dd-opt:hover, .dd-opt:focus { background: #ffe86a; border-color: #17122b; }
 .dd-opt[aria-selected="true"]::before { content: ""; position: absolute; left: 10px; top: 50%; width: 6px; height: 11px; border-right: 3px solid #17122b; border-bottom: 3px solid #17122b; transform: translateY(-65%) rotate(45deg); }
 .ai-row { display: flex; align-items: center; gap: 10px; }
