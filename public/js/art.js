@@ -904,7 +904,7 @@
   /* ---------- 地圖機關的外觀（依主題換風格；哪個主題有哪些機關在 rules.js 的 THEME_FX） ---------- */
   /* k：外觀種類；c：[主色, 深色, 亮點色]；d：額外裝飾 */
   const FX_STYLE = {
-    0: { slow: { k: 'syrup', c: ['#9a5530', '#6a3419', '#ffd9a8'] }, belt: { k: 'candy', c: ['#ff8fc4', '#ffe03d', '#ffffff'] } },
+    0: { slow: { k: 'syrup', c: ['#f0a640', '#b66a1c', '#fff2c8'] }, belt: { k: 'candy', c: ['#ff8fc4', '#ffe03d', '#ffffff'] } },
     1: { grass: { k: 'kelp', c: ['#4fd0a0', '#1f8f6a'] }, belt: { k: 'current', c: ['#5ec8f0', '#2a8fc0', '#ffffff'] }, slow: { k: 'mud', c: ['#8b97a8', '#5c6878', '#cfd9e4'] }, spike: { k: 'urchin', c: ['#7a4cc8', '#2f1670', '#ffd0f0'] } },
     2: { belt: { k: 'neon', c: ['#1b2142', '#43d9ff', '#b6f4ff'] }, spike: { k: 'cone', c: ['#b9c3e2', '#4a5580', '#5be6ff'] } },
     3: { grass: { k: 'blade', c: ['#4fb64a', '#2b7a30'] }, slow: { k: 'mud', c: ['#8a6240', '#5a3c24', '#c9a07a'] }, spike: { k: 'thorn', c: ['#7a5a38', '#4a3420', '#d6f0a0'] } },
@@ -913,7 +913,7 @@
     7: { belt: { k: 'roller', c: ['#2b3d73', '#ffd84d', '#7ff0b0'] }, spike: { k: 'pins', c: ['#e8e8f0', '#16553a', '#ffd84d'] } },
     8: { belt: { k: 'rails', c: ['#8a8a92', '#8a5a32', '#ffe9a8'] }, slow: { k: 'rubble', c: ['#a79b8f', '#6c6158', '#d8cec4'] }, spike: { k: 'cone', c: ['#a39a8e', '#5a524a', '#d8cfc2'] } },
     9: { grass: { k: 'blade', c: ['#5a8f6a', '#2f5a44'] }, slow: { k: 'web', c: ['#f3f0ff', '#8a86a8', '#ffffff'] }, spike: { k: 'cone', c: ['#f2ead2', '#5a4e66', '#ffffff'] } },
-    10: { belt: { k: 'lava', c: ['#ff7a2a', '#7a1c0a', '#fff0a0'] }, slow: { k: 'ash', c: ['#6b6262', '#3a3434', '#ff8a3a'] }, spike: { k: 'cone', c: ['#3a3038', '#1a1318', '#ff6a2a'] } },
+    10: { belt: { k: 'lava', c: ['#ff7a2a', '#7a1c0a', '#fff0a0'] }, slow: { k: 'ash', c: ['#6b6262', '#3a3434', '#ff8a3a'] }, spike: { k: 'cone', c: ['#8a7886', '#1a1318', '#ff6a2a'] } },
     11: { grass: { k: 'pine', c: ['#2f9a55', '#1a6a38'] }, belt: { k: 'candy', c: ['#e85a5a', '#ffffff', '#fff6d0'] }, slow: { k: 'snow', c: ['#ffffff', '#a9cfe4', '#e8f8ff'] }, spike: { k: 'cone', c: ['#e6f8ff', '#7fb8d8', '#ff5a5a'] } },
     12: { grass: { k: 'blade', c: ['#6fd36a', '#3a9a45'], d: 'flower' }, belt: { k: 'candy', c: ['#7fd0ff', '#ffe03d', '#ffffff'] } }
   };
@@ -995,12 +995,15 @@
         break;
       }
       default: {   /* syrup 糖漿／mud 泥巴／quicksand 流沙／ash 火山灰：一灘會反光的稠狀東西 */
-        ctx.fillStyle = c1; fxBlob(ctx, T * 0.5, T * 0.56, T * 0.45, T * 0.36); ctx.fill();
-        ctx.fillStyle = c0; fxBlob(ctx, T * 0.5, T * 0.52, T * 0.4, T * 0.31); ctx.fill();
-        if (st.k === 'quicksand') {
-          ctx.strokeStyle = c1; ctx.globalAlpha = 0.6;
-          for (const k of [0.28, 0.18, 0.08]) { ctx.beginPath(); ctx.ellipse(T * 0.5, T * 0.52, T * k * 1.3, T * k, 0, 0, 7); ctx.stroke(); }
-          ctx.globalAlpha = 1;
+        const flat = st.k === 'syrup' ? 0.27 : 0.36;      /* 糖漿是扁扁的一灘 */
+        ctx.fillStyle = c1; fxBlob(ctx, T * 0.5, T * 0.58, T * 0.47, T * (flat + 0.02)); ctx.fill();
+        ctx.fillStyle = c0; fxBlob(ctx, T * 0.5, T * 0.54, T * 0.43, T * flat); ctx.fill();
+        if (st.k === 'quicksand') {      /* 漩渦：往中心越轉越深，像要把人吸進去 */
+          ctx.fillStyle = c1; ctx.globalAlpha = 0.55; ctx.beginPath(); ctx.ellipse(T * 0.5, T * 0.54, T * 0.1, T * 0.07, 0, 0, 7); ctx.fill();
+          ctx.strokeStyle = c1; ctx.lineWidth = Math.max(1.5, T * 0.04); ctx.lineCap = 'round'; ctx.globalAlpha = 0.85;
+          ctx.beginPath();
+          for (let a = 0; a <= Math.PI * 5; a += 0.2) { const rr2 = (1 - a / (Math.PI * 5)) * T * 0.32 + T * 0.02; const x = T * 0.5 + Math.cos(a) * rr2 * 1.25, y = T * 0.54 + Math.sin(a) * rr2 * 0.85; if (a) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+          ctx.stroke(); ctx.globalAlpha = 1;
         } else {
           ctx.fillStyle = c2; ctx.globalAlpha = st.k === 'ash' ? 0.9 : 0.45;
           if (st.k === 'ash') { for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.arc(T * (0.25 + r() * 0.5), T * (0.35 + r() * 0.35), T * 0.025, 0, 7); ctx.fill(); } }
@@ -1011,6 +1014,23 @@
         }
       }
     }
+    ctx.restore();
+    drawSnailBadge(ctx, T);
+  }
+  /** 緩速格共通的記號：右下角一隻小蝸牛（不管主題長什麼樣，一眼就知道踩上去會變慢） */
+  function drawSnailBadge(ctx, T) {
+    const u = T * 0.15;
+    ctx.save(); ctx.translate(T * 0.8, T * 0.78);
+    ctx.fillStyle = 'rgba(35,24,60,0.82)'; ctx.beginPath(); ctx.arc(0, 0, u * 1.55, 0, 7); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = Math.max(1, T * 0.025); ctx.stroke();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.ellipse(u * 0.1, u * 0.55, u * 1.05, u * 0.3, 0, 0, 7); ctx.fill();               /* 身體 */
+    ctx.beginPath(); ctx.arc(u * 1.0, u * 0.25, u * 0.3, 0, 7); ctx.fill();                                /* 頭 */
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = Math.max(1, u * 0.18); ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(u * 1.0, u * 0.1); ctx.lineTo(u * 1.15, u * -0.45); ctx.moveTo(u * 0.85, u * 0.1); ctx.lineTo(u * 0.75, u * -0.45); ctx.stroke();   /* 觸角 */
+    ctx.fillStyle = '#ffd24d'; ctx.beginPath(); ctx.arc(u * -0.15, u * -0.05, u * 0.62, 0, 7); ctx.fill();   /* 殼 */
+    ctx.strokeStyle = '#8a5a1c'; ctx.lineWidth = Math.max(1, u * 0.14);
+    ctx.beginPath(); for (let a = 0; a <= Math.PI * 3; a += 0.3) { const rr3 = a / (Math.PI * 3) * u * 0.5; const x = u * -0.15 + Math.cos(a) * rr3, y = u * -0.05 + Math.sin(a) * rr3; if (a) ctx.lineTo(x, y); else ctx.moveTo(x, y); } ctx.stroke();
     ctx.restore();
   }
 
@@ -1048,7 +1068,7 @@
       }
       case 'pins': {
         ctx.fillStyle = c1; rr(ctx, T * 0.1, T * 0.12, T * 0.8, T * 0.76, T * 0.08); ctx.fill();
-        ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = Math.max(1, T * 0.025); ctx.stroke();
+        ctx.strokeStyle = '#ff5a4a'; ctx.lineWidth = Math.max(1.5, T * 0.045); ctx.setLineDash([T * 0.1, T * 0.07]); ctx.stroke(); ctx.setLineDash([]);
         for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
           const x = T * (0.28 + i * 0.22), y = T * (0.3 + j * 0.2);
           ctx.strokeStyle = c0; ctx.lineWidth = Math.max(1.5, T * 0.04); ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x, y + T * 0.08); ctx.lineTo(x, y - T * 0.06); ctx.stroke();
@@ -1058,7 +1078,7 @@
       }
       default: {   /* cone：底座＋四根尖錐（電極、冰錐、鋼刺、石筍、骨刺、黑曜石） */
         ctx.fillStyle = c1; rr(ctx, T * 0.1, T * 0.14, T * 0.8, T * 0.74, T * 0.1); ctx.fill();
-        ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = Math.max(1, T * 0.025); ctx.stroke();
+        ctx.strokeStyle = '#ff5a4a'; ctx.lineWidth = Math.max(1.5, T * 0.045); ctx.setLineDash([T * 0.1, T * 0.07]); ctx.stroke(); ctx.setLineDash([]);   /* 紅色警示虛線 */
         for (const [x, y] of [[0.3, 0.38], [0.7, 0.38], [0.3, 0.74], [0.7, 0.74]]) {
           const cx = T * x, by = T * y, w = T * 0.14;
           const g = ctx.createLinearGradient(cx - w, 0, cx + w, 0); g.addColorStop(0, c0); g.addColorStop(1, 'rgba(0,0,0,0.35)');
