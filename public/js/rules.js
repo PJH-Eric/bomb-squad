@@ -235,7 +235,7 @@
    * 地板上的裝置，整局固定不變，存在 state.fx（跟 grid 同長的陣列，不動 grid，所以磚牆規則、碰撞、AI 的判斷都不受影響）。
    * 機關可以和軟磚疊在一起（磚炸掉才露出來）；位置四向鏡像，每個出生點的處境一樣公平，也不會放在出生點旁。
    *   草叢：站在裡面的人，任何人（對手、電腦、觀戰、淘汰的，連自己）都看不到，放在草叢裡的炸彈本體也一樣（火力線的危險預警照樣會顯示）；
-   *         只放在走道格（左右都是硬牆，或上下都是硬牆），所以裡面的炸彈只會往一個方向炸
+   *         只放在死路格（四邊有三邊是硬牆），所以裡面的炸彈只會往一個方向炸
    *   輸送帶：踩上去被往帶子的方向推，頭尾相連的環；停在帶子上的炸彈也被載著走
    *   緩速格：走過去只剩 SLOW_MULT 倍速度
    *   尖刺：不傷人；炸彈放在上面、或被踢到上面，會立刻爆炸 */
@@ -264,7 +264,7 @@
   const isBelt = v => v >= FX_BELT && v < FX_BELT + 4;
 
   /**
-   * 依 seed 與主題產生機關；用自己的亂數，不影響地圖與掉寶的亂數序列。唯一會動到 grid 的是：尖刺、草叢所在格的軟磚會被拿掉（只會多開路，連通不受影響）。
+   * 依 seed 與主題產生機關；用自己的亂數，不影響地圖與掉寶的亂數序列。會動到 grid 的只有：尖刺、草叢所在格的軟磚會被拿掉；草叢需要死路時，會在走道的一端補一塊硬牆（對稱，補完仍全圖連通）。
    * 尖刺總數：小圖 2～6 個、大圖 4～8 個（偶數，四向鏡像）；緩速格是一小塊；草叢數量規則同尖刺；輸送帶是頭尾相連的環形（6～10 格，多半不是單純的長方形），每個角落一圈。
    */
   function generateFx(seed, w, h, grid, themeId) {
@@ -340,19 +340,42 @@
         /* 尖刺和草叢數量規則一樣（草叢一多，躲進去就完全看不到人和炸彈，所以不能太多）：小圖 2～6 格、大圖 4～8 格，一格一格散開 */
         const code = kind === 'spike' ? FX_SPIKE : FX_GRASS;
         const target = large ? 2 * (2 + Math.floor(rnd() * 3)) : 2 * (1 + Math.floor(rnd() * 3));
-        /* 草叢只放走道格：左右都是硬牆、或上下都是硬牆（邊框也算），裡面的炸彈就只會往一個方向炸；符合的格子不夠就少放，甚至這張圖沒有草叢 */
-        const wall = (x, y) => grid[at(x, y)] === 1;
-        const corridor = (x, y) => (wall(x - 1, y) && wall(x + 1, y)) || (wall(x, y - 1) && wall(x, y + 1));
-        const cands = [];
-        for (let y = 1; y <= Math.floor(cy); y++) for (let x = 1; x <= Math.floor(cx); x++) if (free(x, y, true) && (kind === 'spike' || corridor(x, y))) cands.push([x, y]);
-        for (let i = cands.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); const tmp = cands[i]; cands[i] = cands[j]; cands[j] = tmp; }
+        const shuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); const tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp; } return arr; };
+        const quad = ok => { const out = []; for (let y = 1; y <= Math.floor(cy); y++) for (let x = 1; x <= Math.floor(cx); x++) if (free(x, y, true) && ok(x, y)) out.push([x, y]); return shuffle(out); };
         let count = 0;
-        for (const c of cands) {
-          if (count >= target) break;
-          const g = group(c[0], c[1]);
-          if (g.length < 2 || count + g.length > target) continue;     /* 正中央那一格（只有 1 個）不放，免得總數變奇數 */
-          for (const [gx, gy] of g) { fx[at(gx, gy)] = code; if (grid[at(gx, gy)] === 2) grid[at(gx, gy)] = 0; }   /* 尖刺、草叢都要讓人看得見，所以開局不蓋軟磚 */
-          count += g.length;
+        const place = g => { for (const [gx, gy] of g) { fx[at(gx, gy)] = code; if (grid[at(gx, gy)] === 2) grid[at(gx, gy)] = 0; } count += g.length; };   /* 尖刺、草叢都要讓人看得見，所以開局不蓋軟磚 */
+        if (kind === 'spike') {
+          for (const c of quad(() => true)) {
+            if (count >= target) break;
+            const g = group(c[0], c[1]);
+            if (g.length < 2 || count + g.length > target) continue;     /* 正中央那一格（只有 1 個）不放，免得總數變奇數 */
+            place(g);
+          }
+        } else {
+          /* 草叢只放「死路格」：四邊有三邊是硬牆（邊框也算），只剩一個開口，裡面的炸彈就只會往那一個方向炸。
+             天然的死路格不多，不夠時就把「兩側有牆的走道格」的一端補上一塊硬牆變成死路（鏡像對稱，補完要確定全圖還是連通，否則撤回）。 */
+          const wall = (x, y) => grid[at(x, y)] === 1;
+          const around = (x, y) => (wall(x - 1, y) ? 1 : 0) + (wall(x + 1, y) ? 1 : 0) + (wall(x, y - 1) ? 1 : 0) + (wall(x, y + 1) ? 1 : 0);
+          for (const c of quad((x, y) => around(x, y) === 3)) {
+            if (count >= target) break;
+            const g = group(c[0], c[1]);
+            if (g.length < 2 || count + g.length > target) continue;
+            place(g);
+          }
+          const tube = (x, y) => (wall(x - 1, y) && wall(x + 1, y) && !wall(x, y - 1) && !wall(x, y + 1)) || (wall(x, y - 1) && wall(x, y + 1) && !wall(x - 1, y) && !wall(x + 1, y));
+          for (const c of quad(tube)) {
+            if (count >= target) break;
+            const [x, y] = c, g = group(x, y);
+            if (g.length < 2 || count + g.length > target || wall(x, y) || !tube(x, y) || fx[at(x, y)] !== 0) continue;   /* 候選是先列好的，前面補的牆可能已經蓋到這一格 */
+            const ends = shuffle(wall(x - 1, y) ? [[x, y - 1], [x, y + 1]] : [[x - 1, y], [x + 1, y]]);
+            for (const [ex, ey] of ends) {
+              if (!free(ex, ey)) continue;
+              const eg = group(ex, ey), keep = eg.map(([gx, gy]) => grid[at(gx, gy)]);
+              for (const [gx, gy] of eg) grid[at(gx, gy)] = 1;
+              if (connected(grid, w, h)) { place(g); break; }
+              eg.forEach(([gx, gy], i) => { grid[at(gx, gy)] = keep[i]; });
+            }
+          }
         }
       } else {
         const code = FX_SLOW;
