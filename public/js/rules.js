@@ -26,11 +26,11 @@
   const FLAME_COOL_T = 0.3;    /* 磚塊格的無殺傷火花停留秒數 */
   const FLAME_T = 0.5;         /* 火焰停留秒數 */
   /* 半身機制：身體站在「剛好一半在炸彈格、一半在旁邊那一格」（同一條左右或上下線上）時，不會被那顆炸彈波及——
-     火焰是「一格一格」判定的：身體壓在某一個火線格裡的比例 > HALF_BODY（55%）才算被炸，一半（50%）還是安全，留 5% 的容錯給手動站位；
-     再深入一點才會被炸。踢球另外用 KICK_OVERLAP（50%）：半個身體壓在炸彈線上就踢得到。
+     火焰是「一格一格」判定的：身體壓在某一個火線格裡的比例 ≥ HALF_BODY（58.8%）才算被炸，一半（50%）還是安全，留 8.8% 的容錯給手動站位；
+     再深入一點才會被炸。歷史：最早是「中心要深入火線格 0.1 格」，換算約 64%；曾試過 50%、40%、55%，太容易被波及，現在取 58.8% 當平衡點。踢球另外用 KICK_OVERLAP（50%）：半個身體壓在炸彈線上就踢得到。
      身體的範圍＝畫面上人物實際畫出來的範圍：左右 ±HALF；上下因為人物往上提（腳在判定點附近），頭在上方 BODY_UP 格、腳在下方 BODY_DOWN 格
      （數字來自人物圖實際畫出來的範圍，render.js 的 SPRITE／SHADOW_DROP）；不然站在火線下方、頭已經燒到了卻還是安全（上下比左右難被波及） */
-  const HALF_BODY = 0.55;
+  const HALF_BODY = 0.588;
   const BODY_UP = 0.76, BODY_DOWN = 0.19;
   const HURT_LIFT = (BODY_UP - BODY_DOWN) / 2;     /* 身體中心比判定點高多少（約 0.285） */
   const HALF = 0.36;           /* 玩家碰撞半寬（比格子小，轉角才好過） */
@@ -444,7 +444,7 @@
     const x0 = p.x - HALF, x1 = p.x + HALF, y0 = p.y - BODY_UP, y1 = p.y + BODY_DOWN;
     for (let cy = Math.floor(y0); cy <= Math.floor(y1); cy++) for (let cx = Math.floor(x0); cx <= Math.floor(x1); cx++) {
       const ox = Math.min(x1, cx + 1) - Math.max(x0, cx), oy = Math.min(y1, cy + 1) - Math.max(y0, cy);
-      if (ox / bw >= HALF_BODY - 1e-9 && oy / bh >= HALF_BODY - 1e-9) out.push({ x: cx, y: cy });     /* 一格一格算：各自壓不到 55% 的格子都不算 */
+      if (ox / bw >= HALF_BODY - 1e-9 && oy / bh >= HALF_BODY - 1e-9) out.push({ x: cx, y: cy });     /* 一格一格算：各自壓不到 58.8% 的格子都不算 */
     }
     return out;
   }
