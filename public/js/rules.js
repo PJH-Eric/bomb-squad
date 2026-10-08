@@ -30,10 +30,10 @@
      再深入一點才會被炸。歷史：最早是「中心要深入火線格 0.1 格」，換算約 64%；曾試過 50%、40%、55%，太容易被波及，現在上半身取 75%、左右 64%、下半身 25%。踢球另外用 KICK_OVERLAP（50%）：半個身體壓在炸彈線上就踢得到。
      身體的範圍＝畫面上人物實際畫出來的範圍：左右 ±HALF；上下因為人物往上提（腳在判定點附近），頭在上方 BODY_UP 格、腳在下方 BODY_DOWN 格
      （數字來自人物圖實際畫出來的範圍，render.js 的 SPRITE／SHADOW_DROP）；不然站在火線下方、頭已經燒到了卻還是安全（上下比左右難被波及） */
-  const HALF_BODY = 0.80;
+  const HALF_BODY = 0.85;
   /* 火線從左右兩側經過時各自的門檻：身體壓進那一格的比例 ≥ SIDE_LEFT／SIDE_RIGHT 才被炸（可以左右不同）。
      直火中心離角色判定中心 ≤ 0.5 + HALF − SIDE×2×HALF 格就被炸（用 scripts/flame-tuning.js 量四個方向的實際邊界）。
-     目前：上半身 80%、下半身 20%、右 64%、左 48% */
+     目前：上半身 85%、下半身 20%、右 64%、左 48% */
   const SIDE_LEFT = 0.48, SIDE_RIGHT = 0.64;
   const BODY_UP = 0.76, BODY_DOWN = 0.19;
   /* 上下半身要有明顯差異：上半身（頭）看整個身體的比例（HALF_BODY），
@@ -47,20 +47,20 @@
   const MAX = { fire: 11, bomb: 8, speed: 8 };
   const SPEED = { base: 3.0, step: 0.5, slow: 1.5, trait: 1.0 };
   /* 各角色的能力（兩層平衡）：
-   *   初始：火力、炸彈數 1～2；跑速 1～2（1.5 是標準 3.0 格／秒，2 是 3.5、1 是 2.5；每次加速 +0.5 格／秒，加速上限一律 8 次：最高 6.5／7／7.5）。
+   *   初始：火力、炸彈數 1～2；跑速 1～2（1.5 是標準 3.0 格／秒，2 是 3.5、1 是 2.5；每次加速 +0.5 格／秒，加速上限依初始速度：2.5→7 次、3→8 次、3.5→9 次，最高 6／7／8）。
    *         四種組合（九隻分在這四組），火力＋炸彈每多 1，跑速就少 0.5（火力＋炸彈＋2×跑速 都是 6）。
-   *   上限：撿道具最多能升到的火力格數／炸彈顆數／加速次數，三項加起來每隻都是 27（加速上限一律 8 次，所以火力＋炸彈每隻都是 19），
+   *   上限：撿道具最多能升到的火力格數／炸彈顆數／加速次數，三項加起來每隻都是 27（加速上限 7／8／9 次，所以火力＋炸彈是 20／19／18），
    *         同一種初始組合的幾隻靠上限走不同路線，所以 9 隻都不一樣，也沒有哪隻全面比別隻強。 */
   const ANIMAL_STATS = {
-    cat:     { fire: 1, bomb: 1, speed: 2,   max: { fire: 10, bomb: 9, speed: 8 } },
+    cat:     { fire: 1, bomb: 1, speed: 2,   max: { fire: 10, bomb: 8, speed: 9 } },
     dog:     { fire: 1, bomb: 2, speed: 1.5, max: { fire: 9, bomb: 10, speed: 8 } },
-    bunny:   { fire: 1, bomb: 1, speed: 2,   max: { fire: 9, bomb: 10, speed: 8 } },
+    bunny:   { fire: 1, bomb: 1, speed: 2,   max: { fire: 8, bomb: 10, speed: 9 } },
     bear:    { fire: 2, bomb: 1, speed: 1.5, max: { fire: 12, bomb: 7, speed: 8 } },
-    panda:   { fire: 2, bomb: 2, speed: 1,   max: { fire: 11, bomb: 8, speed: 8 } },
+    panda:   { fire: 2, bomb: 2, speed: 1,   max: { fire: 11, bomb: 9, speed: 7 } },
     fox:     { fire: 1, bomb: 2, speed: 1.5, max: { fire: 10, bomb: 9, speed: 8 } },
     frog:    { fire: 2, bomb: 1, speed: 1.5, max: { fire: 11, bomb: 8, speed: 8 } },
-    penguin: { fire: 2, bomb: 2, speed: 1,   max: { fire: 10, bomb: 9, speed: 8 } },
-    chick:   { fire: 1, bomb: 1, speed: 2,   max: { fire: 11, bomb: 8, speed: 8 } }
+    penguin: { fire: 2, bomb: 2, speed: 1,   max: { fire: 10, bomb: 10, speed: 7 } },
+    chick:   { fire: 1, bomb: 1, speed: 2,   max: { fire: 11, bomb: 7, speed: 9 } }
   };
   const START_STATS = { fire: START.fire, bomb: START.bomb, speed: 1.5, max: MAX };
   const statsOf = animal => ANIMAL_STATS[animal] || START_STATS;
