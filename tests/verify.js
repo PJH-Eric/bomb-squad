@@ -861,7 +861,7 @@ console.log('\n地圖機關');
 const fxOn = (n, extra) => mk(n, Object.assign({ fx: true }, extra || {}));
 const flipX = c => (c === 6 ? 7 : c === 7 ? 6 : c), flipY = c => (c === 4 ? 5 : c === 5 ? 4 : c);
 const KIND_OF = c => (c === R.FX_GRASS ? 'grass' : c === R.FX_SLOW ? 'slow' : c === R.FX_SPIKE ? 'spike' : R.isBelt(c) ? 'belt' : null);
-test('機關：同 seed 一樣、四向鏡像（輸送帶方向跟著翻）、只在主題允許的種類、不放硬牆與出生點旁；尖刺小圖 2～6、大圖 4～8 個（偶數）', () => {
+test('機關：同 seed 一樣、四向鏡像（輸送帶方向跟著翻）、只在主題允許的種類、不放硬牆與出生點旁；尖刺小圖 2～6、大圖 4～6 個（偶數）', () => {
   let total = 0;
   for (let themeId = 0; themeId < R.THEME_COUNT; themeId++) for (const [w, h] of [[17, 13], [19, 15]]) for (let seed = 1; seed <= 30; seed++) {
     const grid = R.generateMap(seed, w, h, 'classic');
@@ -884,7 +884,7 @@ test('機關：同 seed 一樣、四向鏡像（輸送帶方向跟著翻）、�
       }
     }
     assert(allowed.length <= 1, '每個主題最多 1 種機關');
-    if (spikes) { const lo = allowed[0] === 'grass' ? 2 : (h > 13 ? 4 : 2), hi = h > 13 ? 8 : 6; assert(spikes >= lo && spikes <= hi && spikes % 2 === 0, `尖刺、草叢數量 ${spikes}（${w}x${h}）`); total++; }
+    if (spikes) { const lo = allowed[0] === 'grass' ? 2 : (h > 13 ? 4 : 2), hi = 6; assert(spikes >= lo && spikes <= hi && spikes % 2 === 0, `尖刺、草叢數量 ${spikes}（${w}x${h}）`); total++; }
   }
   assert(total > 50, '尖刺出現的次數太少：' + total);
 });
@@ -1013,7 +1013,7 @@ test('輸送帶：炸彈放在上面也被載走（速度同人、沿路轉彎�
   const snap = R.snapshot(s), v = R.applySnapshot(R.viewFromStart(R.startInfo(s)), JSON.parse(JSON.stringify(snap)));
   assert(v.bombs.every((vb, i) => !!vb.sl === !!s.bombs[i].sl));
 });
-test('尖刺與緩速格：一格一格散開、彼此不相連（含斜角）、數量 2～6／4～8（偶數）、尖刺不蓋軟磚、緩速格可蓋軟磚、地圖連通', () => {
+test('尖刺與緩速格：一格一格散開、彼此不相連（含斜角）、數量 2～6／4～6（偶數）、尖刺不蓋軟磚、緩速格可蓋軟磚、地圖連通', () => {
   for (const [themeId, code] of [[8, R.FX_SPIKE], [9, R.FX_SPIKE], [10, R.FX_SPIKE], [0, R.FX_SLOW], [4, R.FX_SLOW], [5, R.FX_SLOW]]) {
     let seen = 0, maps = 0, bricksUnder = 0;
     for (const [w, h] of [[17, 13], [19, 15]]) for (const layout of R.LAYOUTS) for (let seed = 1; seed <= 40; seed++) {
@@ -1026,7 +1026,7 @@ test('尖刺與緩速格：一格一格散開、彼此不相連（含斜角）�
         assert.notStrictEqual(grid[y * w + x], 1, '機關在硬牆上');
         for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && x + dx > 0 && y + dy > 0 && x + dx < w - 1 && y + dy < h - 1) assert.strictEqual(fx[(y + dy) * w + x + dx], 0, `機關相連：${themeId} seed ${seed} ${x},${y} 與 ${x + dx},${y + dy}`);
       }
-      assert(n <= (h > 13 ? 8 : 6) && n % 2 === 0, '數量 ' + n);
+      assert(n <= 6 && n % 2 === 0, '數量 ' + n);
       for (let i = 0; i < grid.length; i++) if (grid[i] !== orig[i]) assert(code === R.FX_SPIKE && fx[i] === code && orig[i] === 2, '只有尖刺格的軟磚會被拿掉');
       assert(R.connected(grid, w, h));
       if (n) seen++;
@@ -1059,7 +1059,7 @@ test('草叢位置（森林、聖誕小鎮 × 兩種尺寸 × 四種版型 × 40
       const cellsHit = R.blast({ w, h, grid, bombs: [] }, { cx: x, cy: y, range: 9, id: -1, owner: 0, pass: [], sl: null }).cells;
       assert(cellsHit.every(c => c.x === x) || cellsHit.every(c => c.y === y), `草叢裡的炸彈火焰不只一條線：${x},${y}`);
     }
-    assert(n <= (h > 13 ? 8 : 6) && n % 2 === 0, '草叢數量 ' + n);
+    assert(n <= 6 && n % 2 === 0, '草叢數量 ' + n);
     assert(R.connected(grid, w, h), '地圖要連通');
     if (n) { seen++; cells += n; }
   }

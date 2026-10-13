@@ -299,7 +299,7 @@
 
   /**
    * 依 seed 與主題產生機關；用自己的亂數，不影響地圖與掉寶的亂數序列。唯一會動到 grid 的是：尖刺、草叢所在格的軟磚會被拿掉（只會多開路，連通不受影響）。
-   * 尖刺總數：小圖 2～6 個、大圖 4～8 個（偶數，四向鏡像）；緩速格是一小塊；草叢數量規則同尖刺；輸送帶是頭尾相連的環形（6～10 格，多半不是單純的長方形），每個角落一圈。
+   * 尖刺總數：小圖 2～6 個、大圖 4～6 個（偶數，四向鏡像）；緩速格是一小塊；草叢數量規則同尖刺；輸送帶是頭尾相連的環形（6～10 格，多半不是單純的長方形），每個角落一圈。
    */
   function generateFx(seed, w, h, grid, themeId, layout) {
     const fx = new Array(w * h).fill(0);
@@ -383,10 +383,10 @@
         const first = placeLoop();
         if (first && first <= 6 && large && rnd() < 0.3) placeLoop();       /* 第一圈小的、而且是大圖，才有機會再多一個環 */
       } else {
-        /* 尖刺、草叢、緩速格：一格一格散開，彼此不能相連（輸送帶是唯一例外）；數量規則一樣：小圖 2～6 格、大圖 4～8 格。
+        /* 尖刺、草叢、緩速格：一格一格散開，彼此不能相連（輸送帶是唯一例外）；數量規則一樣：小圖 2～6 格、大圖 4～6 格。
            機關一多會干擾操作；草叢還會讓人和炸彈完全看不到，更不能多 */
         const code = kind === 'spike' ? FX_SPIKE : kind === 'grass' ? FX_GRASS : FX_SLOW;
-        const target = large ? 2 * (2 + Math.floor(rnd() * 3)) : 2 * (1 + Math.floor(rnd() * 3));
+        const target = large ? 2 * (2 + Math.floor(rnd() * 2)) : 2 * (1 + Math.floor(rnd() * 3));
         const shuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); const tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp; } return arr; };
         const wall = (x, y) => grid[at(x, y)] === 1;
         /* 草叢只放走道格：左右都是硬牆、或上下都是硬牆（邊框也算），裡面的炸彈就只會沿著剩下那條直線炸；符合的格子不夠就少放，甚至這張圖沒有草叢 */
