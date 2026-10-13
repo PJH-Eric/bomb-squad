@@ -380,8 +380,68 @@
           }
           return 0;
         };
-        const first = placeLoop();
-        if (first && first <= 6 && large && rnd() < 0.3) placeLoop();       /* 第一圈小的、而且是大圖，才有機會再多一個環 */
+        /* 產線（日月光廠房）：只有一條沿著全地圖外圈繞一整圈的輸送帶，沿路不規則轉彎、繞開硬牆與出生點。
+           做法：沿外圈（離邊框 2～4 格）取 8 個隨機偏移的路標，依序用隨機權重的最短路連起來（每格只走一次），最後接回起點，所以整圈是單一環、不鏡像。
+           帶子底下的軟磚會拿掉，讓人看得到整條線；找不到合適的環（極少見）才退回小環 */
+        const placeRing = () => {
+          const mx = Math.round(cx), my = Math.round(cy);
+          const base = [[3, 3], [mx, 3], [w - 4, 3], [w - 4, my], [w - 4, h - 4], [mx, h - 4], [3, h - 4], [3, my]];
+          const cost = new Float64Array(w * h), dist = new Float64Array(w * h), prev = new Int32Array(w * h), done = new Uint8Array(w * h);
+          const route = (from, to, used) => {
+            for (let i = 0; i < w * h; i++) { const bx = i % w, by = (i / w) | 0; cost[i] = 1 + rnd() * 1.5 + (bx < 2 || by < 2 || bx > w - 3 || by > h - 3 ? 3 : 0); dist[i] = Infinity; prev[i] = -1; done[i] = 0; }
+            dist[from] = 0;
+            for (;;) {
+              let u = -1;
+              for (let i = 0; i < w * h; i++) if (!done[i] && dist[i] < Infinity && (u < 0 || dist[i] < dist[u])) u = i;
+              if (u < 0) return null;
+              if (u === to) break;
+              done[u] = 1;
+              const ux = u % w, uy = (u / w) | 0;
+              for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                const nx = ux + dx, ny = uy + dy, v = at(nx, ny);
+                if (nx < 1 || ny < 1 || nx > w - 2 || ny > h - 2 || done[v]) continue;
+                if (v !== to && (!free(nx, ny) || used.has(v))) continue;
+                if (dist[u] + cost[v] < dist[v]) { dist[v] = dist[u] + cost[v]; prev[v] = u; }
+              }
+            }
+            const path = [];
+            for (let k = to; k !== -1; k = prev[k]) path.push(k);
+            return path.reverse();
+          };
+          for (let attempt = 0; attempt < 200; attempt++) {
+            const off = Math.floor(rnd() * base.length), order = base.slice(off).concat(base.slice(0, off));
+            if (rnd() < 0.5) order.reverse();
+            const wps = [];
+            for (const [bx, by] of order) {
+              const px = Math.max(2, Math.min(w - 3, bx + Math.floor(rnd() * 5) - 2)), py = Math.max(2, Math.min(h - 3, by + Math.floor(rnd() * 5) - 2));
+              let pick = null;
+              for (let r = 0; r <= 2 && !pick; r++) for (let dy = -r; dy <= r && !pick; dy++) for (let dx = -r; dx <= r && !pick; dx++) if (px + dx >= 2 && py + dy >= 2 && px + dx <= w - 3 && py + dy <= h - 3 && free(px + dx, py + dy) && !wps.includes(at(px + dx, py + dy))) pick = at(px + dx, py + dy);
+              if (pick != null) wps.push(pick);
+            }
+            if (wps.length < 4) continue;
+            const used = new Set([wps[0]]), cycle = [wps[0]];
+            let ok = true;
+            for (let i = 1; i <= wps.length && ok; i++) {
+              const target = i === wps.length ? wps[0] : wps[i];
+              if (i < wps.length && used.has(target)) continue;      /* 路標剛好被前一段路走過了，就略過 */
+              const seg = route(cycle[cycle.length - 1], target, used);
+              if (!seg) { ok = false; break; }
+              for (const c of seg.slice(1, i === wps.length ? -1 : undefined)) { cycle.push(c); used.add(c); }
+            }
+            if (!ok || cycle.length < 12) continue;
+            cycle.forEach((c, k) => {
+              const n = cycle[(k + 1) % cycle.length], dx = (n % w) - (c % w), dy = ((n / w) | 0) - ((c / w) | 0);
+              fx[c] = FX_BELT + (dy < 0 ? 0 : dy > 0 ? 1 : dx < 0 ? 2 : 3);
+              if (grid[c] === 2) grid[c] = 0;
+            });
+            return true;
+          }
+          return false;
+        };
+        if (!(line && placeRing())) {
+          const first = placeLoop();
+          if (first && first <= 6 && large && rnd() < 0.3) placeLoop();       /* 第一圈小的、而且是大圖，才有機會再多一個環 */
+        }
       } else {
         /* 尖刺、草叢、緩速格：一格一格散開，彼此不能相連（輸送帶是唯一例外）；數量只選奇數：小圖 1／3／5 格、大圖 3／5 格。
            位置依 seed 隨機挑選，不要求鏡像；草叢會讓人和炸彈完全看不到，更不能多 */
