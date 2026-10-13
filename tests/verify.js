@@ -585,6 +585,20 @@ test('新道具都有圖示、名稱、說明，掉落表有權重；關閉詛�
   }
   assert(seen.has('ghost') && seen.has('ultra') && !seen.has('c_flip') && !seen.has('c_slow'), '掉落：' + [...seen]);
 });
+test('有尖刺的地圖提高踢球道具權重，其他地圖維持原權重', () => {
+  const withSpikes = mk(2, { seed: 1, themeId: 8, fx: true });
+  const withoutSpikes = mk(2, { seed: 1, themeId: 6, fx: true });
+  assert(withSpikes.fx.includes(R.FX_SPIKE), '尖刺地圖要有尖刺');
+  assert(!withoutSpikes.fx.includes(R.FX_SPIKE), '競技場不應有尖刺');
+
+  const regularWeights = R.dropWeightsFor(withoutSpikes);
+  const spikeWeights = R.dropWeightsFor(withSpikes);
+  assert.strictEqual(regularWeights.kick, R.DROP_WEIGHTS.kick, '無尖刺維持原始踢球權重');
+  assert.strictEqual(spikeWeights.kick, R.DROP_WEIGHTS.kick * 3, '尖刺地圖踢球權重提高為三倍');
+
+  const kickRate = weights => weights.kick / R.POSITIVE.reduce((total, type) => total + weights[type], 0);
+  assert(kickRate(spikeWeights) > kickRate(regularWeights), '尖刺地圖的踢球道具機率要提高');
+});
 test('空襲：150 秒前不掉炸彈；每 2 秒掉一批，顆數 2:30→1、2:40→2、2:50 起 3，最多 3 顆', () => {
   assert.deepStrictEqual([R.SKY_START, R.SKY_EVERY, R.SKY_STEP, R.SKY_MAX, R.SKY_FUSE], [150, 2, 10, 3, 3]);
   assert.deepStrictEqual([0, 100, 149.9, 150, 159.9, 160, 169.9, 170, 180, 300].map(x => R.skyCount(x)), [0, 0, 0, 1, 1, 2, 2, 3, 3, 3]);

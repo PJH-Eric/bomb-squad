@@ -264,6 +264,7 @@
    *   緩速格：走過去只剩 SLOW_MULT 倍速度
    *   尖刺：不傷人；炸彈放在上面、或被踢到上面，會立刻爆炸 */
   const FX_GRASS = 1, FX_SLOW = 2, FX_SPIKE = 3, FX_BELT = 4;     /* 輸送帶 4 上、5 下、6 左、7 右 */
+  const SPIKE_DROP_WEIGHTS = Object.assign({}, DROP_WEIGHTS, { kick: DROP_WEIGHTS.kick * 3 });
   const BELT_VEC = { 4: [0, -1], 5: [0, 1], 6: [-1, 0], 7: [1, 0] };
   const SLOW_MULT = 0.5;       /* 緩速格上的速度倍率 */
   const BELT_SPEED = 1.33;      /* 輸送帶推人的速度（格／秒） */
@@ -699,23 +700,29 @@
   }
 
   /* ---------- 爆炸與傷害 ---------- */
+  function dropWeightsFor(s) {
+    return s.fx && s.fx.indexOf(FX_SPIKE) >= 0 ? SPIKE_DROP_WEIGHTS : DROP_WEIGHTS;
+  }
+
   function rollDrop(s) {
     if (!s.items) return null;
     if (rand(s) >= ITEM_RATE) return null;
-    const pool = Object.keys(DROP_WEIGHTS).filter(k => s.curses || CURSES.indexOf(k) < 0);
+    const weights = dropWeightsFor(s);
+    const pool = Object.keys(weights).filter(k => s.curses || CURSES.indexOf(k) < 0);
     let total = 0;
-    for (const k of pool) total += DROP_WEIGHTS[k];
+    for (const k of pool) total += weights[k];
     let r = rand(s) * total;
-    for (const k of pool) { r -= DROP_WEIGHTS[k]; if (r < 0) return k; }
+    for (const k of pool) { r -= weights[k]; if (r < 0) return k; }
     return pool[0];
   }
 
   /** 空投：從正向道具裡依權重抽一種（不受掉寶率影響，空投一定有東西） */
   function pickAirItem(s) {
-    const pool = Object.keys(DROP_WEIGHTS).filter(k => POSITIVE.indexOf(k) >= 0);
-    let total = 0; for (const k of pool) total += DROP_WEIGHTS[k];
+    const weights = dropWeightsFor(s);
+    const pool = Object.keys(weights).filter(k => POSITIVE.indexOf(k) >= 0);
+    let total = 0; for (const k of pool) total += weights[k];
     let r = rand(s) * total;
-    for (const k of pool) { r -= DROP_WEIGHTS[k]; if (r < 0) return k; }
+    for (const k of pool) { r -= weights[k]; if (r < 0) return k; }
     return pool[0];
   }
   function airFreeCell(s, x, y) {
@@ -1116,7 +1123,7 @@
 
   root.Rules = {
     DT, DIRS, FUSE, AIR_EVERY, SKY_START, SKY_EVERY, SKY_STEP, SKY_MAX, SKY_FUSE, SKY_RANGE, SKY_LAST, skyStartFor, skyCount, PLANE_SPEED, FLAME_T, HALF, HALF_BODY, UPPER_HIT, SIDE_LEFT, SIDE_RIGHT, BODY_UP, BODY_DOWN, FEET_REACH, FEET_HIT, FEET_TOP, HURT_LIFT, hurtCells, START, MAX, SPEED, ANIMAL_STATS, statsOf, CURSE_T, CURSE_DUR, GHOST_T, SUPER_T, COUNTDOWN, SLIDE_SPEED,
-    KICK_OVERLAP, KICK_REACH, ITEM_TYPES, POSITIVE, CURSES, LAYOUTS, RANDOM_LAYOUTS, FAB_THEME, LAYOUT_NAMES, THEME_COUNT, SHAPES, SLOT_COLORS, DROP_WEIGHTS,
+    KICK_OVERLAP, KICK_REACH, ITEM_TYPES, POSITIVE, CURSES, LAYOUTS, RANDOM_LAYOUTS, FAB_THEME, LAYOUT_NAMES, THEME_COUNT, SHAPES, SLOT_COLORS, DROP_WEIGHTS, dropWeightsFor,
     mulberry32, rand, sizeFor, spawnCount, MAP_SMALL, MAP_LARGE, spawnPoints, generateMap, connected, createGame, step,
     blast, bombAt, itemAt, flameAt, cellOf, cellIdx, inside, speedOf, rangeOf, maxBombsOf, fireOf, speedLvlOf, flipDir, hideInSnapshot,
     canPlaceBomb, placeBomb, overlapsCell, movePlayer, slideFree, getPlayer, alivePlayers, collides, removePlayer, finish,
