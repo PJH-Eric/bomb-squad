@@ -505,7 +505,7 @@
       const sameRow = ref.every(c => c.cy === ref[0].cy && c.f.h), sameCol = ref.every(c => c.cx === ref[0].cx && c.f.v);
       if (!sameRow && !sameCol) {
         let area = 0; for (const c of touch) area += c.fx * c.fy;
-        if (area >= th) return touch[0].f;
+        if (area >= th) return touch.reduce((m, c) => (c.fx * c.fy > m.fx * m.fy ? c : m)).f;   /* 功勞歸壓得最多的那格火焰 */
       }
     }
     return null;
@@ -798,8 +798,9 @@
         const f = flameAt(s, c.x, c.y);
         /* 磚塊被炸掉的那一格只有視覺火花（無殺傷）：磚塊一消失就走進去不該被燒到 */
         const cool = r.softs.some(q => q.x === c.x && q.y === c.y);
-        if (f) { if (!cool) { f.t = FLAME_T; f.cool = false; } f.owner = b.owner; f.h = f.h || c.h; f.v = f.v || c.v; }
-        else s.flames.push({ cx: c.x, cy: c.y, t: cool ? FLAME_COOL_T : FLAME_T, owner: b.owner, cool, h: c.h, v: c.v });
+        /* owners 記下點燃這格的所有炸彈主人：後爆的炸彈（自己的或空襲）不能把先前別人的擊倒功勞蓋掉 */
+        if (f) { if (!cool) { f.t = FLAME_T; f.cool = false; if (!f.owners.includes(b.owner)) f.owners.push(b.owner); } f.owner = b.owner; f.h = f.h || c.h; f.v = f.v || c.v; }
+        else s.flames.push({ cx: c.x, cy: c.y, t: cool ? FLAME_COOL_T : FLAME_T, owner: b.owner, owners: [b.owner], cool, h: c.h, v: c.v });
         const it = itemAt(s, c.x, c.y);
         if (it && !it.fresh) { s.itemsOn.splice(s.itemsOn.indexOf(it), 1); s.events.push({ t: 'itemgone', x: c.x, y: c.y }); }
       }
@@ -1009,7 +1010,10 @@
       for (const p of s.players) {
         if (!p.alive) continue;
         const hitBy = flameHit(s, p);
-        if (hitBy) hurt(s, p, hitBy.owner);
+        if (hitBy) {
+          const credit = (hitBy.owners || []).find(o => o >= 0 && o !== p.slot);   /* 優先算給別人的炸彈，其次自己、空襲 */
+          hurt(s, p, credit != null ? credit : hitBy.owner);
+        }
       }
     }
 
