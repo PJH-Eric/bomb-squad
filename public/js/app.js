@@ -254,7 +254,17 @@
               if (j >= 0) anim[j] = anim[i];
               anim[i] = v; so.animals = anim; save(); paintRows();
             } }),
-            root.UI.dropdown({ label: '電腦 ' + (i + 1) + ' 難度', cls: 'lvl', options: LEVEL_DD, value: lv, onChange: v => { so.levels[i] = v; save(); allSeg.setValue(so.levels.every(l => l === so.levels[0]) ? so.levels[0] : null); paintFaces(); }))));
+            root.UI.dropdown({
+              label: '電腦 ' + (i + 1) + ' 難度',
+              cls: 'lvl',
+              options: LEVEL_DD,
+              value: lv,
+              onChange: v => {
+                so.levels[i] = v; save();
+                allSeg.setValue(so.levels.every(l => l === so.levels[0]) ? so.levels[0] : null);
+                paintFaces();
+              }
+            }))));
       });
       allSeg.setValue(so.levels.every(l => l === so.levels[0]) ? so.levels[0] : null);
       countCtl.setValue(so.levels.length);

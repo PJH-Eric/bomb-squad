@@ -936,27 +936,35 @@
     ctx.save();
     if (!front) { ctx.fillStyle = c1; ctx.globalAlpha = 0.2; ctx.beginPath(); ctx.ellipse(T * 0.5, T * 0.64, T * 0.46, T * 0.32, 0, 0, 7); ctx.fill(); ctx.globalAlpha = 1; }
     if (st.k === 'pine') {
-      const tree = (x, base, sz) => {
-        ctx.fillStyle = '#7a4f2a'; ctx.fillRect(x - sz * 0.07, base - sz * 0.22, sz * 0.14, sz * 0.22);
-        for (let i = 0; i < 3; i++) {
-          const w = sz * (0.62 - i * 0.14), y = base - sz * (0.2 + i * 0.3);
-          ctx.fillStyle = i % 2 ? c0 : c1; ctx.beginPath(); ctx.moveTo(x - w, y); ctx.lineTo(x, y - sz * 0.42); ctx.lineTo(x + w, y); ctx.closePath(); ctx.fill();
-          ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.beginPath(); ctx.moveTo(x - w * 0.46, y - sz * 0.19); ctx.lineTo(x, y - sz * 0.42); ctx.lineTo(x + w * 0.46, y - sz * 0.19); ctx.closePath(); ctx.fill();
+      const bush = base => {
+        const height = front ? 0.72 : 1;
+        ctx.fillStyle = c1; fxBlob(ctx, T * 0.5, base - T * 0.06, T * 0.45, T * 0.1); ctx.fill();
+        const leaves = [
+          [0.2, 0.12, 0.22, 0.13, c1], [0.38, 0.22, 0.25, 0.18, c0],
+          [0.62, 0.21, 0.25, 0.18, c1], [0.81, 0.13, 0.21, 0.14, c0]
+        ];
+        for (const [x, y, rx, ry, color] of leaves) {
+          ctx.fillStyle = color; ctx.beginPath();
+          ctx.ellipse(T * x, base - T * y * height, T * rx, T * ry * height, 0, 0, 7);
+          ctx.fill();
+        }
+        ctx.fillStyle = 'rgba(190,245,150,0.46)';
+        for (const [x, y, angle] of [[0.27, 0.2, -0.45], [0.46, 0.3, 0.35], [0.68, 0.28, -0.3], [0.83, 0.18, 0.4]]) {
+          ctx.beginPath(); ctx.ellipse(T * x, base - T * y * height, T * 0.065, T * 0.025 * height, angle, 0, 7); ctx.fill();
         }
       };
-      if (front) { tree(T * 0.24, T * 0.98, T * 0.5); tree(T * 0.76, T * 0.98, T * 0.5); }
-      else { tree(T * 0.3, T * 0.8, T * 0.7); tree(T * 0.7, T * 0.76, T * 0.62); }
+      bush(T * (front ? 1 : 0.84));
       ctx.restore(); return;
     }
     const n = front ? 7 : 9;
     for (let i = 0; i < n; i++) {
       const x = T * (0.08 + 0.84 * (i + r() * 0.6) / n), base = T * (front ? 0.98 - r() * 0.05 : 0.8 - r() * 0.1);
-      const hgt = T * (front ? 0.26 + r() * 0.14 : 0.36 + r() * 0.2) * (st.k === 'kelp' ? 1.5 : 1), lean = (r() - 0.5) * T * 0.22;
+      const hgt = T * (front ? 0.17 + r() * 0.08 : 0.24 + r() * 0.12) * (st.k === 'kelp' ? 1.5 : 1), lean = (r() - 0.5) * T * 0.22;
       if (st.k === 'kelp') {
         ctx.strokeStyle = i % 2 ? c0 : c1; ctx.lineWidth = T * 0.075; ctx.lineCap = 'round';
         ctx.beginPath(); ctx.moveTo(x, base); ctx.quadraticCurveTo(x + lean * 3, base - hgt * 0.5, x + lean, base - hgt); ctx.stroke();
       } else {
-        const w = T * 0.07, g = ctx.createLinearGradient(0, base, 0, base - hgt); g.addColorStop(0, c1); g.addColorStop(1, c0);
+        const w = T * 0.11, g = ctx.createLinearGradient(0, base, 0, base - hgt); g.addColorStop(0, c1); g.addColorStop(1, c0);
         ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(x - w, base); ctx.quadraticCurveTo(x - w * 0.2, base - hgt * 0.6, x + lean, base - hgt); ctx.quadraticCurveTo(x + w * 0.3, base - hgt * 0.5, x + w, base); ctx.closePath(); ctx.fill();
         if (st.d === 'flower' && !front && i % 3 === 0) {
           ctx.fillStyle = ['#ff8fc4', '#ffe03d', '#ffffff'][(i / 3) % 3 | 0]; ctx.beginPath(); ctx.arc(x + lean, base - hgt, T * 0.055, 0, 7); ctx.fill();
