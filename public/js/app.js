@@ -245,14 +245,16 @@
       so.levels.forEach((lv, i) => {
         const a = anim[i];
         face.appendChild(h('span', { class: 'face', title: '電腦 ' + (i + 1) + '・' + AI.LEVELS[lv].name }, avatar(a, 40)));
-        rows.appendChild(h('div', { class: 'ai-row' }, avatar(a, 36), h('span', { class: 'name' }, '電腦 ' + (i + 1)),
-          root.UI.dropdown({ label: '電腦 ' + (i + 1) + ' 角色', cls: 'lvl', options: animalOptions([st.animal]), value: a, onChange: v => {
-            /* 選到別台電腦正在用的角色就互換，避免重複 */
-            const j = anim.indexOf(v);
-            if (j >= 0) anim[j] = anim[i];
-            anim[i] = v; so.animals = anim; save(); paintRows();
-          } }),
-          root.UI.dropdown({ label: '電腦 ' + (i + 1) + ' 難度', cls: 'lvl', options: LEVEL_DD, value: lv, onChange: v => { so.levels[i] = v; save(); allSeg.setValue(so.levels.every(l => l === so.levels[0]) ? so.levels[0] : null); paintFaces(); } })));
+        rows.appendChild(h('div', { class: 'ai-row' },
+          h('div', { class: 'ai-row-head' }, avatar(a, 36), h('span', { class: 'name' }, '電腦 ' + (i + 1))),
+          h('div', { class: 'ai-row-picks' },
+            root.UI.dropdown({ label: '電腦 ' + (i + 1) + ' 角色', cls: 'lvl', options: animalOptions([st.animal]), value: a, onChange: v => {
+              /* 選到別台電腦正在用的角色就互換，避免重複 */
+              const j = anim.indexOf(v);
+              if (j >= 0) anim[j] = anim[i];
+              anim[i] = v; so.animals = anim; save(); paintRows();
+            } }),
+            root.UI.dropdown({ label: '電腦 ' + (i + 1) + ' 難度', cls: 'lvl', options: LEVEL_DD, value: lv, onChange: v => { so.levels[i] = v; save(); allSeg.setValue(so.levels.every(l => l === so.levels[0]) ? so.levels[0] : null); paintFaces(); }))));
       });
       allSeg.setValue(so.levels.every(l => l === so.levels[0]) ? so.levels[0] : null);
       countCtl.setValue(so.levels.length);

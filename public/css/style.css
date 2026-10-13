@@ -184,8 +184,12 @@ body.calm *, body.calm *::before, body.calm *::after { animation: none !importan
 .animal-opt[aria-checked="true"] { border-color: var(--grape); background: #efe6ff; color: var(--grape-d); box-shadow: 0 4px 0 var(--grape); }
 .animal-opt[aria-disabled="true"] { opacity: .35; cursor: not-allowed; }
 .ai-rows { display: grid; gap: 8px; }
-.ai-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 6px 10px; background: #faf5ff; border-radius: 18px; }
+.ai-row { display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; gap: 8px; padding: 6px 10px; background: #faf5ff; border-radius: 18px; }
+.ai-row-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .ai-row .name { font-weight: 800; min-width: 5em; }
+.ai-row-picks, .seat-pick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; width: 100%; min-width: 0; }
+.ai-row-picks .dd, .seat-pick .dd { width: 100%; min-width: 0; }
+.ai-row-picks .dd-cur, .seat-pick .dd-cur { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 
 /* ---------- 大廳 ---------- */
@@ -453,7 +457,7 @@ body {
 .seat-actions { flex-wrap: nowrap; align-items: center; min-width: 0; overflow-x: auto; scrollbar-width: none; }
 .seat-actions .btn { flex: 0 0 auto; }
 .topbar > .pill, .topbar > span { white-space: nowrap; flex: 0 0 auto; }
-.ai-row { flex-wrap: nowrap; min-width: 0; }
+.ai-row { min-width: 0; }
 .ai-row .name { white-space: nowrap; }
 .ai-row .seg { margin-left: auto; }
 .hud { flex-wrap: nowrap; }
@@ -607,9 +611,6 @@ body {
 .dd-opt small { color: #5b5378; font-weight: 700; font-size: .76rem; white-space: normal; overflow-wrap: anywhere; line-height: 1.35; min-width: 0; max-width: 100%; }   /* 說明文字比較長時換行，不要被選單右緣切掉（電腦難度的說明最長） */
 .dd-opt:hover, .dd-opt:focus { background: #ffe86a; border-color: #17122b; }
 .dd-opt[aria-selected="true"]::before { content: ""; position: absolute; left: 10px; top: 50%; width: 6px; height: 11px; border-right: 3px solid #17122b; border-bottom: 3px solid #17122b; transform: translateY(-65%) rotate(45deg); }
-.ai-row { display: flex; align-items: center; gap: 10px; }
-.ai-row .name { flex: 1; min-width: 0; }
-.ai-row .dd { margin-left: auto; }
 .dd-sw { display: inline-block; width: 18px; height: 18px; border-radius: 6px; border: 2px solid #17122b; flex: 0 0 auto; vertical-align: middle; margin-right: 8px; }
 .dd-cur { display: inline-flex; align-items: center; min-width: 0; }
 .dd-opt { flex-direction: row; flex-wrap: wrap; align-items: center; }
@@ -639,10 +640,15 @@ body {
 .hero-cast { flex-wrap: wrap; justify-content: center; max-width: 100%; }
 .hero-cast .avatar { margin: 0 -2px; }
 
-/* 電腦席位：角色與難度兩個下拉各佔一半，排在第二行 */
-.seat-pick { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px; width: 100%; }
-.seat-pick .dd { width: 100%; min-width: 0; }
-.seat-pick .dd-cur { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 寬版單機列把設定排在名字旁；線上席位仍保留名字獨立在上方 */
+@media (min-width: 861px) {
+  .ai-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); }
+}
+
+/* 手機避免角色與難度選單擠在同一列 */
+@media (max-width: 560px) {
+  .ai-row-picks, .seat-pick { grid-template-columns: minmax(0, 1fr); }
+}
 
 /* 地圖選擇：設定面板上的按鈕與彈出視窗 */
 .field-map > .ctl { flex: 1 1 0; }
