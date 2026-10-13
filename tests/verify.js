@@ -954,7 +954,7 @@ test('輸送帶：每格找得到前一格（進來的方向），環上有轉�
   assert(corners > 0 && straight > 0, '轉角：' + corners + '，直的：' + straight);
   assert(corners % 4 === 0, '每圈至少 4 個轉角，四個角落各一圈');
 });
-test('日月光產線：只有一條繞全地圖的輸送帶（單一環、沿路不規則轉彎、不壓硬牆與出生點、帶子底下沒有軟磚）', () => {
+test('日月光產線：只有一條繞全地圖的輸送帶（單一環、沿路不規則轉彎、不壓硬牆與出生點）', () => {
   let rings = 0, fallback = 0;
   for (const [w, h] of [[17, 13], [19, 15]]) for (let seed = 1; seed <= 100; seed++) {
     const grid = R.generateMap(seed, w, h, 'fab'), fx = R.generateFx(seed, w, h, grid, R.FAB_THEME, 'fab');
@@ -966,7 +966,7 @@ test('日月光產線：只有一條繞全地圖的輸送帶（單一環、沿�
     let turns = 0, minX = 99, maxX = 0, minY = 99, maxY = 0;
     for (const c of cells) {
       const x = c % w, y = (c / w) | 0; minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y);
-      assert.notStrictEqual(grid[c], 1, '輸送帶壓到硬牆'); assert.notStrictEqual(grid[c], 2, '輸送帶底下還有軟磚');
+      assert.notStrictEqual(grid[c], 1, '輸送帶壓到硬牆');
       if (R.beltIn(fx, w, x, y) !== fx[c]) turns++;
       for (const [sx, sy] of R.spawnPoints(w, h).slice(0, R.spawnCount(w, h))) assert(Math.abs(x - sx) + Math.abs(y - sy) > 1, '輸送帶壓到出生點');
     }
@@ -1099,7 +1099,7 @@ test('機關：各主題的機關種類符合風格（草叢、輸送帶、緩�
 test('機關：不影響地圖與亂數（有沒有機關，磚牆、亂數、出生點都一樣）；起始資料帶得出去', () => {
   for (const themeId of [1, 4, 7, 10]) {
     const a = mk(4, { themeId, fx: true }), b = mk(4, { themeId, fx: false });
-    a.grid.forEach((v, i) => { if (v !== b.grid[i]) { assert((a.fx[i] === R.FX_SPIKE || a.fx[i] === R.FX_GRASS || (themeId === R.FAB_THEME && R.isBelt(a.fx[i]))) && b.grid[i] === 2 && v === 0, '只有尖刺、草叢格的軟磚會被拿掉'); } });
+    a.grid.forEach((v, i) => { if (v !== b.grid[i]) { assert((a.fx[i] === R.FX_SPIKE || a.fx[i] === R.FX_GRASS) && b.grid[i] === 2 && v === 0, '只有尖刺、草叢格的軟磚會被拿掉'); } });
     assert(R.connected(a.grid, a.w, a.h));
     assert.strictEqual(a.rng, b.rng);
     assert.deepStrictEqual(a.players.map(p => [p.x, p.y]), b.players.map(p => [p.x, p.y]));
