@@ -1085,15 +1085,15 @@
         }
         break;
       }
-      default: {   /* cone：底座＋五根尖錐（四角加正中間；電極、冰錐、鋼刺、石筍、骨刺、黑曜石） */
+      default: {   /* cone：底座＋十根小尖錐（電極、冰錐、鋼刺、石筍、骨刺、黑曜石） */
         ctx.fillStyle = c1; rr(ctx, T * 0.1, T * 0.14, T * 0.8, T * 0.74, T * 0.1); ctx.fill();
         ctx.strokeStyle = '#ff5a4a'; ctx.lineWidth = Math.max(1.5, T * 0.045); ctx.setLineDash([T * 0.1, T * 0.07]); ctx.stroke(); ctx.setLineDash([]);   /* 紅色警示虛線 */
-        for (const [x, y] of [[0.3, 0.38], [0.7, 0.38], [0.5, 0.56], [0.3, 0.74], [0.7, 0.74]]) {      /* 四角加正中間共 5 根，由後排畫到前排 */
-          const cx = T * x, by = T * y, w = T * 0.14;
+        for (const [x, y] of [[0.2, 0.4], [0.35, 0.4], [0.5, 0.4], [0.65, 0.4], [0.8, 0.4], [0.2, 0.7], [0.35, 0.7], [0.5, 0.7], [0.65, 0.7], [0.8, 0.7]]) { /* 兩排各 5 根，由後排畫到前排 */
+          const cx = T * x, by = T * y, w = T * 0.07;
           const g = ctx.createLinearGradient(cx - w, 0, cx + w, 0); g.addColorStop(0, c0); g.addColorStop(1, 'rgba(0,0,0,0.35)');
-          ctx.fillStyle = c0; ctx.beginPath(); ctx.moveTo(cx - w, by); ctx.lineTo(cx, by - T * 0.3); ctx.lineTo(cx + w, by); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = c0; ctx.beginPath(); ctx.moveTo(cx - w, by); ctx.lineTo(cx, by - T * 0.2); ctx.lineTo(cx + w, by); ctx.closePath(); ctx.fill();
           ctx.fillStyle = g; ctx.globalAlpha = 0.5; ctx.fill(); ctx.globalAlpha = 1;
-          ctx.fillStyle = c2; ctx.beginPath(); ctx.arc(cx, by - T * 0.3, T * 0.035, 0, 7); ctx.fill();
+          ctx.fillStyle = c2; ctx.beginPath(); ctx.arc(cx, by - T * 0.2, T * 0.02, 0, 7); ctx.fill();
         }
       }
     }
