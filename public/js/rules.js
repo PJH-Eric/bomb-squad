@@ -257,7 +257,7 @@
 
   /* ---------- 地圖機關 ----------
    * 地板上的裝置，整局固定不變，存在 state.fx（跟 grid 同長的陣列，不動 grid，所以磚牆規則、碰撞、AI 的判斷都不受影響）。
-   * 機關可以和軟磚疊在一起（磚炸掉才露出來）；位置四向鏡像，每個出生點的處境一樣公平，也不會放在出生點旁。
+   * 機關可以和軟磚疊在一起（磚炸掉才露出來）；位置依 seed 隨機分布，不要求鏡像，也不會放在出生點旁。
    *   草叢：站在裡面的人，任何人（對手、電腦、觀戰、淘汰的，連自己）都看不到，放在草叢裡的炸彈本體也一樣（火力線的危險預警照樣會顯示）；
    *         只放在走道格（左右都是硬牆，或上下都是硬牆），所以裡面的炸彈只會沿著一條直線炸
    *   輸送帶：踩上去被往帶子的方向推，頭尾相連的環；停在帶子上的炸彈也被載著走
@@ -299,7 +299,7 @@
 
   /**
    * 依 seed 與主題產生機關；用自己的亂數，不影響地圖與掉寶的亂數序列。唯一會動到 grid 的是：尖刺、草叢所在格的軟磚會被拿掉（只會多開路，連通不受影響）。
-   * 尖刺總數：小圖 2～6 個、大圖 4～6 個（偶數，四向鏡像）；緩速格是一小塊；草叢數量規則同尖刺；輸送帶是頭尾相連的環形（6～10 格，多半不是單純的長方形），每個角落一圈。
+   * 尖刺、草叢、緩速格總數：小圖 1／3／5 個、大圖 3／5 個；輸送帶是頭尾相連的環形（6～10 格，多半不是單純的長方形），每個角落一圈。
    */
   function generateFx(seed, w, h, grid, themeId, layout) {
     const fx = new Array(w * h).fill(0);
@@ -383,37 +383,34 @@
         const first = placeLoop();
         if (first && first <= 6 && large && rnd() < 0.3) placeLoop();       /* 第一圈小的、而且是大圖，才有機會再多一個環 */
       } else {
-        /* 尖刺、草叢、緩速格：一格一格散開，彼此不能相連（輸送帶是唯一例外）；數量規則一樣：小圖 2～6 格、大圖 4～6 格。
-           機關一多會干擾操作；草叢還會讓人和炸彈完全看不到，更不能多 */
+        /* 尖刺、草叢、緩速格：一格一格散開，彼此不能相連（輸送帶是唯一例外）；數量只選奇數：小圖 1／3／5 格、大圖 3／5 格。
+           位置依 seed 隨機挑選，不要求鏡像；草叢會讓人和炸彈完全看不到，更不能多 */
         const code = kind === 'spike' ? FX_SPIKE : kind === 'grass' ? FX_GRASS : FX_SLOW;
-        const target = large ? 2 * (2 + Math.floor(rnd() * 2)) : 2 * (1 + Math.floor(rnd() * 3));
+        const targets = large ? [3, 5] : [1, 3, 5];
+        const targetIndex = Math.floor(rnd() * targets.length);
         const shuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); const tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp; } return arr; };
         const wall = (x, y) => grid[at(x, y)] === 1;
         /* 草叢只放走道格：左右都是硬牆、或上下都是硬牆（邊框也算），裡面的炸彈就只會沿著剩下那條直線炸；符合的格子不夠就少放，甚至這張圖沒有草叢 */
         const suits = kind === 'grass' ? (x, y) => (wall(x - 1, y) && wall(x + 1, y)) || (wall(x, y - 1) && wall(x, y + 1)) : () => true;
         const cands = [];
-        for (let y = 1; y <= Math.floor(cy); y++) for (let x = 1; x <= Math.floor(cx); x++) if (free(x, y, true) && suits(x, y)) cands.push([x, y]);
-        /* 不能相連：八個方向（含斜角）都不能已經有機關，同一組鏡像的格子彼此也不能相鄰 */
-        const touches = g => g.some(([gx, gy]) => {
-          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-            if (!dx && !dy) continue;
-            const nx = gx + dx, ny = gy + dy;
-            if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
-            if (fx[at(nx, ny)] !== 0 || g.some(q => q[0] === nx && q[1] === ny)) return true;
+        for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) if (free(x, y, true) && suits(x, y)) cands.push([x, y]);
+        /* 不能相連：八個方向（含斜角）都不能有同種機關 */
+        const touches = (cell, cells) => cells.some(([x, y]) => Math.abs(cell[0] - x) <= 1 && Math.abs(cell[1] - y) <= 1);
+        const tryTarget = target => {
+          const selected = [];
+          for (const cell of shuffle(cands.slice())) {
+            if (touches(cell, selected)) continue;
+            selected.push(cell);
+            if (selected.length === target) break;
           }
-          return false;
-        });
-        let count = 0;
-        for (const c of shuffle(cands)) {
-          if (count >= target) break;
-          const g = group(c[0], c[1]);
-          if (g.length < 2 || count + g.length > target || touches(g)) continue;     /* 正中央那一格（只有 1 個）不放，免得總數變奇數 */
-          for (const [gx, gy] of g) {
-            fx[at(gx, gy)] = code;
-            if (kind !== 'slow' && grid[at(gx, gy)] === 2) grid[at(gx, gy)] = 0;     /* 尖刺、草叢要讓人看得見，所以開局不蓋軟磚；緩速格可以和軟磚疊在一起 */
+          if (selected.length !== target) return false;
+          for (const [x, y] of selected) {
+            fx[at(x, y)] = code;
+            if (kind !== 'slow' && grid[at(x, y)] === 2) grid[at(x, y)] = 0;     /* 尖刺、草叢要讓人看得見，所以開局不蓋軟磚；緩速格可以和軟磚疊在一起 */
           }
-          count += g.length;
-        }
+          return true;
+        };
+        for (let i = targetIndex; i >= 0; i--) if (tryTarget(targets[i])) break;
       }
     }
     return fx;
