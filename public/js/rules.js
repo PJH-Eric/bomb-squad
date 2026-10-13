@@ -150,7 +150,7 @@
     classic: { rate: 0.12, len: 3 },
     open: { rate: 0.06, len: 2 },
     dense: { rate: 0.16, len: 3 },
-    fab: { rate: 0.09, len: 3, minLen: 2, horiz: true }
+    fab: { rate: 0.08, len: 3, minLen: 2, horiz: true }
   };
   const HARD_OVER = 1.1;        /* 放到一組之後總量最多可以超過目標幾倍（超過就不放那一組） */
   const SOFT_MIN = 0.88;        /* 可放軟磚的格子，每格至少 88% 機率放 */
@@ -429,6 +429,9 @@
               for (const c of seg.slice(1, i === wps.length ? -1 : undefined)) { cycle.push(c); used.add(c); }
             }
             if (!ok || cycle.length < 12) continue;
+            let x0 = w, x1 = 0, y0 = h, y1 = 0;
+            for (const c of cycle) { const x = c % w, y = (c / w) | 0; x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+            if (x1 - x0 < w - 11 || y1 - y0 < h - 9) continue;      /* 環太小、沒繞到全地圖，重抽 */
             cycle.forEach((c, k) => {
               const n = cycle[(k + 1) % cycle.length], dx = (n % w) - (c % w), dy = ((n / w) | 0) - ((c / w) | 0);
               fx[c] = FX_BELT + (dy < 0 ? 0 : dy > 0 ? 1 : dx < 0 ? 2 : 3);
