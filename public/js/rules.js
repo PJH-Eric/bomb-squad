@@ -150,7 +150,7 @@
     classic: { rate: 0.12, len: 3 },
     open: { rate: 0.06, len: 2 },
     dense: { rate: 0.16, len: 3 },
-    fab: { rate: 0.12, len: 3, minLen: 2, horiz: true }
+    fab: { rate: 0.09, len: 3, minLen: 2, horiz: true }
   };
   const HARD_OVER = 1.1;        /* 放到一組之後總量最多可以超過目標幾倍（超過就不放那一組） */
   const SOFT_MIN = 0.88;        /* 可放軟磚的格子，每格至少 88% 機率放 */
