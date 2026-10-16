@@ -3,6 +3,8 @@
  *       node tests/verify.js --quick    （少跑幾局電腦對戰）
  */
 'use strict';
+
+require('./seo.js');
 const assert = require('assert');
 const R = require('../public/js/rules.js');
 const AI = require('../public/js/ai.js');

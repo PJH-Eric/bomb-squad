@@ -78,6 +78,13 @@
       }
       this.build();
       this.bind();
+      if (root.GameAnalytics && this.slot != null) {
+        const levels = this.view.players.filter(p => p.kind === 'ai').map(p => p.level);
+        root.GameAnalytics.start({
+          mode: this.kind, players: this.view.players.length,
+          difficulty: levels.length ? (levels.every(level => level === levels[0]) ? levels[0] : 'mixed') : undefined
+        }, this.kind === 'online' ? this.view.seed : null);
+      }
       this.layout();
       this.raf = requestAnimationFrame(t => this.loop(t));
     }
@@ -448,6 +455,7 @@
           case 'go': S.sfx('go'); S.music('battle'); break;
           case 'over': {
             const w = e.winner;
+            if (root.GameAnalytics && this.slot != null) root.GameAnalytics.end({ result: w == null ? 'draw' : (w === this.slot ? 'win' : 'lose') });
             S.sfx(w == null ? 'draw' : (w === this.slot ? 'win' : (this.slot == null ? 'win' : 'lose')));
             break;
           }

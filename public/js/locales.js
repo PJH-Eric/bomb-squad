@@ -11,8 +11,8 @@
   function L(k, z, e) { zh[k] = z; en[k] = e; }
 
   /* ---------- 通用 ---------- */
-  L('meta.title', '炸彈小隊', 'Bomb Squad');
-  L('meta.desc', '可愛風炸彈人：單機對戰電腦、線上房間、觀戰與邀請連結，放炸彈、炸磚塊、撿道具，當最後的小隊長！', 'A cute bomber game: play solo against the computer or online with room codes, spectators and invite links. Drop bombs, blast bricks, grab items and be the last squad leader standing!');
+  L('meta.title', "炸彈小隊｜免費線上多人炸彈對戰", 'Bomb Squad');
+  L('meta.desc', "免費線上炸彈對戰，放炸彈炸開磚塊、拾取道具，在連鎖爆炸中閃躲求生。單機挑戰不同難度電腦，或建立多人房間邀朋友較勁，支援觀戰與邀請連結，免下載，手機平板可玩。", 'A cute bomber game: play solo against the computer or online with room codes, spectators and invite links. Drop bombs, blast bricks, grab items and be the last squad leader standing!');
   L('lang.switchTo', '切換成 English', 'Switch to Traditional Chinese');
   L('lang.label', '語言', 'Language');
   L('lang.zh', '繁體中文', '繁體中文');
