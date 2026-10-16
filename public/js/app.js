@@ -5,16 +5,17 @@
   const R = root.Rules, Art = root.Art, AI = root.AI;
   const $ = id => document.getElementById(id);
 
-  const LAYOUT_OPTS = [{ v: 'random', label: '隨機' }, { v: 'classic', label: '經典' }, { v: 'open', label: '空曠' }, { v: 'dense', label: '密集' }];
-  const TIME_OPTS = [{ v: 120, label: '2 分' }, { v: 180, label: '3 分' }, { v: 300, label: '5 分' }, { v: 0, label: '不限時' }];
-  const THEME_OPTS = [{ v: -1, label: '隨機' }].concat(Art.THEMES.map(t => ({ v: t.id, label: t.name })));
-  const LEVEL_OPTS = AI.LEVEL_ORDER.map(k => ({ v: k, label: AI.LEVELS[k].name }));
-  const LEVEL_HINT = { toddler: '亂走、很少放炸彈', easy: '會躲炸彈、偶爾追人', normal: '會追人、會連鎖', hard: '會設陷阱、反應最快', myth: '幾乎不失誤、追得最緊' };
+  const tr = (k, p) => root.I18N.t(k, p);
+  /* 選項的 label／hint 都是 getter：每次建立畫面時依目前語言取字（字典在 locales.js） */
+  const LAYOUT_OPTS = ['random', 'classic', 'open', 'dense'].map(v => ({ v, get label() { return tr('layout.' + v); } }));
+  const TIME_OPTS = [120, 180, 300].map(v => ({ v, get label() { return tr('rules.min', { n: v / 60 }); } })).concat([{ v: 0, get label() { return tr('rules.noLimit'); } }]);
+  const THEME_OPTS = [{ v: -1, get label() { return tr('theme.random'); } }].concat(Art.THEMES.map(t => ({ v: t.id, get label() { return t.name; } })));
+  const LEVEL_OPTS = AI.LEVEL_ORDER.map(k => ({ v: k, get label() { return AI.LEVELS[k].name; } }));
   /* 下拉裡每一級都標出強度值（0～100，見 ai.js 的等級權重表），方便比較級距 */
-  const LEVEL_DD = AI.LEVEL_ORDER.map(k => ({ v: k, label: AI.LEVELS[k].name, hint: '強度 ' + Math.round(AI.power(AI.LEVELS[k])) + '・' + LEVEL_HINT[k] }));
+  const LEVEL_DD = AI.LEVEL_ORDER.map(k => ({ v: k, get label() { return AI.LEVELS[k].name; }, get hint() { return tr('level.power', { n: Math.round(AI.power(AI.LEVELS[k])), hint: tr('level.hint.' + k) }); } }));
   /** 角色下拉選項；exclude 是別人（真人）已經在用、不能選的角色 */
   const animalOptions = exclude => Art.ANIMAL_IDS.filter(id => !(exclude || []).includes(id)).map(id => ({ v: id, label: Art.ANIMALS[id].name, hint: Art.ANIMALS[id].role }));
-  const ADJ = ['快樂', '勇敢', '調皮', '害羞', '閃亮', '軟綿綿', '圓滾滾', '機靈', '呆萌', '活潑'];
+  const ADJ_N = 10;     /* 形容詞字典 name.adj0～9；自動暱稱只記編號，切換語言時跟著換 */
 
   const App = {
     store: root.Store.load(),
@@ -24,8 +25,9 @@
   };
   root.App = App;
 
-  function randomName() { return ADJ[Math.floor(Math.random() * ADJ.length)] + Art.ANIMALS[App.store.animal in Art.ANIMALS ? App.store.animal : 'cat'].name; }
-  function myName() { return (App.store.nickname || '').trim() || (App.autoAdj || (App.autoAdj = ADJ[Math.floor(Math.random() * ADJ.length)])) + Art.ANIMALS[App.store.animal in Art.ANIMALS ? App.store.animal : 'cat'].name; }
+  function autoName(adj) { return tr('name.auto', { adj: tr('name.adj' + adj), animal: Art.ANIMALS[App.store.animal in Art.ANIMALS ? App.store.animal : 'cat'].name }); }
+  function randomName() { return autoName(Math.floor(Math.random() * ADJ_N)); }
+  function myName() { return (App.store.nickname || '').trim() || autoName(App.autoAdj != null ? App.autoAdj : (App.autoAdj = Math.floor(Math.random() * ADJ_N))); }
   function save() { root.Store.save(App.store); }
   function applySettings() {
     root.Sound.apply({ bgm: App.store.bgm, bgmVol: App.store.bgmVol, sfx: App.store.sfx, sfxVol: App.store.sfxVol });
@@ -46,7 +48,7 @@
     const needNet = name === 'lobby' || name === 'room' || (name === 'game' && App.onlineGame);
     if (!needNet && !App.room) root.Net.close();
     const fn = App.screens[name];
-    if (!fn) throw new Error('沒有這個畫面：' + name);
+    if (!fn) throw new Error('unknown screen: ' + name);
     const el = fn(params || {});
     if (el) { el.setAttribute('data-screen', name); App.el.appendChild(el); }
     /* 「← 回遊戲大廳」只在首頁出現，對戰與其他畫面不擋操作 */
@@ -62,7 +64,7 @@
 
   function screenBox(cls, kids) { return h('main', { class: 'screen ' + (cls || '') }, kids); }
   function topbar(title, backFn, extra) {
-    return h('div', { class: 'topbar' }, backFn ? root.UI.iconBtn('back', '返回', backFn) : null, h('h2', null, title), extra);
+    return h('div', { class: 'topbar' }, backFn ? root.UI.iconBtn('back', tr('common.back'), backFn) : null, h('h2', null, title), extra);
   }
 
   /* ---------- 首頁 ---------- */
@@ -70,25 +72,25 @@
     const cast = Art.ANIMAL_IDS.map(id => avatar(id, 70));
     const st = App.store.stats;
     const sline = [];
-    if (st.solo) sline.push('單機 ' + st.solo.win + ' 勝／' + st.solo.play + ' 場');
-    if (st.online) sline.push('線上 ' + st.online.win + ' 勝／' + st.online.play + ' 場');
+    if (st.solo) sline.push(tr('home.recSolo', { w: st.solo.win, p: st.solo.play }));
+    if (st.online) sline.push(tr('home.recOnline', { w: st.online.win, p: st.online.play }));
     return screenBox('home center', [
       h('div', { class: 'hero' },
-        h('h1', { class: 'hero-title', 'aria-label': '炸彈小隊' }, Array.from('炸彈小隊').map(c => h('span', { 'aria-hidden': 'true' }, c))),
-        h('p', { class: 'hero-sub' }, '放炸彈、炸磚塊、撿道具，當最後的小隊長！'),
+        h('h1', { class: 'hero-title', 'aria-label': tr('home.title') }, Array.from(tr('home.title')).map(c => h('span', { 'aria-hidden': 'true' }, c === ' ' ? '\u00a0' : c))),
+        h('p', { class: 'hero-sub' }, tr('home.sub')),
         h('div', { class: 'hero-cast' }, cast.slice(0, 4), h('img', { class: 'hero-bomb', alt: '', src: Art.svgUrl(Art.bombSVG()) }), cast.slice(4))),
-      h('nav', { class: 'home-menu', 'aria-label': '主選單' },
-        btn('一個人玩', { cls: 'btn-pink btn-lg btn-block', icon: 'robot', iconSize: 28, onClick: () => go('solo') }),
-        btn('跟別人玩', { cls: 'btn-sky btn-lg btn-block', icon: 'user', iconSize: 28, onClick: () => go('lobby') }),
-        btn('怎麼玩', { cls: 'btn-sun btn-lg btn-block', icon: 'help', iconSize: 28, onClick: () => go('help') }),
-        btn('角色介紹', { cls: 'btn-grape btn-lg btn-block', icon: 'paw', iconSize: 28, onClick: () => go('cast') })),
-      sline.length ? h('p', { class: 'home-foot' }, '本機戰績：' + sline.join('　')) : null
+      h('nav', { class: 'home-menu', 'aria-label': tr('home.menu') },
+        btn(tr('home.solo'), { cls: 'btn-pink btn-lg btn-block', icon: 'robot', iconSize: 28, onClick: () => go('solo') }),
+        btn(tr('home.online'), { cls: 'btn-sky btn-lg btn-block', icon: 'user', iconSize: 28, onClick: () => go('lobby') }),
+        btn(tr('home.help'), { cls: 'btn-sun btn-lg btn-block', icon: 'help', iconSize: 28, onClick: () => go('help') }),
+        btn(tr('home.cast'), { cls: 'btn-grape btn-lg btn-block', icon: 'paw', iconSize: 28, onClick: () => go('cast') })),
+      sline.length ? h('p', { class: 'home-foot' }, tr('home.record', { s: sline.join('　') })) : null
     ]);
   };
 
   /* ---------- 角色介紹：每隻的定位、個性、開場能力與上限（深色是開場，淺色是撿道具最多能升到哪） ---------- */
   App.screens.cast = function () {
-    const SPD = { 2: '快', 1.5: '中', 1: '慢' };
+    const SPD = { 2: tr('cast.fast'), 1.5: tr('cast.mid'), 1: tr('cast.slow') };
     const stat = (item, label, start, cap, scale, text) => h('div', { class: 'cast-stat' },
       h('img', { alt: '', src: Art.svgUrl(Art.itemSVG(item)) }),
       h('span', null, label),
@@ -104,61 +106,57 @@
         avatar(id, 64),
         h('div', null, h('h3', null, a.name, h('span', { class: 'pill gray' }, a.role)), h('p', { class: 'muted small' }, a.intro)),
         h('div', { class: 'cast-stats' },
-          stat('fire', '火力', st.fire, mx.fire, 12, st.fire + '→' + mx.fire + ' 格'),
-          stat('bomb', '炸彈', st.bomb, mx.bomb, 10, st.bomb + '→' + mx.bomb + ' 顆'),
-          stat('speed', '跑速', v0, v1, 8, SPD[st.speed] + ' +' + mx.speed + ' 次')));
+          stat('fire', tr('cast.fire'), st.fire, mx.fire, 12, tr('cast.tiles', { a: st.fire, b: mx.fire })),
+          stat('bomb', tr('cast.bomb'), st.bomb, mx.bomb, 10, tr('cast.bombs', { a: st.bomb, b: mx.bomb })),
+          stat('speed', tr('cast.speed'), v0, v1, 8, tr('cast.boosts', { s: SPD[st.speed], n: mx.speed }))));
     });
     return screenBox('', h('div', { class: 'wrap' },
-      topbar('角色介紹', () => go('home')),
+      topbar(tr('cast.title'), () => go('home')),
       h('section', { class: 'card' },
-        h('p', { class: 'muted small cast-note' }, '每隻的開場能力都在 1～2 之間：火力或炸彈多的，跑得就慢一點。撿道具能升級，但每隻的上限不一樣（深色是開場、淺色是最多能升到哪；跑速的「+6 次」是最多能加速幾次），三項上限加起來每隻都一樣多，沒有誰全面比較強，挑喜歡的玩法就好。'),
+        h('p', { class: 'muted small cast-note' }, tr('cast.note')),
         h('div', { class: 'cast-grid' }, cards)),
       h('div', { class: 'row', style: { justifyContent: 'center' } },
-        btn('開始單機練習', { cls: 'btn-pink btn-lg', onClick: () => go('solo') }),
-        btn('回首頁', { cls: 'btn-ghost btn-lg', onClick: () => go('home') }))));
+        btn(tr('cast.startSolo'), { cls: 'btn-pink btn-lg', onClick: () => go('solo') }),
+        btn(tr('cast.home'), { cls: 'btn-ghost btn-lg', onClick: () => go('home') }))));
   };
 
   /* ---------- 教學（靜態圖文） ---------- */
   function blastFigure() {
     const cell = (x, y, fill, extra) => '<rect x="' + (x * 44 + 4) + '" y="' + (y * 44 + 4) + '" width="40" height="40" rx="9" fill="' + fill + '"' + (extra || '') + '/>';
-    let s = '<svg class="help-fig" viewBox="0 0 228 228" role="img" aria-label="爆炸示意圖：炸彈往上下左右噴出火焰，遇到硬牆停下，炸掉第一塊軟磚">';
+    let s = '<svg class="help-fig" viewBox="0 0 228 228" role="img" aria-label="' + tr('help.figAria') + '">';
     for (let y = 0; y < 5; y++) for (let x = 0; x < 5; x++) s += cell(x, y, (x + y) % 2 ? '#ffdbeb' : '#ffeaf4');
     s += cell(2, 0, '#ff9f45') + cell(2, 1, '#ff9f45') + cell(0, 2, '#ff9f45') + cell(1, 2, '#ff9f45') + cell(3, 2, '#ff9f45') + cell(2, 3, '#ff9f45') + cell(2, 2, '#ffd24d');
     s += cell(4, 2, '#d3438a') + '<rect x="180" y="92" width="40" height="40" rx="9" fill="#ff8fc4" stroke="#8a2d5e" stroke-width="3"/>';
     s += cell(2, 4, '#e6a65a') + '<path d="M104 190 l20 20 M124 190 l-20 20" stroke="#7a4a2a" stroke-width="4" stroke-linecap="round"/>';
     s += '<circle cx="114" cy="114" r="17" fill="#2f2a4d"/><path d="M114 97 q4 -9 12 -10" stroke="#c9a46a" stroke-width="4" fill="none" stroke-linecap="round"/>';
-    s += '<text x="196" y="86" font-size="13" font-weight="800" fill="#6a2d8c" text-anchor="middle">硬牆</text><text x="114" y="224" font-size="13" font-weight="800" fill="#7a4a2a" text-anchor="middle">軟磚</text></svg>';
+    s += '<text x="196" y="86" font-size="13" font-weight="800" fill="#6a2d8c" text-anchor="middle">' + tr('help.figHard') + '</text><text x="114" y="224" font-size="13" font-weight="800" fill="#7a4a2a" text-anchor="middle">' + tr('help.figSoft') + '</text></svg>';
     return h('div', { html: s });
   }
   App.screens.help = function () {
     const items = R.ITEM_TYPES.map(t => h('div', { class: 'item-row' }, h('img', { alt: '', src: Art.svgUrl(Art.itemSVG(t)) }), h('span', null, h('b', null, Art.ITEM_NAMES[t]), h('span', { class: 'muted small' }, Art.ITEM_DESC[t]))));
     return screenBox('', h('div', { class: 'wrap' },
-      topbar('怎麼玩', () => go('home')),
+      topbar(tr('help.title'), () => go('home')),
       h('div', { class: 'help-grid' },
-        h('section', { class: 'card' }, h('h3', null, '目標'),
-          h('p', null, '在方格地圖上放炸彈，炸開軟磚、撿道具、把對手炸出局。場上只剩你一個，就是勝利者！'),
-          h('p', { class: 'muted small', style: { marginTop: '6px' } }, '時間到還有好幾人活著時，擊倒對手最多的人獲勝，同分就是平手。'),
-          h('p', { class: 'muted small', style: { marginTop: '6px' } }, '遊戲超過 2 分 30 秒會開始空襲：每 2 秒就有炸彈從天上掉到隨機空格，3 秒後爆炸、火力橫掃到牆邊；每過 10 秒每次多掉 1 顆（2:40 起 2 顆、2:50 起 3 顆，最多 3 顆）。空襲炸死人不算擊倒。')),
-        h('section', { class: 'card' }, h('h3', null, '操作'),
-          h('p', null, '電腦鍵盤：'),
-          h('p', { style: { margin: '6px 0' } }, '移動　', keycap('W'), keycap('A'), keycap('S'), keycap('D'), ' 或 ', keycap('方向鍵', 'wide')),
-          h('p', { style: { margin: '6px 0' } }, '放炸彈 ', keycap('空白鍵', 'wide'), ' 或 ', keycap('Enter', 'wide')),
-          h('p', { class: 'muted' }, '平板與手機：左下角搖桿移動、右下角粉紅按鈕放炸彈（設定裡可以換左右手）。'))),
-      h('section', { class: 'card' }, h('h3', null, '炸彈怎麼炸'),
+        h('section', { class: 'card' }, h('h3', null, tr('help.goal')),
+          h('p', null, tr('help.goal1')),
+          h('p', { class: 'muted small', style: { marginTop: '6px' } }, tr('help.goal2')),
+          h('p', { class: 'muted small', style: { marginTop: '6px' } }, tr('help.goal3'))),
+        h('section', { class: 'card' }, h('h3', null, tr('help.controls')),
+          h('p', null, tr('help.kbd')),
+          h('p', { style: { margin: '6px 0' } }, tr('help.move'), keycap('W'), keycap('A'), keycap('S'), keycap('D'), tr('help.or'), keycap(tr('help.arrows'), 'wide')),
+          h('p', { style: { margin: '6px 0' } }, tr('help.placeBomb'), keycap(tr('help.space'), 'wide'), tr('help.or'), keycap('Enter', 'wide')),
+          h('p', { class: 'muted' }, tr('help.touch')))),
+      h('section', { class: 'card' }, h('h3', null, tr('help.blast')),
         h('div', { class: 'row gap-lg' },
           h('div', { class: 'grow', style: { flexBasis: '260px' } }, blastFigure()),
           h('ol', { class: 'steps grow', style: { flexBasis: '260px' } },
-            h('li', null, '放下炸彈約 3 秒後爆炸，往上下左右噴出火焰，長度就是你的「火力」。'),
-            h('li', null, '火焰被硬牆擋住；碰到軟磚會把它炸掉，並且在那裡停下。'),
-            h('li', null, '火焰碰到別的炸彈會立刻引爆它，形成連鎖爆炸！火焰不會被炸彈擋住，連鎖時每個方向以火力最長的那顆為準。'),
-            h('li', null, '剛放下炸彈時可以走開，離開後它就變成障礙物。'),
-            h('li', null, '被火焰碰到就出局，自己的炸彈也一樣，小心逃生。')))),
-      h('section', { class: 'card' }, h('h3', null, '道具'),
-        h('p', { class: 'muted small', style: { marginBottom: '8px' } }, '炸開軟磚有機會掉出道具；每隔 45 秒還會有空投機飛過地圖，投下 1～2 個好道具。圓形是好道具，帶尖刺的紫色外框是詛咒，會限時捉弄你。出局時，身上一半的強化道具會噴出來。'),
+            [1, 2, 3, 4, 5].map(n => h('li', null, tr('help.s' + n)))))),
+      h('section', { class: 'card' }, h('h3', null, tr('help.items')),
+        h('p', { class: 'muted small', style: { marginBottom: '8px' } }, tr('help.items1')),
         h('div', { class: 'item-list' }, items)),
       h('div', { class: 'row', style: { justifyContent: 'center' } },
-        btn('開始單機練習', { cls: 'btn-pink btn-lg', onClick: () => go('solo') }),
-        btn('回首頁', { cls: 'btn-ghost btn-lg', onClick: () => go('home') }))));
+        btn(tr('cast.startSolo'), { cls: 'btn-pink btn-lg', onClick: () => go('solo') }),
+        btn(tr('cast.home'), { cls: 'btn-ghost btn-lg', onClick: () => go('home') }))));
   };
 
   /* ---------- 角色與暱稱 ---------- */
@@ -166,7 +164,7 @@
     o = o || {};
     const st = App.store;
     const input = h('input', {
-      class: 'text-input', type: 'text', maxlength: 10, value: st.nickname || '', placeholder: '幫自己取個名字（最多 10 字）', 'aria-label': '暱稱', autocomplete: 'off', enterkeyhint: 'done',
+      class: 'text-input', type: 'text', maxlength: 10, value: st.nickname || '', placeholder: tr('profile.placeholder'), 'aria-label': tr('profile.nickname'), autocomplete: 'off', enterkeyhint: 'done',
       onInput: () => { st.nickname = input.value; save(); o.onChange && o.onChange(); }
     });
     const btns = Art.ANIMAL_IDS.map(id => h('button', {
@@ -179,8 +177,8 @@
     btns.forEach((b, i) => { b.dataset.id = Art.ANIMAL_IDS[i]; });
     return {
       el: h('div', null,
-        h('div', { class: 'field' }, h('span', { class: 'label' }, '暱稱'), h('div', { class: 'ctl', style: { justifyContent: 'stretch' } }, input)),
-        h('div', { class: 'field' }, h('span', { class: 'label' }, '角色'), h('div', { class: 'ctl', style: { justifyContent: 'stretch' } }, h('div', { class: 'animal-grid', role: 'radiogroup', 'aria-label': '選擇角色', style: { width: '100%' } }, btns)))),
+        h('div', { class: 'field' }, h('span', { class: 'label' }, tr('profile.nickname')), h('div', { class: 'ctl', style: { justifyContent: 'stretch' } }, input)),
+        h('div', { class: 'field' }, h('span', { class: 'label' }, tr('profile.animal')), h('div', { class: 'ctl', style: { justifyContent: 'stretch' } }, h('div', { class: 'animal-grid', role: 'radiogroup', 'aria-label': tr('profile.choose'), style: { width: '100%' } }, btns)))),
       input
     };
   };
@@ -201,20 +199,20 @@
     return pool.slice(0, n);
   }
   /* ---------- 精簡規則面板（單機與線上房間共用）：時間、道具、地圖主題三項，版型收在「更多」 ---------- */
-  const ITEM_MODE_OPTS = [{ v: 'none', label: '無道具' }, { v: 'items', label: '有道具' }, { v: 'curses', label: '道具＋詛咒' }];
+  const ITEM_MODE_OPTS = [{ v: 'none', get label() { return tr('rules.itemNone'); } }, { v: 'items', get label() { return tr('rules.itemOn'); } }, { v: 'curses', get label() { return tr('rules.itemCurse'); } }];
   const itemMode = r => (!r.items ? 'none' : r.curses ? 'curses' : 'items');
   const itemPatch = v => ({ items: v !== 'none', curses: v === 'curses' });
   function rulesPanel(rules, set) {
     const f = (label, ctl) => h('div', { class: 'field' }, h('span', { class: 'label' }, label), h('div', { class: 'ctl' }, ctl));
     return h('div', { class: 'rules-panel' },
-      f('時間', seg({ label: '時間限制', options: TIME_OPTS, value: rules.timeLimit, onChange: v => set({ timeLimit: v }) })),
-      f('道具', seg({ label: '道具', options: ITEM_MODE_OPTS, value: itemMode(rules), onChange: v => set(itemPatch(v)) })),
-      h('div', { class: 'field field-map' }, h('span', { class: 'label' }, '地圖'),
+      f(tr('rules.time'), seg({ label: tr('rules.timeLimit'), options: TIME_OPTS, value: rules.timeLimit, onChange: v => set({ timeLimit: v }) })),
+      f(tr('rules.items'), seg({ label: tr('rules.items'), options: ITEM_MODE_OPTS, value: itemMode(rules), onChange: v => set(itemPatch(v)) })),
+      h('div', { class: 'field field-map' }, h('span', { class: 'label' }, tr('rules.map')),
         h('div', { class: 'ctl' }, root.MapPick.mapButton({ theme: rules.theme, layout: rules.layout, onChange: set }))));
   }
   function rulesSummary(r) {
     const pick = (opts, v) => { const o = opts.find(x => x.v === v); return o ? o.label : ''; };
-    return [pick(TIME_OPTS, r.timeLimit), pick(ITEM_MODE_OPTS, itemMode(r)), pick(THEME_OPTS, r.theme), (r.theme === root.Rules.FAB_THEME ? '產線' : pick(LAYOUT_OPTS, r.layout)) + '版型'];
+    return [pick(TIME_OPTS, r.timeLimit), pick(ITEM_MODE_OPTS, itemMode(r)), pick(THEME_OPTS, r.theme), tr('rules.layoutSuffix', { l: r.theme === root.Rules.FAB_THEME ? tr('layout.fab') : pick(LAYOUT_OPTS, r.layout) })];
   }
 
   App.screens.solo = function () {
@@ -223,11 +221,11 @@
     const rows = h('div', { class: 'ai-rows', hidden: false });
     let anim = aiAnimals();
     const face = h('div', { class: 'ai-faces' });
-    const countCtl = stepper({ label: '電腦數量', min: 1, max: 7, value: so.levels.length, onChange: v => {
+    const countCtl = stepper({ label: tr('solo.countLabel'), min: 1, max: 7, value: so.levels.length, onChange: v => {
       while (so.levels.length < v) so.levels.push(so.levels[so.levels.length - 1] || 'normal');
       so.levels.length = v; save(); paintRows();
     } });
-    const allSeg = seg({ label: '電腦難度', cls: 'small', options: LEVEL_OPTS, value: so.levels.every(l => l === so.levels[0]) ? so.levels[0] : null, onChange: v => {
+    const allSeg = seg({ label: tr('solo.levelAll'), cls: 'small', options: LEVEL_OPTS, value: so.levels.every(l => l === so.levels[0]) ? so.levels[0] : null, onChange: v => {
       so.levels = so.levels.map(() => v);
       if (v === 'toddler') so.curses = false;
       save(); paintRows();
@@ -235,8 +233,8 @@
     } });
     const sizeNote = h('span', { class: 'pill gray' });
     const detailBtn = h('button', { type: 'button', class: 'more-btn', 'aria-expanded': App.aiDetail ? 'true' : 'false', onClick: () => {
-      App.aiDetail = !App.aiDetail; rows.hidden = !App.aiDetail; detailBtn.setAttribute('aria-expanded', App.aiDetail ? 'true' : 'false'); detailBtn.firstChild.textContent = App.aiDetail ? '收起' : '逐一調整角色與難度';
-    } }, h('span', null, App.aiDetail ? '收起' : '逐一調整角色與難度'), h('i', { 'aria-hidden': 'true' }));
+      App.aiDetail = !App.aiDetail; rows.hidden = !App.aiDetail; detailBtn.setAttribute('aria-expanded', App.aiDetail ? 'true' : 'false'); detailBtn.firstChild.textContent = App.aiDetail ? tr('solo.collapse') : tr('solo.detail');
+    } }, h('span', null, App.aiDetail ? tr('solo.collapse') : tr('solo.detail')), h('i', { 'aria-hidden': 'true' }));
     function paintRows() {
       { const z = R.sizeFor(1 + so.levels.length); sizeNote.textContent = z.w + '×' + z.h; }
       anim = aiAnimals();
@@ -244,18 +242,18 @@
       face.appendChild(h('span', { class: 'face me' }, avatar(st.animal, 40)));
       so.levels.forEach((lv, i) => {
         const a = anim[i];
-        face.appendChild(h('span', { class: 'face', title: '電腦 ' + (i + 1) + '・' + AI.LEVELS[lv].name }, avatar(a, 40)));
+        face.appendChild(h('span', { class: 'face', title: tr('solo.cpuTitle', { n: i + 1, lv: AI.LEVELS[lv].name }) }, avatar(a, 40)));
         rows.appendChild(h('div', { class: 'ai-row' },
-          h('div', { class: 'ai-row-head' }, avatar(a, 36), h('span', { class: 'name' }, '電腦 ' + (i + 1))),
+          h('div', { class: 'ai-row-head' }, avatar(a, 36), h('span', { class: 'name' }, tr('solo.cpuN', { n: i + 1 }))),
           h('div', { class: 'ai-row-picks' },
-            root.UI.dropdown({ label: '電腦 ' + (i + 1) + ' 角色', cls: 'lvl', options: animalOptions([st.animal]), value: a, onChange: v => {
+            root.UI.dropdown({ label: tr('solo.cpuAnimal', { n: i + 1 }), cls: 'lvl', options: animalOptions([st.animal]), value: a, onChange: v => {
               /* 選到別台電腦正在用的角色就互換，避免重複 */
               const j = anim.indexOf(v);
               if (j >= 0) anim[j] = anim[i];
               anim[i] = v; so.animals = anim; save(); paintRows();
             } }),
             root.UI.dropdown({
-              label: '電腦 ' + (i + 1) + ' 難度',
+              label: tr('solo.cpuLevel', { n: i + 1 }),
               cls: 'lvl',
               options: LEVEL_DD,
               value: lv,
@@ -269,7 +267,7 @@
       allSeg.setValue(so.levels.every(l => l === so.levels[0]) ? so.levels[0] : null);
       countCtl.setValue(so.levels.length);
     }
-    function paintFaces() { face.querySelectorAll('.face:not(.me)').forEach((el, i) => { el.title = '電腦 ' + (i + 1) + '・' + AI.LEVELS[so.levels[i]].name; }); }
+    function paintFaces() { face.querySelectorAll('.face:not(.me)').forEach((el, i) => { el.title = tr('solo.cpuTitle', { n: i + 1, lv: AI.LEVELS[so.levels[i]].name }); }); }
     paintRows();
     const f = (label, ctl) => h('div', { class: 'field' }, h('span', { class: 'label' }, label), h('div', { class: 'ctl' }, ctl));
     const panelBox = h('div');
@@ -277,15 +275,15 @@
     paintPanel();
 
     return screenBox('', h('div', { class: 'wrap' },
-      topbar('一個人玩', () => go('home')),
+      topbar(tr('solo.title'), () => go('home')),
       h('div', { class: 'room-grid' },
         h('div', { style: { display: 'grid', gap: '14px' } },
-          h('section', { class: 'card' }, h('h3', null, '你的角色'), prof.el),
-          h('section', { class: 'card' }, h('h3', null, '電腦對手', sizeNote), face,
-            f('數量', countCtl), rows)),
+          h('section', { class: 'card' }, h('h3', null, tr('solo.you')), prof.el),
+          h('section', { class: 'card' }, h('h3', null, tr('solo.cpu'), sizeNote), face,
+            f(tr('solo.count'), countCtl), rows)),
         h('div', { style: { display: 'grid', gap: '14px', alignContent: 'start' } },
-          h('section', { class: 'card' }, h('h3', null, '規則'), panelBox))),
-      h('div', { class: 'sticky-cta' }, btn('開始遊戲', { cls: 'btn-pink btn-lg btn-block', icon: 'play', iconSize: 26, onClick: () => App.startSolo() }))));
+          h('section', { class: 'card' }, h('h3', null, tr('solo.rules')), panelBox))),
+      h('div', { class: 'sticky-cta' }, btn(tr('solo.start'), { cls: 'btn-pink btn-lg btn-block', icon: 'play', iconSize: 26, onClick: () => App.startSolo() }))));
   };
 
   /* ---------- 單機開局 ---------- */
@@ -320,16 +318,17 @@
   App.openMenu = function () {
     if (root.UI.modalOpen()) return;
     const online = App.onlineGame;
-    const m = modal({
-      title: '暫停', cls: 'dialog-sm',
-      content: h('p', { class: 'dialog-text' }, online ? '線上對局不會暫停，其他人還在繼續。' : '遊戲已暫停。'),
+    const spec = () => ({
+      title: tr('pause.title'),
+      content: h('p', { class: 'dialog-text' }, online ? tr('pause.textOnline') : tr('pause.text')),
       actions: online
-        ? [btn('離開房間', { cls: 'btn-pink', onClick: () => { m.close(true); App.confirmLeave(); } }), btn('繼續', { cls: 'btn-mint', onClick: () => m.close() })]
-        : [btn('回房間', { cls: 'btn-ghost', onClick: () => { m.close(true); go('solo'); } }), btn('重新開始', { cls: 'btn-sun', onClick: () => { m.close(true); App.startSolo(); } }), btn('繼續', { cls: 'btn-mint', onClick: () => m.close() })]
+        ? [btn(tr('pause.leave'), { cls: 'btn-pink', onClick: () => { m.close(true); App.confirmLeave(); } }), btn(tr('pause.resume'), { cls: 'btn-mint', onClick: () => m.close() })]
+        : [btn(tr('pause.toRoom'), { cls: 'btn-ghost', onClick: () => { m.close(true); go('solo'); } }), btn(tr('pause.restart'), { cls: 'btn-sun', onClick: () => { m.close(true); App.startSolo(); } }), btn(tr('pause.resume'), { cls: 'btn-mint', onClick: () => m.close() })]
     });
+    const m = modal(Object.assign({ cls: 'dialog-sm', rebuild: spec }, spec()));
   };
   App.confirmLeave = function () {
-    root.UI.confirmBox({ title: '離開房間？', text: '離開後會回到線上大廳。', ok: '離開', danger: true, onOk: () => App.leaveRoom() });
+    root.UI.confirmBox({ title: () => tr('leave.title'), text: () => tr('leave.text'), ok: () => tr('leave.ok'), danger: true, onOk: () => App.leaveRoom() });
   };
   App.leaveRoom = function () {
     root.Net.send({ type: 'leave' });
@@ -343,35 +342,37 @@
     const byslot = {}; players.forEach(p => { byslot[p.slot] = p; });
     const me = o.slot != null ? byslot[o.slot] : null;
     const w = result.winner;
-    let head, sub;
-    if (w == null) { head = '平手！'; sub = result.timeout ? '時間到，擊倒數相同' : '最後的人同時被炸到了'; }
-    else if (w === o.slot) { head = '你贏了！'; sub = result.reason === 'time' ? '時間到，你擊倒最多！' : '你是最後的倖存者！'; }
-    else if (o.slot == null) { head = byslot[w].name + ' 獲勝！'; sub = result.reason === 'time' ? '時間到，擊倒數最多' : '最後的倖存者'; }
-    else { head = '這次輸了…'; sub = byslot[w].name + (result.reason === 'time' ? ' 擊倒最多，贏了這局' : ' 是最後的倖存者'); }
-    if (o.slot != null && !o.recorded) {
-      const s = root.Store.record(App.store, o.kind === 'solo' ? 'solo' : 'online', w === o.slot);
-      o.statLine = '本機戰績：' + s.win + ' 勝／' + s.play + ' 場';
-    }
+    let rec = null;
+    if (o.slot != null) rec = root.Store.record(App.store, o.kind === 'solo' ? 'solo' : 'online', w === o.slot);   /* 只記一次，重建彈窗（切換語言）不會重複計 */
     const kills = {}; result.kills.forEach(k => { kills[k[0]] = k[1]; });
-    const rank = h('div', { class: 'rank' }, result.ranking.map((slot, i) => {
-      const p = byslot[slot]; if (!p) return null;
-      return h('div', { class: 'rank-row' + (slot === w ? ' win' : '') },
-        h('span', { class: 'no' }, String(i + 1)), avatar(p.animal, 38),
-        h('span', { class: 'nm' }, p.name + (slot === o.slot ? '（你）' : '') + (p.kind === 'ai' && p.level ? '・' + AI.LEVELS[p.level].name : '')),
-        h('span', { class: 'kills' }, '擊倒 ' + (kills[slot] || 0)));
-    }));
-    const mins = Math.floor(result.time / 60), secs = Math.floor(result.time % 60);
-    const body = h('div', { class: 'big-result' }, h('div', { class: 'head' }, head), h('p', { class: 'muted' }, sub), rank,
-      h('p', { class: 'muted small', style: { marginTop: '10px', textAlign: 'center' } }, '這局共 ' + mins + ' 分 ' + secs + ' 秒' + (o.statLine ? '　' + o.statLine : '')));
-    let actions;
-    if (o.kind === 'solo') {
-      actions = [btn('回房間', { cls: 'btn-ghost', onClick: () => { m.close(true); go('solo'); } }), btn('再來一局', { cls: 'btn-pink', onClick: () => { m.close(true); App.startSolo(); } })];
-    } else {
-      const host = App.room && App.room.you && App.room.you.host;
-      actions = [btn('離開房間', { cls: 'btn-ghost', onClick: () => { m.close(true); App.leaveRoom(); } }),
-        btn(host ? '再來一局' : '回到房間', { cls: 'btn-pink', onClick: () => { m.close(true); if (host) root.Net.send({ type: 'rematch' }); go('room'); } })];
-    }
-    const m = modal({ title: null, aria: '對局結果', content: body, actions, dismissible: false, cls: 'dialog-lg' });
+    const spec = () => {
+      let head, sub;
+      const wn = w != null && byslot[w] ? Art.playerName(byslot[w]) : '';
+      if (w == null) { head = tr('result.draw'); sub = result.timeout ? tr('result.drawTimeout') : tr('result.drawBoom'); }
+      else if (w === o.slot) { head = tr('result.youWin'); sub = result.reason === 'time' ? tr('result.youWinTime') : tr('result.youWinLast'); }
+      else if (o.slot == null) { head = tr('result.nameWins', { name: wn }); sub = result.reason === 'time' ? tr('result.mostKos') : tr('result.lastOne'); }
+      else { head = tr('result.lose'); sub = result.reason === 'time' ? tr('result.loseTime', { name: wn }) : tr('result.loseLast', { name: wn }); }
+      const rank = h('div', { class: 'rank' }, result.ranking.map((slot, i) => {
+        const p = byslot[slot]; if (!p) return null;
+        return h('div', { class: 'rank-row' + (slot === w ? ' win' : '') },
+          h('span', { class: 'no' }, String(i + 1)), avatar(p.animal, 38),
+          h('span', { class: 'nm' }, Art.playerName(p) + (slot === o.slot ? tr('result.you') : '') + (p.kind === 'ai' && p.level ? '・' + AI.LEVELS[p.level].name : '')),
+          h('span', { class: 'kills' }, tr('game.kills', { n: kills[slot] || 0 })));
+      }));
+      const mins = Math.floor(result.time / 60), secs = Math.floor(result.time % 60);
+      const body = h('div', { class: 'big-result' }, h('div', { class: 'head' }, head), h('p', { class: 'muted' }, sub), rank,
+        h('p', { class: 'muted small', style: { marginTop: '10px', textAlign: 'center' } }, tr('result.length', { m: mins, s: secs }) + (rec ? '　' + tr('result.record', { w: rec.win, p: rec.play }) : '')));
+      let actions;
+      if (o.kind === 'solo') {
+        actions = [btn(tr('result.backRoom'), { cls: 'btn-ghost', onClick: () => { m.close(true); go('solo'); } }), btn(tr('result.again'), { cls: 'btn-pink', onClick: () => { m.close(true); App.startSolo(); } })];
+      } else {
+        const host = App.room && App.room.you && App.room.you.host;
+        actions = [btn(tr('result.leave'), { cls: 'btn-ghost', onClick: () => { m.close(true); App.leaveRoom(); } }),
+          btn(host ? tr('result.again') : tr('result.toRoom'), { cls: 'btn-pink', onClick: () => { m.close(true); if (host) root.Net.send({ type: 'rematch' }); go('room'); } })];
+      }
+      return { title: null, aria: tr('result.aria'), content: body, actions };
+    };
+    const m = modal(Object.assign({ dismissible: false, cls: 'dialog-lg', rebuild: spec }, spec()));
     App.resultModal = m;
     return m;
   };
@@ -380,29 +381,31 @@
   App.openSettings = function () {
     if (App.settingsOpen) return;
     const st = App.store;
-    const bgmVol = volume({ label: '音樂音量', value: st.bgmVol, disabled: !st.bgm, onChange: v => { st.bgmVol = v; save(); applySettings(); } });
-    const sfxVol = volume({ label: '音效音量', value: st.sfxVol, disabled: !st.sfx, onChange: v => { st.sfxVol = v; save(); applySettings(); root.Sound.sfx('item'); } });
-    const bgmSw = toggle({ label: '背景音樂', value: st.bgm, onChange: v => { st.bgm = v; save(); applySettings(); bgmVol.setDisabled(!v); } });
-    const sfxSw = toggle({ label: '音效', value: st.sfx, onChange: v => { st.sfx = v; save(); applySettings(); sfxVol.setDisabled(!v); if (v) root.Sound.sfx('item'); } });
-    const vibSw = toggle({ label: '震動', value: st.vibrate, onChange: v => { st.vibrate = v; save(); if (v && navigator.vibrate) try { navigator.vibrate(40); } catch (e) { /* 忽略 */ } } });
-    const calmSw = toggle({ label: '減少動態', value: st.reduceMotion, onChange: v => { st.reduceMotion = v; save(); applySettings(); } });
-    const assistSw = toggle({ label: '形狀輔助', value: st.colorAssist, onChange: v => { st.colorAssist = v; save(); } });
-    const touchSeg = seg({ label: '觸控按鍵', options: [{ v: 'auto', label: '自動' }, { v: 'on', label: '顯示' }, { v: 'off', label: '隱藏' }], value: st.touchMode, onChange: v => { st.touchMode = v; save(); App.game && App.game.layout(); } });
-    const sideSeg = seg({ label: '搖桿位置', options: [{ v: 'left', label: '左手邊' }, { v: 'right', label: '右手邊' }], value: st.stickSide, onChange: v => { st.stickSide = v; save(); App.game && App.game.layout(); } });
-    const f = (label, ctl, hint) => h('div', { class: 'field' }, h('span', { class: 'label' }, label, hint ? h('span', { class: 'muted small' }, hint) : null), h('div', { class: 'ctl' }, ctl));
-    const body = h('div', null,
-      h('h3', { style: { margin: '4px 0' } }, '聲音'),
-      f('背景音樂', [bgmSw, bgmVol]), f('音效', [sfxSw, sfxVol]),
-      h('h3', { style: { margin: '10px 0 4px' } }, '操作與輔助'),
-      f('觸控按鍵', touchSeg), f('搖桿位置', sideSeg),
-      navigator.vibrate ? f('震動', vibSw) : null,
-      f('減少動態', calmSw), f('形狀輔助', assistSw),
-      h('p', { class: 'muted small' }, '形狀輔助：在暱稱旁加上圓、三角、星星等形狀，不只靠顏色分辨玩家。'));
-    const m = modal({
-      title: '設定', content: body, cls: 'dialog-lg',
-      actions: [btn('恢復預設', { cls: 'btn-ghost', onClick: () => { root.Store.resetSettings(st); applySettings(); App.game && App.game.layout(); m.close(true); App.settingsOpen = false; toast('已恢復預設設定'); App.openSettings(); } }), btn('完成', { cls: 'btn-mint', onClick: () => m.close() })],
-      onClose: () => { App.settingsOpen = false; }
-    });
+    const spec = () => {
+      const bgmVol = volume({ label: tr('settings.bgmVol'), value: st.bgmVol, disabled: !st.bgm, onChange: v => { st.bgmVol = v; save(); applySettings(); } });
+      const sfxVol = volume({ label: tr('settings.sfxVol'), value: st.sfxVol, disabled: !st.sfx, onChange: v => { st.sfxVol = v; save(); applySettings(); root.Sound.sfx('item'); } });
+      const bgmSw = toggle({ label: tr('settings.bgm'), value: st.bgm, onChange: v => { st.bgm = v; save(); applySettings(); bgmVol.setDisabled(!v); } });
+      const sfxSw = toggle({ label: tr('settings.sfx'), value: st.sfx, onChange: v => { st.sfx = v; save(); applySettings(); sfxVol.setDisabled(!v); if (v) root.Sound.sfx('item'); } });
+      const vibSw = toggle({ label: tr('settings.vibrate'), value: st.vibrate, onChange: v => { st.vibrate = v; save(); if (v && navigator.vibrate) try { navigator.vibrate(40); } catch (e) { /* 忽略 */ } } });
+      const calmSw = toggle({ label: tr('settings.calm'), value: st.reduceMotion, onChange: v => { st.reduceMotion = v; save(); applySettings(); } });
+      const assistSw = toggle({ label: tr('settings.assist'), value: st.colorAssist, onChange: v => { st.colorAssist = v; save(); } });
+      const touchSeg = seg({ label: tr('settings.touch'), options: [{ v: 'auto', label: tr('settings.auto') }, { v: 'on', label: tr('settings.show') }, { v: 'off', label: tr('settings.hide') }], value: st.touchMode, onChange: v => { st.touchMode = v; save(); App.game && App.game.layout(); } });
+      const sideSeg = seg({ label: tr('settings.stick'), options: [{ v: 'left', label: tr('settings.left') }, { v: 'right', label: tr('settings.right') }], value: st.stickSide, onChange: v => { st.stickSide = v; save(); App.game && App.game.layout(); } });
+      const f = (label, ctl, hint) => h('div', { class: 'field' }, h('span', { class: 'label' }, label, hint ? h('span', { class: 'muted small' }, hint) : null), h('div', { class: 'ctl' }, ctl));
+      const body = h('div', null,
+        h('h3', { style: { margin: '4px 0' } }, tr('settings.sound')),
+        f(tr('settings.bgm'), [bgmSw, bgmVol]), f(tr('settings.sfx'), [sfxSw, sfxVol]),
+        h('h3', { style: { margin: '10px 0 4px' } }, tr('settings.controls')),
+        f(tr('settings.touch'), touchSeg), f(tr('settings.stick'), sideSeg),
+        navigator.vibrate ? f(tr('settings.vibrate'), vibSw) : null,
+        f(tr('settings.calm'), calmSw), f(tr('settings.assist'), assistSw),
+        h('p', { class: 'muted small' }, tr('settings.assistNote')));
+      return {
+        title: tr('settings.title'), content: body,
+        actions: [btn(tr('settings.reset'), { cls: 'btn-ghost', onClick: () => { root.Store.resetSettings(st); applySettings(); App.game && App.game.layout(); m.close(true); App.settingsOpen = false; toast(tr('settings.resetDone')); App.openSettings(); } }), btn(tr('common.done'), { cls: 'btn-mint', onClick: () => m.close() })]
+      };
+    };
+    const m = modal(Object.assign({ cls: 'dialog-lg', rebuild: spec, onClose: () => { App.settingsOpen = false; } }, spec()));
     App.settingsOpen = true;
     const origClose = m.close;
     m.close = function (silent) { App.settingsOpen = false; origClose(silent); };
@@ -433,6 +436,19 @@
     App.el = $('app');
     const gear = $('gear');
     gear.innerHTML = Art.icon('gear', 26);
+    /* 語言切換鈕放在設定鈕旁（樣式見 style.css 的 .lang-toggle） */
+    root.I18N.mountToggle({ after: gear });
+    const lobbyLink = $('lobby-home-link');
+    const lobbyBase = lobbyLink ? lobbyLink.getAttribute('href') : '';
+    const syncChrome = () => { if (lobbyLink) lobbyLink.setAttribute('href', root.I18N.withLang(lobbyBase)); };
+    syncChrome();
+    /* 切換語言：目前畫面重繪（對戰中只更新文字，不重開一局）；已開的彈窗由 ui.js 重建 */
+    root.I18N.onChange(() => {
+      syncChrome();
+      if (App.refreshBanner) App.refreshBanner();
+      if (App.screen === 'game') { if (App.game && App.game.relang) App.game.relang(); }
+      else if (App.screen) go(App.screen, App.params, { quiet: true, keepFocus: true });
+    });
     gear.addEventListener('click', () => { root.Sound.sfx('click'); App.openSettings(); });
     const unlock = () => { root.Sound.unlock(); };
     document.addEventListener('pointerdown', unlock, { once: false, passive: true });
@@ -453,7 +469,7 @@
     } else go('home');
   };
 
-  App.util = { LEVEL_DD, animalOptions, rulesPanel, rulesSummary, itemMode, myName, randomName, save, applySettings, topbar, screenBox, LAYOUT_OPTS, TIME_OPTS, THEME_OPTS, LEVEL_OPTS };
+  App.util = { tr, LEVEL_DD, animalOptions, rulesPanel, rulesSummary, itemMode, myName, randomName, save, applySettings, topbar, screenBox, LAYOUT_OPTS, TIME_OPTS, THEME_OPTS, LEVEL_OPTS };
 
   document.addEventListener('DOMContentLoaded', () => App.boot());
 })(typeof self !== 'undefined' ? self : this);

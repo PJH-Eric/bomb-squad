@@ -8,15 +8,20 @@
   const App = root.App;
   const U = App.util;
 
-  const REASONS = {
-    invalid: '這個邀請連結無效，請向房主要一條新的。',
-    revoked: '房主已經撤銷這個邀請連結。',
-    expired: '這個邀請連結已經過期。',
-    closed: '這個房間已經結束了。',
-    banned: '你已被請出這個房間。',
-    spec_full: '觀戰席已經滿了。'
-  };
-  const PHASE = { lobby: '等待中', playing: '對戰中', finished: '已結束' };
+  const tr = (k, p, f) => root.I18N.t(k, p, f);
+  /** 邀請連結失敗原因（伺服器回代碼）；沒有對應代碼就用通用說明 */
+  const reasonText = code => tr('online.reason.' + code, null, null) || tr('invite.badText');
+  const phaseText = ph => tr('online.phase.' + ph, null, null) || ph;
+  /** 伺服器訊息：有代碼就依目前語言翻譯（prefix + code），沒有就用伺服器附的文字 */
+  function srv(prefix, code, args, fallback) {
+    if (code) { const s = tr(prefix + code, args || null, null); if (s != null) return s; }
+    return fallback;
+  }
+  /** config.js 的錯誤訊息（設定錯誤）依錯誤型態翻譯 */
+  function cfgError(C) {
+    const e = String(C.error || '');
+    return /https/.test(e) && /http/.test(e) && /混合|mixed/i.test(e) ? tr('cfg.err.mixed') : tr('cfg.err.badUrl');
+  }
   const FOCUS_SEL = 'button:not([disabled]),input:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
   App.aiAddLevel = App.aiAddLevel || 'normal';
@@ -57,14 +62,14 @@
   }
   function statusInfo() {
     const s = App.netStatus, C = root.Config || {};
-    if (C.status === 'invalid') return { cls: 'bad', text: '伺服器設定有誤' };
-    if (s === 'unset' || C.status === 'unset') return { cls: 'bad', text: '尚未設定伺服器' };
-    if (s === 'open') return { cls: '', text: '已連線' };
-    if (s === 'waking') return { cls: 'warn', text: '伺服器睡醒中…' };
-    if (s === 'offline') return { cls: 'bad', text: '連不上伺服器' };
-    if (s === 'retrying') return { cls: 'warn', text: '重新連線中…' };
-    if (s === 'idle') return { cls: 'bad', text: '未連線' };
-    return { cls: 'warn', text: '連線中…' };
+    if (C.status === 'invalid') return { cls: 'bad', text: tr('net.badConfig') };
+    if (s === 'unset' || C.status === 'unset') return { cls: 'bad', text: tr('net.unset') };
+    if (s === 'open') return { cls: '', text: tr('net.open') };
+    if (s === 'waking') return { cls: 'warn', text: tr('net.waking') };
+    if (s === 'offline') return { cls: 'bad', text: tr('net.offline') };
+    if (s === 'retrying') return { cls: 'warn', text: tr('net.retrying') };
+    if (s === 'idle') return { cls: 'bad', text: tr('net.idle') };
+    return { cls: 'warn', text: tr('net.connecting') };
   }
   function statusPill() {
     const si = statusInfo();
@@ -88,71 +93,71 @@
     ui.paintNotice = () => {
       ui.noticeBox.textContent = '';
       if (App.lobbyNotice) {
-        ui.noticeBox.appendChild(h('div', { class: 'card notice' }, h('p', null, App.lobbyNotice),
-          h('div', { class: 'row', style: { justifyContent: 'flex-end', marginTop: '8px' } }, btn('知道了', { cls: 'btn-mint btn-sm', onClick: () => { App.lobbyNotice = ''; ui.paintNotice(); } }))));
+        ui.noticeBox.appendChild(h('div', { class: 'card notice' }, h('p', null, App.lobbyNotice()),
+          h('div', { class: 'row', style: { justifyContent: 'flex-end', marginTop: '8px' } }, btn(tr('lobby.gotIt'), { cls: 'btn-mint btn-sm', onClick: () => { App.lobbyNotice = null; ui.paintNotice(); } }))));
       }
     };
     ui.paintProfile = () => repaint(ui.profileBox, box => {
       box.appendChild(h('div', { class: 'row', style: { alignItems: 'center', gap: '12px' } },
         avatar(App.store.animal, 52),
-        h('div', { class: 'grow' }, h('b', null, U.myName()), h('div', { class: 'muted small' }, '你在線上的暱稱與角色')),
-        btn('修改', { cls: 'btn-sky btn-sm', onClick: () => editProfile() })));
+        h('div', { class: 'grow' }, h('b', null, U.myName()), h('div', { class: 'muted small' }, tr('lobby.profileHint'))),
+        btn(tr('lobby.edit'), { cls: 'btn-sky btn-sm', onClick: () => editProfile() })));
     });
     ui.paintActions = () => repaint(ui.actionBox, box => {
       const ok = online();
       box.appendChild(h('div', { class: 'row', style: { gap: '10px' } },
-        btn('快速加入', { cls: 'btn-pink btn-lg grow', icon: 'play', iconSize: 24, disabled: !ok, onClick: () => Net.send(Object.assign({ type: 'quick' }, profile())) }),
-        btn('建立房間', { cls: 'btn-sun btn-lg grow', icon: 'plus', iconSize: 24, disabled: !ok, onClick: () => createRoomModal() })));
+        btn(tr('lobby.quick'), { cls: 'btn-pink btn-lg grow', icon: 'play', iconSize: 24, disabled: !ok, onClick: () => Net.send(Object.assign({ type: 'quick', roomName: tr('room.defaultName', { name: U.myName() }) }, profile())) }),
+        btn(tr('lobby.create'), { cls: 'btn-sun btn-lg grow', icon: 'plus', iconSize: 24, disabled: !ok, onClick: () => createRoomModal() })));
     });
     ui.paintList = () => repaint(ui.listBox, box => {
       const list = App.rooms || [];
-      if (!online()) { box.appendChild(h('div', { class: 'empty-box' }, C.status === 'ok' ? '連線後會顯示目前的房間。' : '沒有設定線上伺服器，這個版本只能玩單機。')); return; }
-      if (!list.length) { box.appendChild(h('div', { class: 'empty-box' }, '現在沒有房間。按「快速加入」或「建立房間」開第一間吧！')); return; }
+      if (!online()) { box.appendChild(h('div', { class: 'empty-box' }, C.status === 'ok' ? tr('lobby.emptyConnect') : tr('lobby.emptyNoServer'))); return; }
+      if (!list.length) { box.appendChild(h('div', { class: 'empty-box' }, tr('lobby.emptyList'))); return; }
       for (const r of list) {
         const sets = r.settings || {};
         box.appendChild(h('div', { class: 'room-item' },
           h('div', { class: 'info' },
             h('div', { class: 'name' }, r.name),
             h('div', { class: 'chips', style: { marginTop: '4px' } },
-              h('span', { class: 'pill gray' }, '代號 ' + r.id),
-              h('span', { class: 'pill ' + (r.phase === 'lobby' ? 'mint' : 'pink') }, PHASE[r.phase] || r.phase),
-              h('span', { class: 'pill' }, r.players + '/' + r.max + ' 人'),
-              r.spectators ? h('span', { class: 'pill gray' }, '觀戰 ' + r.spectators) : null,
-              h('span', { class: 'pill gray' }, '房主 ' + r.host),
-              h('span', { class: 'pill gray' }, sets.timeLimit ? (sets.timeLimit / 60) + ' 分鐘' : '不限時'))),
+              h('span', { class: 'pill gray' }, tr('room.code', { id: r.id })),
+              h('span', { class: 'pill ' + (r.phase === 'lobby' ? 'mint' : 'pink') }, phaseText(r.phase)),
+              h('span', { class: 'pill' }, tr('room.count', { n: r.players, max: r.max })),
+              r.spectators ? h('span', { class: 'pill gray' }, tr('room.watching', { n: r.spectators })) : null,
+              h('span', { class: 'pill gray' }, tr('room.host', { name: r.host })),
+              h('span', { class: 'pill gray' }, sets.timeLimit ? tr('room.minutes', { n: sets.timeLimit / 60 }) : tr('rules.noLimit')))),
           h('div', { class: 'row', style: { gap: '8px' } },
-            r.joinable ? btn('加入', { cls: 'btn-mint btn-sm', onClick: () => joinRoom(r.id, 'player') }) : null,
-            btn('觀戰', { cls: 'btn-sky btn-sm', icon: 'eye', iconSize: 18, onClick: () => joinRoom(r.id, 'spectator') }))));
+            r.joinable ? btn(tr('room.join'), { cls: 'btn-mint btn-sm', onClick: () => joinRoom(r.id, 'player') }) : null,
+            btn(tr('room.watch'), { cls: 'btn-sky btn-sm', icon: 'eye', iconSize: 18, onClick: () => joinRoom(r.id, 'spectator') }))));
       }
     });
     ui.paintInvite = () => {
       const inv = App.invite;
       ui.inviteBox.textContent = '';
       if (!inv) return;
-      const card = h('section', { class: 'invite-card', 'aria-label': '邀請' });
+      const card = h('section', { class: 'invite-card', 'aria-label': tr('invite.aria') });
       const drop = () => { App.invite = null; clearInviteUrl(); ui.paintInvite(); };
       if (inv.error) {
-        card.append(h('h3', null, '這個邀請不能用'), h('p', null, REASONS[inv.error] || '邀請連結無法使用。'),
-          h('div', { class: 'row', style: { justifyContent: 'flex-end', marginTop: '10px' } }, btn('回到大廳', { cls: 'btn-mint', onClick: drop })));
+        card.append(h('h3', null, tr('invite.badTitle')), h('p', null, reasonText(inv.error)),
+          h('div', { class: 'row', style: { justifyContent: 'flex-end', marginTop: '10px' } }, btn(tr('invite.backLobby'), { cls: 'btn-mint', onClick: drop })));
       } else if (!inv.info) {
-        card.append(h('h3', null, '正在確認邀請…'), h('p', { class: 'muted' }, online() ? '稍等一下，正在向伺服器確認房間。' : '等待連上伺服器…（免費主機睡著時要 30～60 秒）'),
-          h('div', { class: 'row', style: { justifyContent: 'flex-end', marginTop: '10px' } }, btn('不加入', { cls: 'btn-ghost btn-sm', onClick: drop })));
+        card.append(h('h3', null, tr('invite.checking')), h('p', { class: 'muted' }, online() ? tr('invite.checkingOn') : tr('invite.checkingOff')),
+          h('div', { class: 'row', style: { justifyContent: 'flex-end', marginTop: '10px' } }, btn(tr('invite.skip'), { cls: 'btn-ghost btn-sm', onClick: drop })));
       } else {
         const i = inv.info;
         const spec = i.willSpectate;
         let why = '';
-        if (spec && i.role !== 'spectator') why = i.phase !== 'lobby' ? '（對局已經開始）' : '（席位已滿）';
+        if (spec && i.role !== 'spectator') why = i.phase !== 'lobby' ? tr('invite.whyStarted') : tr('invite.whyFull');
         const prof = App.profileEditor({});
         card.append(
-          h('h3', null, '你被邀請加入「' + i.name + '」'),
+          h('h3', null, tr('invite.title', { name: i.name })),
           h('div', { class: 'chips', style: { margin: '6px 0 10px' } },
-            h('span', { class: 'pill gray' }, '代號 ' + i.room), h('span', { class: 'pill' }, i.players + '/' + i.max + ' 人'),
-            h('span', { class: 'pill ' + (spec ? 'sun' : 'mint') }, spec ? '以觀戰者加入' + why : '以玩家加入')),
-          h('p', { class: 'muted small', style: { marginBottom: '8px' } }, '確認暱稱後才會進房間。' + (spec ? '觀戰者看得到整場比賽，也能聊天。' : '')),
+            h('span', { class: 'pill gray' }, tr('room.code', { id: i.room })), h('span', { class: 'pill' }, tr('room.count', { n: i.players, max: i.max })),
+            h('span', { class: 'pill ' + (spec ? 'sun' : 'mint') }, spec ? tr('invite.asSpec', { why }) : tr('invite.asPlayer'))),
+          h('p', { class: 'muted small', style: { marginBottom: '8px' } }, tr('invite.note') + (spec ? tr('invite.noteSpec') : '')),
           prof.el,
           h('div', { class: 'row', style: { justifyContent: 'flex-end', gap: '10px', marginTop: '10px' } },
-            btn('不加入', { cls: 'btn-ghost', onClick: drop }),
-            btn(spec ? '進去觀戰' : '加入遊戲', { cls: 'btn-pink', disabled: !online() || inv.joining, onClick: () => {
+            btn(tr('invite.skip'), { cls: 'btn-ghost', onClick: drop }),
+            btn(spec ? tr('invite.goSpec') : tr('invite.goPlay'), { cls: 'btn-pink', disabled: !online() || inv.joining, onClick: () => {
               inv.joining = true;
               Net.send({ type: 'join', room: i.room, token: inv.token, name: U.myName(), animal: App.store.animal });
               ui.paintInvite();
@@ -162,19 +167,19 @@
     };
 
     const unsetNote = (C.status !== 'ok')
-      ? h('section', { class: 'card' }, h('h3', null, '還沒設定線上伺服器'),
-        h('p', { class: 'muted' }, C.status === 'invalid' ? C.error : '這個網頁沒有設定 server URL。部署時請把 GAME_SERVER_URL 設成後端的 https 網址（詳見 README），現在只能玩單機。'),
-        h('div', { class: 'row', style: { marginTop: '8px' } }, btn('改玩單機', { cls: 'btn-pink', onClick: () => App.go('solo') })))
+      ? h('section', { class: 'card' }, h('h3', null, tr('online.noServer')),
+        h('p', { class: 'muted' }, C.status === 'invalid' ? cfgError(C) : tr('online.noServerText')),
+        h('div', { class: 'row', style: { marginTop: '8px' } }, btn(tr('online.playSolo'), { cls: 'btn-pink', onClick: () => App.go('solo') })))
       : null;
 
     const el = U.screenBox('', h('div', { class: 'wrap' },
-      U.topbar('線上大廳', () => App.go('home'), ui.statusBox),
+      U.topbar(tr('lobby.title'), () => App.go('home'), ui.statusBox),
       unsetNote, ui.noticeBox, ui.inviteBox,
       h('div', { class: 'room-grid' },
         h('div', { style: { display: 'grid', gap: '14px' } },
-          h('section', { class: 'card' }, h('h3', null, '我'), ui.profileBox),
-          h('section', { class: 'card' }, h('h3', null, '開始'), ui.actionBox)),
-        h('section', { class: 'card' }, h('h3', null, '房間列表', h('span', { class: 'pill gray', style: { marginLeft: '8px' } }, '可以加入或觀戰')), ui.listBox))));
+          h('section', { class: 'card' }, h('h3', null, tr('lobby.me')), ui.profileBox),
+          h('section', { class: 'card' }, h('h3', null, tr('lobby.start')), ui.actionBox)),
+        h('section', { class: 'card' }, h('h3', null, tr('lobby.rooms'), h('span', { class: 'pill gray', style: { marginLeft: '8px' } }, tr('lobby.canJoin'))), ui.listBox))));
     ui.paintStatus(); ui.paintNotice(); ui.paintProfile(); ui.paintList(); ui.paintInvite();
     Net.open(profile());
     if (App.invite && !App.invite.info && !App.invite.error && online()) askInvite();
@@ -188,28 +193,32 @@
   function joinRoom(id, as) { Net.send({ type: 'join', room: id, as, name: U.myName(), animal: App.store.animal }); }
 
   function editProfile() {
-    const prof = App.profileEditor({});
-    const m = modal({ title: '我的暱稱與角色', content: prof.el, cls: 'dialog-lg',
-      actions: [btn('完成', { cls: 'btn-mint', onClick: () => m.close() })],
-      onClose: () => { Net.setProfile(profile()); Net.send(Object.assign({ type: 'profile' }, profile())); if (App.lobbyUI && App.screen === 'lobby') App.lobbyUI.paintProfile(); } });
+    const spec = () => ({ title: tr('online.myProfile'), content: App.profileEditor({}).el, actions: [btn(tr('common.done'), { cls: 'btn-mint', onClick: () => m.close() })] });
+    const m = modal(Object.assign({ cls: 'dialog-lg', rebuild: spec,
+      onClose: () => { Net.setProfile(profile()); Net.send(Object.assign({ type: 'profile' }, profile())); if (App.lobbyUI && App.screen === 'lobby') App.lobbyUI.paintProfile(); } }, spec()));
   }
 
   function createRoomModal() {
-    let max = 4;
-    const nameIn = h('input', { class: 'text-input', type: 'text', maxlength: 10, placeholder: U.myName() + '的房間', 'aria-label': '房間名稱', autocomplete: 'off', 'data-autofocus': '1' });
-    const st = stepper({ label: '人數上限', min: 2, max: 8, value: max, fmt: v => v + ' 人', onChange: v => { max = v; } });
-    const m = modal({ title: '建立房間', cls: 'dialog-sm',
-      content: h('div', null, field('房間名稱', nameIn), field('人數上限', st),
-        h('p', { class: 'muted small' }, '建立後可以加電腦、調整地圖與時間，再用邀請連結叫朋友來。')),
-      actions: [btn('取消', { cls: 'btn-ghost', onClick: () => m.close() }),
-        btn('建立', { cls: 'btn-pink', onClick: () => { m.close(true); Net.send(Object.assign({ type: 'create', roomName: nameIn.value.trim(), max }, profile())); } })] });
+    let max = 4, nameIn = null, typed = '';
+    const spec = () => {
+      if (nameIn) typed = nameIn.value;       /* 切換語言重建時保留已輸入的房名 */
+      const dflt = tr('create.placeholder', { name: U.myName() });
+      nameIn = h('input', { class: 'text-input', type: 'text', maxlength: 10, value: typed, placeholder: dflt, 'aria-label': tr('create.name'), autocomplete: 'off', 'data-autofocus': '1' });
+      const st = stepper({ label: tr('create.max'), min: 2, max: 8, value: max, fmt: v => tr('create.players', { n: v }), onChange: v => { max = v; } });
+      return { title: tr('create.title'),
+        content: h('div', null, field(tr('create.name'), nameIn), field(tr('create.max'), st),
+          h('p', { class: 'muted small' }, tr('create.note'))),
+        actions: [btn(tr('common.cancel'), { cls: 'btn-ghost', onClick: () => m.close() }),
+          btn(tr('create.ok'), { cls: 'btn-pink', onClick: () => { m.close(true); Net.send(Object.assign({ type: 'create', roomName: nameIn.value.trim() || dflt, max }, profile())); } })] };
+    };
+    const m = modal(Object.assign({ cls: 'dialog-sm', rebuild: spec }, spec()));
   }
 
   /* ================= 房間 ================= */
   App.screens.room = function () {
     App.onlineGame = false;
     const ui = App.roomUI = {};
-    ui.titleEl = h('h2', null, '房間');
+    ui.titleEl = h('h2', null, tr('room.title'));
     ui.codeEl = h('span', { class: 'room-meta' });
     ui.seatsBox = h('div', { class: 'seats' });
     ui.specBox = h('div');
@@ -224,14 +233,14 @@
     ui.paint = () => {
       const r = App.room;
       if (!r) {
-        ui.titleEl.textContent = '進入房間中…';
-        ui.seatsBox.textContent = ''; ui.seatsBox.appendChild(h('div', { class: 'empty-box' }, '正在同步房間資料…'));
+        ui.titleEl.textContent = tr('room.entering');
+        ui.seatsBox.textContent = ''; ui.seatsBox.appendChild(h('div', { class: 'empty-box' }, tr('room.syncing')));
         ui.actBox.textContent = ''; ui.setBox.textContent = ''; ui.specBox.textContent = '';
         return;
       }
       ui.titleEl.textContent = r.name;
       ui.codeEl.textContent = '';
-      ui.codeEl.append(h('span', { class: 'pill gray' }, '代號 ' + r.id), ' ', h('span', { class: 'pill ' + (r.phase === 'lobby' ? 'mint' : 'pink') }, PHASE[r.phase] || r.phase));
+      ui.codeEl.append(h('span', { class: 'pill gray' }, tr('room.code', { id: r.id })), ' ', h('span', { class: 'pill ' + (r.phase === 'lobby' ? 'mint' : 'pink') }, phaseText(r.phase)));
       repaint(ui.seatsBox, paintSeats);
       repaint(ui.specBox, paintSpectators);
       repaint(ui.actBox, paintActions);
@@ -239,16 +248,16 @@
     };
 
     const el = U.screenBox('', h('div', { class: 'wrap' },
-      h('div', { class: 'topbar' }, root.UI.iconBtn('back', '離開房間', () => App.confirmLeave()),
+      h('div', { class: 'topbar' }, root.UI.iconBtn('back', tr('room.leaveAria'), () => App.confirmLeave()),
         h('div', { class: 'room-head' }, ui.titleEl, ui.codeEl)),
       h('div', { class: 'room-grid' },
         h('div', { style: { display: 'grid', gap: '14px' } },
-          h('section', { class: 'card' }, h('h3', null, '玩家席位'), ui.seatsBox),
+          h('section', { class: 'card' }, h('h3', null, tr('room.seats')), ui.seatsBox),
           ui.specBox,
-          h('section', { class: 'card' }, h('h3', null, '聊天室'), ui.chat.el)),
+          h('section', { class: 'card' }, h('h3', null, tr('room.chat')), ui.chat.el)),
         h('div', { style: { display: 'grid', gap: '14px' } },
           h('section', { class: 'card' }, ui.actBox),
-          h('section', { class: 'card' }, h('h3', null, '規則'), ui.setBox)))));
+          h('section', { class: 'card' }, h('h3', null, tr('room.rules')), ui.setBox)))));
     ui.paint();
     Net.open(profile());
     return el;
@@ -258,30 +267,30 @@
     const r = App.room, you = r.you, host = you.host, lobby = r.phase === 'lobby';
     for (const s of r.seats) {
       if (s.kind === 'empty') {
-        box.appendChild(h('div', { class: 'seat empty' }, h('div', { class: 'seat-line' }, h('span', { class: 'seat-name' }, '空位'),
-          host && lobby ? btn('加電腦', { cls: 'btn-sky btn-sm', icon: 'robot', iconSize: 18, onClick: () => Net.send({ type: 'addai', level: App.aiAddLevel }) }) : null)));
+        box.appendChild(h('div', { class: 'seat empty' }, h('div', { class: 'seat-line' }, h('span', { class: 'seat-name' }, tr('room.empty')),
+          host && lobby ? btn(tr('room.addAi'), { cls: 'btn-sky btn-sm', icon: 'robot', iconSize: 18, onClick: () => Net.send({ type: 'addai', level: App.aiAddLevel }) }) : null)));
         continue;
       }
       const isAi = s.kind === 'ai', mine = s.i === you.seat;
       if (isAi) {
         /* 電腦席位：第一行頭像、名字、移除鈕；角色與難度兩個下拉各佔一半排在第二行，窄欄也不會擠出去 */
-        const canEdit = host && lobby;
+        const canEdit = host && lobby, sname = Art.playerName(s);
         box.appendChild(h('div', { class: 'seat ai' },
-          h('div', { class: 'seat-line' }, avatar(s.animal, 38), h('span', { class: 'seat-name' }, s.name),
-            canEdit ? root.UI.iconBtn('trash', '移除 ' + s.name, () => Net.send({ type: 'removeai', seat: s.i }), 'sm')
-              : h('span', { class: 'pill gray' }, AI.LEVELS[s.level] ? AI.LEVELS[s.level].name : '電腦')),
+          h('div', { class: 'seat-line' }, avatar(s.animal, 38), h('span', { class: 'seat-name' }, sname),
+            canEdit ? root.UI.iconBtn('trash', tr('room.remove', { name: sname }), () => Net.send({ type: 'removeai', seat: s.i }), 'sm')
+              : h('span', { class: 'pill gray' }, AI.LEVELS[s.level] ? AI.LEVELS[s.level].name : tr('room.cpu'))),
           canEdit ? h('div', { class: 'seat-pick' },
-            root.UI.dropdown({ label: s.name + ' 角色', cls: 'lvl sm', options: U.animalOptions(r.seats.filter(o => o.kind === 'human').map(o => o.animal)), value: s.animal, onChange: v => Net.send({ type: 'aiAnimal', seat: s.i, animal: v }) }),
-            root.UI.dropdown({ label: s.name + ' 難度', cls: 'lvl sm', options: U.LEVEL_DD, value: s.level, onChange: v => Net.send({ type: 'aiLevel', seat: s.i, level: v }) })) : null));
+            root.UI.dropdown({ label: tr('room.seatAnimal', { name: sname }), cls: 'lvl sm', options: U.animalOptions(r.seats.filter(o => o.kind === 'human').map(o => o.animal)), value: s.animal, onChange: v => Net.send({ type: 'aiAnimal', seat: s.i, animal: v }) }),
+            root.UI.dropdown({ label: tr('room.seatLevel', { name: sname }), cls: 'lvl sm', options: U.LEVEL_DD, value: s.level, onChange: v => Net.send({ type: 'aiLevel', seat: s.i, level: v }) })) : null));
         continue;
       }
       const tags = h('div', { class: 'seat-tags' });
-      if (s.i === r.hostSeat) tags.appendChild(h('span', { class: 'pill sun' }, '房主'));
-      if (mine) tags.appendChild(h('span', { class: 'pill' }, '你'));
-      if (s.i !== r.hostSeat && lobby) tags.appendChild(h('span', { class: 'pill ' + (s.ready ? 'mint' : 'gray') }, s.ready ? '準備好了' : '未準備'));
-      if (!s.connected) tags.appendChild(h('span', { class: 'pill pink' }, '斷線中'));
+      if (s.i === r.hostSeat) tags.appendChild(h('span', { class: 'pill sun' }, tr('room.hostTag')));
+      if (mine) tags.appendChild(h('span', { class: 'pill' }, tr('room.youTag')));
+      if (s.i !== r.hostSeat && lobby) tags.appendChild(h('span', { class: 'pill ' + (s.ready ? 'mint' : 'gray') }, s.ready ? tr('room.ready') : tr('room.notReady')));
+      if (!s.connected) tags.appendChild(h('span', { class: 'pill pink' }, tr('room.offline')));
       const kick = host && !mine && lobby
-        ? root.UI.iconBtn('kick', '請出 ' + s.name, () => root.UI.confirmBox({ title: '請出 ' + s.name + '？', text: '被請出的人無法再加入這個房間。', ok: '請出', danger: true, onOk: () => Net.send({ type: 'kick', seat: s.i }) }), 'sm')
+        ? root.UI.iconBtn('kick', tr('room.kick', { name: s.name }), () => root.UI.confirmBox({ title: () => tr('room.kickTitle', { name: s.name }), text: () => tr('room.kickText'), ok: () => tr('room.kickOk'), danger: true, onOk: () => Net.send({ type: 'kick', seat: s.i }) }), 'sm')
         : null;
       box.appendChild(h('div', { class: 'seat' + (mine ? ' me' : '') },
         h('div', { class: 'seat-line' }, avatar(s.animal, 38), h('span', { class: 'seat-name' }, s.name), kick), tags));
@@ -291,9 +300,9 @@
   function paintSpectators(box) {
     const r = App.room;
     const list = r.spectators || [];
-    const card = h('section', { class: 'card' }, h('h3', null, '觀戰席', h('span', { class: 'pill gray', style: { marginLeft: '8px' } }, list.length + '/' + r.specCap)));
-    if (!list.length) card.appendChild(h('p', { class: 'muted small' }, '沒有人在觀戰。觀戰者可以看整場比賽並聊天，不佔玩家席位。'));
-    else card.appendChild(h('div', { class: 'chips' }, list.map(s => h('span', { class: 'pill' + (s.pid === r.you.pid ? '' : ' gray') }, s.name + (s.pid === r.you.pid ? '（你）' : '')))));
+    const card = h('section', { class: 'card' }, h('h3', null, tr('room.specSeats'), h('span', { class: 'pill gray', style: { marginLeft: '8px' } }, list.length + '/' + r.specCap)));
+    if (!list.length) card.appendChild(h('p', { class: 'muted small' }, tr('room.noSpec')));
+    else card.appendChild(h('div', { class: 'chips' }, list.map(s => h('span', { class: 'pill' + (s.pid === r.you.pid ? '' : ' gray') }, s.name + (s.pid === r.you.pid ? tr('room.specYou') : '')))));
     box.appendChild(card);
   }
 
@@ -301,27 +310,27 @@
     const r = App.room, you = r.you, lobby = r.phase === 'lobby';
     const filled = r.seats.filter(s => s.kind !== 'empty').length;
     const free = filled < r.max;
-    box.appendChild(h('h3', null, you.role === 'player' ? (you.host ? '你是房主' : '你是玩家') : '你是觀戰者'));
+    box.appendChild(h('h3', null, you.role === 'player' ? (you.host ? tr('room.youHost') : tr('room.youPlayer')) : tr('room.youSpec')));
     const rows = h('div', { style: { display: 'grid', gap: '10px' } });
     if (r.phase === 'playing') {
-      rows.appendChild(h('p', { class: 'muted' }, '對局進行中…'));
+      rows.appendChild(h('p', { class: 'muted' }, tr('room.playing')));
     } else if (r.phase === 'finished') {
-      rows.appendChild(h('p', { class: 'muted' }, you.host ? '這局結束了，準備好就再來一局。' : '這局結束了，等房主開下一局。'));
-      if (you.host) rows.appendChild(btn('再來一局', { cls: 'btn-pink btn-lg btn-block', icon: 'play', iconSize: 24, onClick: () => Net.send({ type: 'rematch' }) }));
+      rows.appendChild(h('p', { class: 'muted' }, you.host ? tr('room.finishedHost') : tr('room.finishedGuest')));
+      if (you.host) rows.appendChild(btn(tr('room.again'), { cls: 'btn-pink btn-lg btn-block', icon: 'play', iconSize: 24, onClick: () => Net.send({ type: 'rematch' }) }));
     } else if (you.role === 'player' && you.host) {
-      const why = filled < 2 ? '至少要 2 位玩家，可以加電腦。' : (!r.canStart ? '還有玩家沒按「準備好」。' : '');
-      rows.appendChild(btn('開始遊戲', { cls: 'btn-pink btn-lg btn-block', icon: 'play', iconSize: 24, disabled: !r.canStart, onClick: () => Net.send({ type: 'start' }) }));
+      const why = filled < 2 ? tr('room.whyFew') : (!r.canStart ? tr('room.whyReady') : '');
+      rows.appendChild(btn(tr('room.startGame'), { cls: 'btn-pink btn-lg btn-block', icon: 'play', iconSize: 24, disabled: !r.canStart, onClick: () => Net.send({ type: 'start' }) }));
       if (why) rows.appendChild(h('p', { class: 'muted small' }, why));
     } else if (you.role === 'player') {
       const me = r.seats[you.seat];
-      rows.appendChild(btn(me.ready ? '取消準備' : '我準備好了', { cls: me.ready ? 'btn-ghost btn-lg btn-block' : 'btn-mint btn-lg btn-block', icon: 'check', iconSize: 24, onClick: () => Net.send({ type: 'ready', value: !me.ready }) }));
-      rows.appendChild(btn('改為觀戰', { cls: 'btn-ghost btn-block', icon: 'eye', iconSize: 20, onClick: () => Net.send({ type: 'watch' }) }));
+      rows.appendChild(btn(me.ready ? tr('room.unready') : tr('room.imReady'), { cls: me.ready ? 'btn-ghost btn-lg btn-block' : 'btn-mint btn-lg btn-block', icon: 'check', iconSize: 24, onClick: () => Net.send({ type: 'ready', value: !me.ready }) }));
+      rows.appendChild(btn(tr('room.toSpec'), { cls: 'btn-ghost btn-block', icon: 'eye', iconSize: 20, onClick: () => Net.send({ type: 'watch' }) }));
     } else {
-      rows.appendChild(btn(free ? '加入對戰' : '席位已滿', { cls: 'btn-mint btn-lg btn-block', icon: 'play', iconSize: 24, disabled: !free || !lobby, onClick: () => Net.send({ type: 'sit' }) }));
-      if (!lobby) rows.appendChild(h('p', { class: 'muted small' }, '對局開始後無法換成玩家。'));
+      rows.appendChild(btn(free ? tr('room.sit') : tr('room.seatsFull'), { cls: 'btn-mint btn-lg btn-block', icon: 'play', iconSize: 24, disabled: !free || !lobby, onClick: () => Net.send({ type: 'sit' }) }));
+      if (!lobby) rows.appendChild(h('p', { class: 'muted small' }, tr('room.noSit')));
     }
-    if (you.host && r.phase !== 'playing') rows.appendChild(btn('邀請朋友', { cls: 'btn-sky btn-block', icon: 'link', iconSize: 20, onClick: () => openInviteModal() }));
-    rows.appendChild(btn('離開房間', { cls: 'btn-ghost btn-block', onClick: () => App.confirmLeave() }));
+    if (you.host && r.phase !== 'playing') rows.appendChild(btn(tr('room.invite'), { cls: 'btn-sky btn-block', icon: 'link', iconSize: 20, onClick: () => openInviteModal() }));
+    rows.appendChild(btn(tr('room.leave'), { cls: 'btn-ghost btn-block', onClick: () => App.confirmLeave() }));
     box.appendChild(rows);
   }
 
@@ -331,40 +340,42 @@
     const filled = r.seats.filter(x => x.kind !== 'empty').length;
     if (host) {
       box.append(
-        field('人數', stepper({ label: '人數上限', min: Math.max(2, filled), max: 8, value: r.max, fmt: v => v + ' 人', onChange: v => send({ max: v }) })),
+        field(tr('room.players'), stepper({ label: tr('room.maxPlayers'), min: Math.max(2, filled), max: 8, value: r.max, fmt: v => tr('room.nPlayers', { n: v }), onChange: v => send({ max: v }) })),
         U.rulesPanel(s, send));
     } else {
-      box.appendChild(h('div', { class: 'chips rules-sum' }, [r.max + ' 人'].concat(U.rulesSummary(s)).map(t => h('span', { class: 'pill gray' }, t))));
-      if (!r.you.host) box.appendChild(h('p', { class: 'muted small', style: { marginTop: '8px' } }, '只有房主可以調整設定。'));
+      box.appendChild(h('div', { class: 'chips rules-sum' }, [tr('room.nPlayers', { n: r.max })].concat(U.rulesSummary(s)).map(t => h('span', { class: 'pill gray' }, t))));
+      if (!r.you.host) box.appendChild(h('p', { class: 'muted small', style: { marginTop: '8px' } }, tr('room.onlyHost')));
     }
   }
 
   /* ---------- 邀請連結（房主） ---------- */
   function openInviteModal() {
     if (App.inviteModal && !App.inviteModal.closed) return;
-    let role = 'player';
-    const list = h('div', { style: { display: 'grid', gridTemplateColumns: 'minmax(0,1fr)', gap: '8px', marginTop: '10px' } });
+    let role = 'player', list = null;
     const paint = () => repaint(list, box => {
       const invs = (App.room && App.room.invites) || [];
-      if (!invs.length) { box.appendChild(h('p', { class: 'muted small' }, '還沒有有效的邀請連結。選好身分後按「產生連結」。')); return; }
+      if (!invs.length) { box.appendChild(h('p', { class: 'muted small' }, tr('inv.none'))); return; }
       for (const iv of invs) {
         const url = inviteLink(iv.token);
         box.appendChild(h('div', null,
-          h('div', { class: 'small', style: { fontWeight: '800', marginBottom: '4px' } }, iv.role === 'spectator' ? '觀戰連結' : '玩家連結'),
+          h('div', { class: 'small', style: { fontWeight: '800', marginBottom: '4px' } }, iv.role === 'spectator' ? tr('inv.specLink') : tr('inv.playerLink')),
           h('div', { class: 'link-box' }, h('code', null, url),
-            btn('複製', { cls: 'btn-sky btn-sm', icon: 'copy', iconSize: 16, onClick: () => { const p = root.UI.copyText(url); Promise.resolve(p).then(ok => toast(ok ? '已複製連結' : '複製失敗，請長按連結手動複製')); } }),
-            navigator.share ? btn('分享', { cls: 'btn-mint btn-sm', onClick: () => { navigator.share({ title: '炸彈小隊', text: '一起來玩炸彈小隊！', url }).catch(() => {}); } }) : null)));
+            btn(tr('inv.copy'), { cls: 'btn-sky btn-sm', icon: 'copy', iconSize: 16, onClick: () => { const p = root.UI.copyText(url); Promise.resolve(p).then(ok => toast(ok ? tr('inv.copied') : tr('inv.copyFail'))); } }),
+            navigator.share ? btn(tr('inv.share'), { cls: 'btn-mint btn-sm', onClick: () => { navigator.share({ title: tr('inv.shareTitle'), text: tr('inv.shareText'), url }).catch(() => {}); } }) : null)));
       }
     });
-    const m = modal({ title: '邀請朋友', cls: 'dialog-lg',
-      content: h('div', null,
-        h('p', { class: 'muted small' }, '連結只對這個房間有效，房間關閉、被撤銷或 24 小時後就失效。朋友打開後要先確認暱稱才會進房。'),
-        field('對方身分', seg({ label: '對方身分', options: [{ v: 'player', label: '玩家' }, { v: 'spectator', label: '觀戰者' }], value: role, onChange: v => { role = v; } })),
-        btn('產生連結', { cls: 'btn-pink', icon: 'link', iconSize: 20, onClick: () => Net.send({ type: 'invite', role }) }),
-        list),
-      actions: [btn('撤銷全部連結', { cls: 'btn-ghost', onClick: () => root.UI.confirmBox({ title: '撤銷所有邀請連結？', text: '之前發出去的連結都會失效。', ok: '撤銷', danger: true, onOk: () => Net.send({ type: 'revoke' }) }) }),
-        btn('完成', { cls: 'btn-mint', onClick: () => m.close() })],
-      onClose: () => { App.inviteModal = null; } });
+    const build = () => {
+      list = h('div', { style: { display: 'grid', gridTemplateColumns: 'minmax(0,1fr)', gap: '8px', marginTop: '10px' } });
+      return { title: tr('inv.title'),
+        content: h('div', null,
+          h('p', { class: 'muted small' }, tr('inv.note')),
+          field(tr('inv.who'), seg({ label: tr('inv.who'), options: [{ v: 'player', label: tr('inv.player') }, { v: 'spectator', label: tr('inv.spectator') }], value: role, onChange: v => { role = v; } })),
+          btn(tr('inv.make'), { cls: 'btn-pink', icon: 'link', iconSize: 20, onClick: () => Net.send({ type: 'invite', role }) }),
+          list),
+        actions: [btn(tr('inv.revokeAll'), { cls: 'btn-ghost', onClick: () => root.UI.confirmBox({ title: () => tr('inv.revokeTitle'), text: () => tr('inv.revokeText'), ok: () => tr('inv.revokeOk'), danger: true, onOk: () => Net.send({ type: 'revoke' }) }) }),
+          btn(tr('common.done'), { cls: 'btn-mint', onClick: () => m.close() })] };
+    };
+    const m = modal(Object.assign({ cls: 'dialog-lg', onClose: () => { App.inviteModal = null; }, rebuild: () => { const s = build(); paint(); return s; } }, build()));
     m.refresh = paint;
     App.inviteModal = m;
     paint();
@@ -377,16 +388,25 @@
     if (App.screen === 'room' || App.screen === 'game') App.go('lobby');
   }
 
+  /** 連線狀態橫幅；切換語言時也呼叫它，文字換成新語言 */
+  App.refreshBanner = function () {
+    const s = App.netStatus, inOnline = App.screen === 'lobby' || App.screen === 'room' || (App.screen === 'game' && App.onlineGame);
+    if (App.replacedBanner) { App.banner(tr('online.replacedBanner')); return; }
+    if (!inOnline) { App.banner(''); return; }
+    if (s === 'waking') App.banner(tr('net.bannerWaking', { s: App.netDetail || 0 }), true);
+    else if (s === 'connecting') App.banner(tr('net.bannerConnecting'), true);
+    else if (s === 'retrying') App.banner(tr('net.bannerRetrying'), true);
+    else if (s === 'offline') App.banner(tr('net.bannerOffline'), true);
+    else App.banner('');
+  };
+
   function init() {
     Net.onStatus((s, detail) => {
       App.netStatus = s;
       const inOnline = App.screen === 'lobby' || App.screen === 'room' || (App.screen === 'game' && App.onlineGame);
       if (!inOnline) { App.banner(''); return; }
-      if (s === 'waking') App.banner('伺服器正在睡醒，約需 30～60 秒…（已等 ' + (detail || 0) + ' 秒）', true);
-      else if (s === 'connecting') App.banner('連線中…', true);
-      else if (s === 'retrying') App.banner('連線中斷，正在重新連線…', true);
-      else if (s === 'offline') App.banner('連不上伺服器，稍後自動重試', true);
-      else App.banner('');
+      App.netDetail = detail;
+      App.refreshBanner();
       if (App.lobbyUI && App.screen === 'lobby') { App.lobbyUI.paintStatus(); App.lobbyUI.paintList(); App.lobbyUI.paintInvite(); }
       if (s === 'open') askInvite();
     });
@@ -396,7 +416,7 @@
       App.room = m.room || null;
       /* 斷線太久（或伺服器重啟）回來時房間已經沒了：關閉通知是在離線時送的，收不到，這裡補上 */
       if (!m.room && (App.screen === 'room' || (App.screen === 'game' && App.onlineGame))) {
-        App.lobbyNotice = '房間已經結束了'; toast(App.lobbyNotice, 4200); leaveToLobby(); return;
+        App.lobbyNotice = () => tr('online.roomEnded'); toast(App.lobbyNotice(), 4200); leaveToLobby(); return;
       }
       if (m.room && App.screen === 'lobby' && m.room.phase !== 'playing') App.go('room');
       else if (m.room && App.screen === 'room') App.roomUI && App.roomUI.paint();
@@ -415,12 +435,12 @@
     });
     Net.on('joined', m => {
       App.invite = null; clearInviteUrl();
-      if (m.note) toast(m.note, 4000);
+      if (m.note) toast(srv('srv.note.', m.noteCode, null, m.note), 4000);
       if (App.screen !== 'game') App.go('room');
     });
     Net.on('joinFailed', m => {
       if (App.invite && App.invite.joining) { App.invite.joining = false; App.invite.error = m.reason; }
-      else toast(REASONS[m.reason] || '無法加入這個房間', 3600);
+      else toast(m.reason && tr('online.reason.' + m.reason, null, null) || tr('online.joinFailed'), 3600);
       if (App.lobbyUI && App.screen === 'lobby') App.lobbyUI.paintInvite();
     });
     Net.on('inviteInfo', m => {
@@ -439,12 +459,13 @@
       App.chatSubs.forEach(fn => fn(m.m));
     });
     Net.on('closed', m => {
-      App.lobbyNotice = m.text || '房間已經關閉了';
-      toast(App.lobbyNotice, 4200);
+      const txt = srv('srv.closed.', m.code, null, m.text || tr('online.closedDefault'));
+      App.lobbyNotice = () => srv('srv.closed.', m.code, null, m.text || tr('online.closedDefault'));
+      toast(txt, 4200);
       if (App.screen === 'lobby' && App.lobbyUI) App.lobbyUI.paintNotice();
     });
-    Net.on('kicked', m => { toast(m.text || '你被請出房間了', 4200); App.lobbyNotice = m.text || '你被房主請出房間了'; });
-    Net.on('error', m => toast(m.text || '發生錯誤', 3600));
+    Net.on('kicked', m => { toast(tr('online.kickedDefault'), 4200); App.lobbyNotice = () => tr('online.kickedNotice'); });
+    Net.on('error', m => toast(srv('srv.err.', m.code, m.args, m.text || tr('online.errorDefault')), 3600));
     Net.on('start', m => {
       root.UI.closeAllModals();
       App.onlineGame = true; App.mySlot = m.slot;
@@ -457,8 +478,9 @@
       App.showResult({ result: m.result, players: m.players, slot: App.mySlot == null ? null : App.mySlot, kind: 'online' });
     });
     Net.on('replaced', () => {
-      toast('這個帳號在別處開啟了，這裡已中斷', 5000);
-      App.banner('已在其他視窗開啟，這個視窗不再連線');
+      toast(tr('online.replaced'), 5000);
+      App.replacedBanner = true;
+      App.banner(tr('online.replacedBanner'));
     });
   }
 

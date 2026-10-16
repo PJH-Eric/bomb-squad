@@ -22,6 +22,8 @@
     chick:   { name: '小雞', role: '游擊型', intro: '小小一隻跑得飛快，炸彈能帶到 10 顆到處丟，可惜火力上限只有 8。', body: '#ffdc4a', dark: '#eaa51c', belly: '#fff6c4', paw: '#ff9a2e', beak: '#ff9a2e', accent: '#3d47c9', head: [16, 14.5, 25], bw: 24 }
   };
   const ANIMAL_IDS = Object.keys(ANIMALS);
+  /* 名稱、定位、介紹依語言顯示（字典在 locales.js）；沒載入字典時（Node 腳本）沿用上面的中文 */
+  if (root.I18N && root.I18N.defineText) ANIMAL_IDS.forEach(id => ['name', 'role', 'intro'].forEach(f => root.I18N.defineText(ANIMALS[id], f, 'animal.' + id + '.' + f)));
 
   const f1 = n => Math.round(n * 10) / 10;
   const INK = '#2a1f3d';
@@ -401,6 +403,10 @@
     ultra: '火力直接升到你這隻角色的最高值（不會消失）',
     c_flip: '8 秒內上下左右操作顛倒'
   };
+  if (root.I18N && root.I18N.defineText) {
+    Object.keys(ITEM_NAMES).forEach(k => root.I18N.defineText(ITEM_NAMES, k, 'item.' + k));
+    Object.keys(ITEM_DESC).forEach(k => root.I18N.defineText(ITEM_DESC, k, 'item.desc.' + k));
+  }
   function itemGlyph(type) {
     switch (type) {
       case 'fire': return '<path d="M24 8 C27 15 34 17 34 26 C34 33 29 38 24 38 C19 38 14 33 14 27 C14 22 17 20 18 16 C20 19 21 20 22 20 C22 15 23 11 24 8 Z" fill="#fff6d8" stroke="#fff" stroke-width="1"/><path d="M24 22 C26 26 29 27 29 31 C29 34 27 36 24 36 C21 36 19 34 19 31 C19 28 23 26 24 22 Z" fill="#ff7a3a"/>';
@@ -519,6 +525,7 @@
     { id: 11, name: '聖誕小鎮', floorA: '#eaf6ee', floorB: '#dcefe3', hard: ['#e85a5a', '#a02424'], hardPat: 'stripes', soft: ['#4fb86a', '#2a7a40'], softPat: 'present', border: ['#1f7a45', '#124a2a'], bg: '#124a2a', particle: '#ffd24d' },
     { id: 12, name: '遊樂園', floorA: '#fff4cc', floorB: '#ffe9ac', hard: ['#7fd0ff', '#2a8ad0'], hardPat: 'stripes', soft: ['#ff8fc4', '#d84a8b'], softPat: 'cake', border: ['#ff5a8a', '#b02060'], bg: '#b02060', particle: '#ffd24d' }
   ];
+  if (root.I18N && root.I18N.defineText) THEMES.forEach(th => root.I18N.defineText(th, 'name', 'theme.' + th.id));
 
   /* 每個主題各有幾種「不能炸」與「能炸」的東西，一張地圖裡會混著出現（由 seed 與座標決定，連線雙方看到的一樣）。
    * 前面的比較常見；shape: round 是圓形的東西；c 是這種東西自己的顏色。能不能炸只看第一眼的形狀與裂紋，規則不變。 */
@@ -1241,8 +1248,14 @@
   }
   function svgUrl(svg) { return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg); }
 
+  /** 畫面上顯示的玩家名字：電腦席位一律用目前語言的角色名（開局時存進狀態的名字是當時的語言），真人用自己取的暱稱 */
+  function playerName(p) {
+    if (p && p.kind === 'ai' && ANIMALS[p.animal]) return ANIMALS[p.animal].name;
+    return (p && p.name) || '';
+  }
+
   root.Art = {
-    ANIMALS, ANIMAL_IDS, THEMES, VARIANTS, variantIndex, ITEM_NAMES, ITEM_DESC,
+    playerName, ANIMALS, ANIMAL_IDS, THEMES, VARIANTS, variantIndex, ITEM_NAMES, ITEM_DESC,
     FX_STYLE, drawBeltArrows, beltTurn, animalSVG, itemSVG, bombSVG, planeSVG, icon, buildTileset, drawHard, drawSoft, drawFloor, drawBorder, drawFabHard, drawFabFloor, svgImage, svgUrl, rr
   };
 })(typeof self !== 'undefined' ? self : this);

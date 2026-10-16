@@ -5,6 +5,7 @@
 (function (root) {
   'use strict';
   const doc = root.document;
+  const tr = (k, p) => (root.I18N ? root.I18N.t(k, p) : k);
 
   function h(tag, attrs) {
     const el = doc.createElement(tag);
@@ -78,8 +79,8 @@
   function stepper(o) {
     let v = o.value;
     const out = h('output', { class: 'stepper-val', 'aria-live': 'polite' });
-    const minus = h('button', { type: 'button', class: 'step-btn', 'aria-label': (o.label || '') + ' 減少', html: root.Art.icon('minus', 20) });
-    const plus = h('button', { type: 'button', class: 'step-btn', 'aria-label': (o.label || '') + ' 增加', html: root.Art.icon('plus', 20) });
+    const minus = h('button', { type: 'button', class: 'step-btn', 'aria-label': tr('ui.dec', { label: o.label || '' }), html: root.Art.icon('minus', 20) });
+    const plus = h('button', { type: 'button', class: 'step-btn', 'aria-label': tr('ui.inc', { label: o.label || '' }), html: root.Art.icon('plus', 20) });
     const wrap = h('div', { class: 'stepper', role: 'group', 'aria-label': o.label || '' }, minus, out, plus);
     const paint = () => {
       out.textContent = o.fmt ? o.fmt(v) : String(v);
@@ -154,7 +155,7 @@
     let value = o.value;
     const cur = h('span', { class: 'dd-cur' });
     const b = h('button', { type: 'button', class: 'dd ' + (o.cls || ''), 'aria-haspopup': 'listbox', 'aria-expanded': 'false', 'aria-label': o.label || '', disabled: o.disabled }, cur, h('i', { class: 'dd-caret', 'aria-hidden': 'true' }));
-    const paint = () => { const f = o.options.find(x => x.v === value); cur.textContent = ''; if (f && f.swatch) cur.appendChild(h('i', { class: 'dd-sw', style: { background: f.swatch } })); cur.appendChild(doc.createTextNode(f ? f.label : (o.placeholder || '請選擇'))); };
+    const paint = () => { const f = o.options.find(x => x.v === value); cur.textContent = ''; if (f && f.swatch) cur.appendChild(h('i', { class: 'dd-sw', style: { background: f.swatch } })); cur.appendChild(doc.createTextNode(f ? f.label : (o.placeholder || tr('common.select')))); };
     function open() {
       closePop();
       const list = h('div', { class: 'dd-list', role: 'listbox', 'aria-label': o.label || '' });
@@ -223,13 +224,18 @@
     const opener = doc.activeElement;
     const titleId = 'm' + Math.random().toString(36).slice(2, 7);
     const dialog = h('div', { class: 'dialog ' + (o.cls || ''), role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': o.title ? titleId : null, 'aria-label': o.title ? null : o.aria, tabindex: -1 });
-    if (o.title || o.dismissible !== false) {
-      dialog.appendChild(h('div', { class: 'dialog-head' },
-        o.title ? h('h2', { id: titleId, class: 'dialog-title' }, o.title) : h('span'),
-        o.dismissible === false ? null : h('button', { type: 'button', class: 'icon-btn', 'aria-label': '關閉', html: root.Art.icon('close', 22), onClick: () => api.close() })));
-    }
-    dialog.appendChild(h('div', { class: 'dialog-body' }, o.content));
-    if (o.actions && o.actions.length) dialog.appendChild(h('div', { class: 'dialog-actions' }, o.actions));
+    /* 內容可以重建：傳 o.rebuild() 回傳 { title, aria, content, actions }，切換語言時會重新呼叫，彈窗不用關掉 */
+    const fill = spec => {
+      dialog.textContent = '';
+      if (spec.title || o.dismissible !== false) {
+        dialog.appendChild(h('div', { class: 'dialog-head' },
+          spec.title ? h('h2', { id: titleId, class: 'dialog-title' }, spec.title) : h('span'),
+          o.dismissible === false ? null : h('button', { type: 'button', class: 'icon-btn', 'aria-label': tr('common.close'), html: root.Art.icon('close', 22), onClick: () => api.close() })));
+      }
+      dialog.appendChild(h('div', { class: 'dialog-body' }, spec.content));
+      if (spec.actions && spec.actions.length) dialog.appendChild(h('div', { class: 'dialog-actions' }, spec.actions));
+    };
+    fill(o);
     const mask = h('div', { class: 'mask' }, dialog);
     if (o.dismissible !== false) mask.addEventListener('pointerdown', e => { if (e.target === mask) api.close(); });
     doc.getElementById('modals').appendChild(mask);
@@ -247,7 +253,18 @@
         if (!silent && o.onClose) o.onClose();
         if (opener && opener.focus && doc.contains(opener)) try { opener.focus(); } catch (e) { /* 忽略 */ }
       },
-      dismissible: o.dismissible !== false
+      dismissible: o.dismissible !== false,
+      rebuild() {
+        if (api.closed || !o.rebuild) return;
+        const act = doc.activeElement, nodes = Array.from(dialog.querySelectorAll(FOCUS));
+        const idx = act && dialog.contains(act) ? nodes.indexOf(act) : -1;
+        const body = dialog.querySelector('.dialog-body'), top = body ? body.scrollTop : 0;
+        const spec = o.rebuild();
+        if (!o.title) dialog.setAttribute('aria-label', spec.aria || '');
+        fill(spec);
+        const nb = dialog.querySelector('.dialog-body'); if (nb) nb.scrollTop = top;
+        if (idx >= 0) { const f = Array.from(dialog.querySelectorAll(FOCUS))[idx]; if (f) try { f.focus({ preventScroll: true }); } catch (e) { /* 忽略 */ } }
+      }
     };
     stack.push(api);
     setTimeout(() => {
@@ -270,18 +287,23 @@
     }
   }, true);
   const modalOpen = () => stack.length > 0;
+  /* 切換語言：已開著的彈窗重建文字、下拉清單直接收起（畫面本身由 app.js 重繪） */
+  if (root.I18N) root.I18N.onChange(() => { closePop(); stack.slice().forEach(m => m.rebuild && m.rebuild()); });
   function closeAllModals() { while (stack.length) stack[stack.length - 1].close(); }
   /** 返回鍵用：只關最上層、而且要是可關閉的（對局結果這種不能被返回鍵關掉） */
   function closeTopModal() { const top = stack[stack.length - 1]; if (top && top.dismissible) top.close(); }
 
+  /** title／text／ok／cancel 可以直接給字串，也可以給函式（切換語言時重新取字） */
   function confirmBox(o) {
-    const m = modal({
-      title: o.title, content: h('p', { class: 'dialog-text' }, o.text), cls: 'dialog-sm',
+    const v = x => (typeof x === 'function' ? x() : x);
+    const spec = () => ({
+      title: v(o.title), content: h('p', { class: 'dialog-text' }, v(o.text)),
       actions: [
-        btn(o.cancel || '取消', { cls: 'btn-ghost', onClick: () => m.close() }),
-        btn(o.ok || '確定', { cls: o.danger ? 'btn-pink' : 'btn-mint', onClick: () => { m.close(true); o.onOk && o.onOk(); } })
+        btn(v(o.cancel) || tr('common.cancel'), { cls: 'btn-ghost', onClick: () => m.close() }),
+        btn(v(o.ok) || tr('common.ok'), { cls: o.danger ? 'btn-pink' : 'btn-mint', onClick: () => { m.close(true); o.onOk && o.onOk(); } })
       ]
     });
+    const m = modal(Object.assign({ cls: 'dialog-sm', rebuild: spec }, spec()));
     return m;
   }
 

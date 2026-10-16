@@ -7,15 +7,12 @@
   const { h, btn, modal } = root.UI;
   const R = root.Rules, Art = root.Art;
 
-  const LAYOUTS = [
-    { v: 'random', label: '隨機', hint: '每局抽一種版型' },
-    { v: 'classic', label: '經典', hint: '硬牆一組一組散落' },
-    { v: 'open', label: '空曠', hint: '硬牆很少，空間大' },
-    { v: 'dense', label: '密集', hint: '硬牆多，巷戰多' }
-  ];
-  const THEMES = [{ v: -1, name: '隨機', hint: '每局換一個主題' }].concat(Art.THEMES.map(t => ({ v: t.id, name: t.name })));
+  const tr = (k, p) => root.I18N.t(k, p);
+  /* 名稱與說明是 getter：每次讀取都依目前語言取字（字典在 locales.js） */
+  const LAYOUTS = ['random', 'classic', 'open', 'dense'].map(v => ({ v, get label() { return tr('layout.' + v); }, get hint() { return tr('layout.hint.' + v); } }));
+  const THEMES = [{ v: -1, get name() { return tr('theme.random'); }, get hint() { return tr('theme.random.hint'); } }].concat(Art.THEMES.map(t => ({ v: t.id, get name() { return t.name; } })));
   const themeName = v => (THEMES.find(t => t.v === v) || THEMES[0]).name;
-  const layoutName = v => (v === 'fab' ? '產線' : (LAYOUTS.find(l => l.v === v) || LAYOUTS[0]).label);     /* 產線版型只有日月光廠房主題有，不在選項裡 */
+  const layoutName = v => (v === 'fab' ? tr('layout.fab') : (LAYOUTS.find(l => l.v === v) || LAYOUTS[0]).label);     /* 產線版型只有日月光廠房主題有，不在選項裡 */
 
   const tileCache = {};
   function tiles(themeId, T) {
@@ -66,22 +63,9 @@
   }
 
   /* 各種機關的白話說明（選地圖時顯示）；數字跟 rules.js 的規則一致 */
-  const FX_INFO = {
-    grass: { name: '草叢', lines: [
-      '躲進草叢，其他人（電腦也一樣）就完全看不到你，連你放在草叢裡的炸彈也看不到（但炸彈的火力線警示還是看得到；空襲的炸彈不受影響，永遠看得到）；沒有例外，貼在旁邊、你自己、淘汰後或觀戰的人也都看不到。',
-      '草叢只放在走道格（左右都是硬牆，或上下都是硬牆），所以裡面的炸彈只會沿著一條直線炸。小圖放 1／3／5 格，大圖放 3／5 格；彼此不相連，開局就看得見，不蓋軟磚。'] },
-    belt: { name: '輸送帶', lines: [
-      '頭尾相連、形狀不規則的環形輸送帶：踩上去會被順著帶子一路繞圈帶走，停在上面的炸彈也會被載走。',
-      '炸彈前面有人或障礙就停住，離開帶子就停下。四個角落各一圈，可以和軟磚疊在一起，磚炸掉才露出來。'] },
-    slow: { name: '緩速格', lines: [
-      '踩上去速度只剩一半，離開就恢復；格子右下角有蝸牛記號。',
-      '小圖放 1／3／5 格，大圖放 3／5 格；一格一格散開、不會相連，可以和軟磚疊在一起，磚炸掉才露出來。'] },
-    spike: { name: '尖刺', lines: [
-      '固定的尖刺，不會傷人；但炸彈放在上面、或被踢到（滑到）上面，會當場爆炸。',
-      '小圖放 1／3／5 個，大圖放 3／5 個；一個一個散開、不會相連，開局就看得見，不蓋軟磚；空投與空襲也不會落在上面。'] }
-  };
+  const fxInfo = kind => ({ name: tr('fx.' + kind + '.name'), lines: [tr('fx.' + kind + '.l1'), tr('fx.' + kind + '.l2')] });
   /* 每個主題專屬的機關名稱（一個主題最多 1 種，競技場沒有） */
-  const FX_NAME = { 0: '糖漿', 1: '洋流', 2: '磁浮輸送帶', 3: '草叢', 4: '流沙', 5: '積雪', 7: '產線輸送帶', 8: '石筍', 9: '骨刺', 10: '黑曜石刺', 11: '聖誕樹叢', 12: '旋轉輸送台' };
+  const fxName = tid => tr('fxn.' + tid);
   const fxKind = tid => (R.THEME_FX[tid] || [])[0] || null;
 
   /** 機關示意圖：兩格並排（輸送帶畫上流動箭頭，草叢畫上前排葉子） */
@@ -105,13 +89,13 @@
     let cur = { theme: o.theme, layout: o.layout };
     const thumb = h('canvas', { class: 'map-thumb', 'aria-hidden': 'true' });
     const name = h('b', null), sub = h('small', null);
-    const b = h('button', { type: 'button', class: 'map-btn', 'aria-haspopup': 'dialog', 'aria-label': '選擇地圖', disabled: o.disabled,
+    const b = h('button', { type: 'button', class: 'map-btn', 'aria-haspopup': 'dialog', 'aria-label': tr('map.pick'), disabled: o.disabled,
       onClick: () => { if (root.Sound) root.Sound.sfx('click'); open(); } },
       thumb, h('span', { class: 'map-btn-txt' }, name, sub), h('i', { class: 'map-btn-go', 'aria-hidden': 'true' }));
     const paint = () => {
       if (cur.theme < 0) paintRandom(thumb, THUMB_T); else paintMap(thumb, cur.theme, cur.layout, THUMB_SEED, THUMB_T);
       name.textContent = themeName(cur.theme);
-      sub.textContent = layoutName(cur.theme === R.FAB_THEME ? 'fab' : cur.layout) + '版型・點一下更換';
+      sub.textContent = tr('map.tapChange', { l: layoutName(cur.theme === R.FAB_THEME ? 'fab' : cur.layout) });
     };
     function open() {
       mapPicker({ theme: cur.theme, layout: cur.layout, onApply: v => { cur = v; paint(); o.onChange && o.onChange({ theme: v.theme, layout: v.layout }); } });
@@ -121,78 +105,83 @@
     return b;
   }
 
-  /** 選擇視窗：上方預覽、中間主題卡片、下方版型；套用才生效 */
+  /** 選擇視窗：上方預覽、中間主題卡片、下方版型；套用才生效。切換語言時整個內容重建（目前選的主題、版型、預覽 seed 保留） */
   function mapPicker(o) {
     let theme = o.theme, layout = o.layout === 'fab' ? 'random' : o.layout, seed = 1 + Math.floor(Math.random() * 900);
-    const big = h('canvas', { class: 'map-big', role: 'img' });
-    const bigTitle = h('b', { class: 'map-big-title' }), bigSub = h('span', { class: 'muted small' });
-    const reroll = btn('換一張', { cls: 'btn-sky btn-sm', icon: 'refresh', iconSize: 18, onClick: () => { seed = 1 + Math.floor(Math.random() * 900); paintBig(); } });
-
-    const themeBtns = THEMES.map(t => {
-      const cv = h('canvas', { class: 'map-card-cv', 'aria-hidden': 'true' });
-      if (t.v < 0) paintRandom(cv, THUMB_T); else paintMap(cv, t.v, 'classic', THUMB_SEED, THUMB_T);
-      const b = h('button', { type: 'button', role: 'radio', class: 'map-card', 'aria-checked': t.v === theme ? 'true' : 'false', 'aria-label': t.name,
-        onClick: () => { if (root.Sound) root.Sound.sfx('click'); theme = t.v; syncTheme(); paintBig(); } },
-        cv, h('span', { class: 'map-card-name' }, t.name), h('i', { class: 'map-card-ok', 'aria-hidden': 'true' }));
-      return b;
-    });
+    let big, bigTitle, bigSub, fabNote, fxBox, themeBtns, layoutBtns;
     const syncTheme = () => themeBtns.forEach((b, i) => b.setAttribute('aria-checked', THEMES[i].v === theme ? 'true' : 'false'));
-
-    const layoutBtns = LAYOUTS.map(l => h('button', { type: 'button', role: 'radio', class: 'map-lay', 'aria-checked': l.v === layout ? 'true' : 'false',
-      onClick: () => { if (root.Sound) root.Sound.sfx('click'); layout = l.v; syncLayout(); paintBig(); } },
-      h('b', null, l.label), h('small', null, l.hint)));
-    const fabNote = h('p', { class: 'muted small' }, '日月光廠房固定使用「產線」版型（橫向機台排排站，一定有輸送帶），不受上面的版型選項影響。');
     const syncLayout = () => layoutBtns.forEach((b, i) => b.setAttribute('aria-checked', LAYOUTS[i].v === layout ? 'true' : 'false'));
 
     /* 機關說明：選了主題就講這個主題的機關；選「隨機」就列出每個主題各有什麼 */
-    const fxBox = h('div', { class: 'map-fx' });
     function paintFx() {
       fxBox.textContent = '';
       const keep = Math.round(R.FX_KEEP * 100);
       if (theme < 0) {
-        const chips = Art.THEMES.filter(x => fxKind(x.id)).map(x => h('span', { class: 'map-fx-chip' }, x.name + '：' + FX_NAME[x.id]));
+        const chips = Art.THEMES.filter(x => fxKind(x.id)).map(x => h('span', { class: 'map-fx-chip' }, tr('map.fxChip', { th: x.name, fx: fxName(x.id) })));
         fxBox.append(h('div', { class: 'map-fx-body' },
-          h('b', null, '地圖機關'),
-          h('span', null, '每個主題最多有 1 種專屬機關（競技場沒有），機關不多，免得干擾你自己的操作；有機關的主題，每張圖約 ' + keep + '% 會出現，位置依 seed 隨機分布並避開出生點周圍。'),
+          h('b', null, tr('map.fxTitle')),
+          h('span', null, tr('map.fxIntro', { keep })),
           h('div', { class: 'map-fx-chips' }, chips)));
         return;
       }
       const kind = fxKind(theme), nm = themeName(theme);
       if (!kind) {
-        fxBox.append(h('div', { class: 'map-fx-body' }, h('b', null, nm + '：沒有機關'), h('span', null, '單純的比賽場地，只有硬牆、軟磚和道具。')));
+        fxBox.append(h('div', { class: 'map-fx-body' }, h('b', null, tr('map.noFx', { th: nm })), h('span', null, tr('map.noFxText'))));
         return;
       }
-      const info = FX_INFO[kind], ico = h('canvas', { class: 'map-fx-ico', 'aria-hidden': 'true' });
+      const info = fxInfo(kind), ico = h('canvas', { class: 'map-fx-ico', 'aria-hidden': 'true' });
       paintFxIcon(ico, theme);
       fxBox.append(ico, h('div', { class: 'map-fx-body' },
-        h('b', null, nm + '的機關：' + FX_NAME[theme] + (FX_NAME[theme] === info.name ? '' : '（' + info.name + '）')),
+        h('b', null, tr('map.fxOf', { th: nm, fx: fxName(theme) }) + (fxName(theme) === info.name ? '' : tr('map.fxAlso', { name: info.name }))),
         info.lines.map(l => h('span', null, l)),
-        h('small', { class: 'muted' }, '這個主題每張圖約 ' + keep + '% 會出現機關（也可能這一張沒有）；預覽換一張可以看到不同的配置。')));
+        h('small', { class: 'muted' }, tr('map.fxChance', { keep }))));
     }
 
     function paintBig() {
       paintFx();
       paintMap(big, theme, layout, seed, BIG_T);
       const shown = theme < 0 ? Art.THEMES[seed % R.THEME_COUNT].name : themeName(theme);
-      big.setAttribute('aria-label', '地圖預覽：' + shown + '，' + layoutName(theme === R.FAB_THEME ? 'fab' : layout) + '版型');
       const fabNow = theme === R.FAB_THEME;
-      bigTitle.textContent = themeName(theme) + '・' + layoutName(fabNow ? 'fab' : layout) + '版型';
+      big.setAttribute('aria-label', tr('map.previewAria', { shown, l: layoutName(fabNow ? 'fab' : layout) }));
+      bigTitle.textContent = tr('map.bigTitle', { th: themeName(theme), l: layoutName(fabNow ? 'fab' : layout) });
       fabNote.style.display = fabNow ? '' : 'none';
       layoutBtns.forEach(b => { b.style.opacity = fabNow ? '0.45' : ''; });
-      bigSub.textContent = (theme < 0 || layout === 'random' ? '這只是其中一種可能，每局都會重新抽。' : '預覽只是其中一張，每局的硬牆與軟磚位置都不一樣。');
+      bigSub.textContent = (theme < 0 || layout === 'random' ? tr('map.sub.any') : tr('map.sub.one'));
     }
 
-    const m = modal({ title: '選擇地圖', cls: 'dialog-lg map-dialog',
-      content: h('div', { class: 'map-pick' },
+    const build = () => {
+      big = h('canvas', { class: 'map-big', role: 'img' });
+      bigTitle = h('b', { class: 'map-big-title' }); bigSub = h('span', { class: 'muted small' });
+      const reroll = btn(tr('map.reroll'), { cls: 'btn-sky btn-sm', icon: 'refresh', iconSize: 18, onClick: () => { seed = 1 + Math.floor(Math.random() * 900); paintBig(); } });
+      themeBtns = THEMES.map(t => {
+        const cv = h('canvas', { class: 'map-card-cv', 'aria-hidden': 'true' });
+        if (t.v < 0) paintRandom(cv, THUMB_T); else paintMap(cv, t.v, 'classic', THUMB_SEED, THUMB_T);
+        return h('button', { type: 'button', role: 'radio', class: 'map-card', 'aria-checked': t.v === theme ? 'true' : 'false', 'aria-label': t.name,
+          onClick: () => { if (root.Sound) root.Sound.sfx('click'); theme = t.v; syncTheme(); paintBig(); } },
+          cv, h('span', { class: 'map-card-name' }, t.name), h('i', { class: 'map-card-ok', 'aria-hidden': 'true' }));
+      });
+      layoutBtns = LAYOUTS.map(l => h('button', { type: 'button', role: 'radio', class: 'map-lay', 'aria-checked': l.v === layout ? 'true' : 'false',
+        onClick: () => { if (root.Sound) root.Sound.sfx('click'); layout = l.v; syncLayout(); paintBig(); } },
+        h('b', null, l.label), h('small', null, l.hint)));
+      fabNote = h('p', { class: 'muted small' }, tr('map.fabNote'));
+      fxBox = h('div', { class: 'map-fx' });
+      const content = h('div', { class: 'map-pick' },
         h('div', { class: 'map-preview' }, big, h('div', { class: 'map-preview-bar' }, h('div', null, bigTitle, h('br'), bigSub), reroll)),
         fxBox,
-        h('h3', { class: 'map-h' }, '主題'),
-        h('div', { class: 'map-grid', role: 'radiogroup', 'aria-label': '地圖主題' }, themeBtns),
-        h('h3', { class: 'map-h' }, '版型'),
-        h('div', { class: 'map-lays', role: 'radiogroup', 'aria-label': '地圖版型' }, layoutBtns),
-        fabNote),
-      actions: [btn('取消', { cls: 'btn-ghost', onClick: () => m.close() }),
-        btn('套用', { cls: 'btn-mint', icon: 'check', iconSize: 20, onClick: () => { m.close(true); o.onApply && o.onApply({ theme, layout }); } })] });
+        h('h3', { class: 'map-h' }, tr('map.theme')),
+        h('div', { class: 'map-grid', role: 'radiogroup', 'aria-label': tr('map.themeGroup') }, themeBtns),
+        h('h3', { class: 'map-h' }, tr('map.layout')),
+        h('div', { class: 'map-lays', role: 'radiogroup', 'aria-label': tr('map.layoutGroup') }, layoutBtns),
+        fabNote);
+      return {
+        title: tr('map.pick'), content,
+        actions: [btn(tr('common.cancel'), { cls: 'btn-ghost', onClick: () => m.close() }),
+          btn(tr('map.apply'), { cls: 'btn-mint', icon: 'check', iconSize: 20, onClick: () => { m.close(true); o.onApply && o.onApply({ theme, layout }); } })]
+      };
+    };
+    const spec = build();
+    const m = modal({ cls: 'dialog-lg map-dialog', title: spec.title, content: spec.content, actions: spec.actions,
+      rebuild: () => { const s2 = build(); setTimeout(paintBig, 0); return s2; } });
     paintBig();
     return m;
   }

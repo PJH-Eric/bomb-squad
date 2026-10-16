@@ -4,17 +4,21 @@
   "description": "炸彈小隊：可愛風炸彈人（單機＋AI＋線上房間／觀戰／邀請連結）",
   "private": true,
   "license": "UNLICENSED",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "start": "node server.js",
-    "test": "node tests/verify.js && node tests/layout.js && node tests/rooms.js && node tests/server.js && node scripts/online-check.js",
-    "verify": "node tests/verify.js",
+    "test": "node tests/localization.js && node tests/i18n.js && node tests/verify.js && node tests/layout.js && node tests/rooms.js && node tests/server.js && node scripts/online-check.js",
+    "verify": "node tests/i18n.js && node tests/verify.js",
     "layout": "node tests/layout.js",
+    "i18n": "node tests/i18n.js",
     "ai:power": "node scripts/ai-power.js",
     "layout:check": "node scripts/layout-check.js",
     "inject": "node scripts/inject-server-url.js",
     "cf:dev": "npx wrangler@4 dev",
-    "cf:deploy": "npx wrangler@4 deploy"
+    "cf:deploy": "npx wrangler@4 deploy",
+    "test:localization": "node tests/localization.js"
   },
   "dependencies": {}
 }

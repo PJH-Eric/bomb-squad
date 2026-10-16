@@ -25,6 +25,9 @@
     myth:    { name: '神話', interval: 0.2, bombProb: 0.98, hunt: 0.98, chase: 40, chain: true, react: 0.98, notice: 0.02, itemRange: 40, itemProb: 0.98, wander: 0.02, sloppy: 0.02, curseOk: false, trap: true, precise: true }
   };
 
+  /* 等級名稱依語言顯示（字典在 locales.js）；Node 腳本沒有字典時沿用中文 */
+  if (root.I18N && root.I18N.defineText) LEVEL_ORDER.forEach(k => root.I18N.defineText(LEVELS[k], 'name', 'level.' + k));
+
   /* ---------- 等級權重表：把每個參數換算成「強度值」（0～100），用強度值來定級距與調數值 ----------
    * 權重是實測校準出來的（scripts/ai-weights.js：逐一把每個參數調到最強／最弱，跟三個基準電腦各打 200 局，看成績差多少），
    * 不是憑感覺：決策間隔與逃生機率合起來佔 6 成，追人距離、發呆、失誤機率影響都很小。

@@ -3,24 +3,31 @@
   'use strict';
   const { h, avatar, keycap } = root.UI;
   const R = root.Rules, Art = root.Art;
-  const QUICK = ['快跑！', '小心炸彈', '好險', '再來一局', 'GG'];
+  const tr = (k, p, f) => root.I18N.t(k, p, f);
+  const QUICK_N = 5;     /* 聊天快捷語字典 quick.0～4（按下時送出當下語言的文字） */
+  /** 聊天室訊息的系統文字：伺服器帶 code 就依目前語言翻譯，沒有（舊訊息）就用原本的中文 */
+  function sysText(m) {
+    if (m.code) { const s = tr('srv.sys.' + m.code, m.args || null, null); if (s != null) return s; }
+    return m.text;
+  }
 
   /* ---------- 聊天室元件（房間與對戰共用） ---------- */
   function createChat(o) {
-    const log = h('div', { class: 'chat-log', role: 'log', 'aria-live': 'polite', 'aria-label': '聊天室' });
-    const input = h('input', { class: 'text-input', type: 'text', maxlength: 60, placeholder: '輸入訊息…', 'aria-label': '聊天訊息', enterkeyhint: 'send' });
+    const log = h('div', { class: 'chat-log', role: 'log', 'aria-live': 'polite', 'aria-label': tr('game.chat') });
+    const input = h('input', { class: 'text-input', type: 'text', maxlength: 60, placeholder: tr('game.chatPlaceholder'), 'aria-label': tr('game.chatAria'), enterkeyhint: 'send' });
     const send = () => {
       const t = input.value.trim();
       if (!t) return;
       o.send(t); input.value = '';
     };
     const form = h('form', { class: 'chat-form', onSubmit: e => { e.preventDefault(); send(); } }, input,
-      h('button', { type: 'submit', class: 'btn btn-sky btn-sm' }, '送出'));
-    const quick = o.quick === false ? null : h('div', { class: 'quick-chat' }, QUICK.map(q => h('button', { type: 'button', onClick: () => o.send(q) }, q)));
+      h('button', { type: 'submit', class: 'btn btn-sky btn-sm' }, tr('game.send')));
+    const quickBtns = () => Array.from({ length: QUICK_N }, (_, i) => h('button', { type: 'button', onClick: () => o.send(tr('quick.' + i)) }, tr('quick.' + i)));
+    const quick = o.quick === false ? null : h('div', { class: 'quick-chat' }, quickBtns());
     const el = h('div', { class: 'chat-box' }, log, form, quick);
     function line(m) {
-      if (m.role === 'sys') return h('div', { class: 'msg sys' }, m.text);
-      return h('div', { class: 'msg ' + (m.role === 'spectator' ? 'spec' : '') }, h('b', null, m.name + (m.role === 'spectator' ? '（觀戰）' : '')), m.text);
+      if (m.role === 'sys') return h('div', { class: 'msg sys' }, sysText(m));
+      return h('div', { class: 'msg ' + (m.role === 'spectator' ? 'spec' : '') }, h('b', null, m.name + (m.role === 'spectator' ? tr('game.specTag') : '')), m.text);
     }
     function set(list) {
       log.textContent = '';
@@ -33,7 +40,15 @@
       while (log.children.length > 80) log.removeChild(log.firstChild);
       if (stick) log.scrollTop = log.scrollHeight;
     }
-    return { el, set, push, input };
+    /** 切換語言：更新標籤、快捷語，並用目前的訊息列表重畫（系統訊息會換成新語言） */
+    function relang(list) {
+      log.setAttribute('aria-label', tr('game.chat'));
+      input.setAttribute('placeholder', tr('game.chatPlaceholder')); input.setAttribute('aria-label', tr('game.chatAria'));
+      form.querySelector('button').textContent = tr('game.send');
+      if (quick) { quick.textContent = ''; quickBtns().forEach(b => quick.appendChild(b)); }
+      if (list) set(list);
+    }
+    return { el, set, push, input, relang };
   }
 
   /* ---------- 對戰畫面 ---------- */
@@ -70,28 +85,31 @@
     /* ----- DOM ----- */
     build() {
       const s = this.settings, info = this.cfg.info;
-      this.canvas = h('canvas', { 'aria-label': '對戰地圖', role: 'img' });
+      this.canvas = h('canvas', { 'aria-label': tr('game.canvas'), role: 'img' });
       this.board = h('div', { class: 'board' }, this.canvas);
       this.rend = new root.Renderer(this.canvas);
 
-      this.timerEl = h('div', { class: 'hud-timer', 'aria-label': '剩餘時間' }, '--:--');
+      this.timerEl = h('div', { class: 'hud-timer', 'aria-label': tr('game.timeLeft') }, '--:--');
       this.chipsEl = h('div', { class: 'hud-chips' });
       this.hud = h('div', { class: 'hud' }, this.timerEl, this.chipsEl);
 
-      this.sumEl = h('div', { class: 'summary', role: 'list', 'aria-label': '玩家狀態' });
+      this.sumEl = h('div', { class: 'summary', role: 'list', 'aria-label': tr('game.playerStatus') });
       this.statsEl = h('div', { class: 'mystats' });
       this.curseEl = h('div', { class: 'curse-bar', hidden: true });
       this.buffEl = h('div', { class: 'curse-bar buff-bar', hidden: true });
       this.keysEl = h('div', { hidden: true });
-      this.specEl = h('div', { class: 'pill gray', hidden: true }, '觀戰中');
+      this.specEl = h('div', { class: 'pill gray', hidden: true }, tr('game.spectating'));
 
-      const closeBtn = root.UI.iconBtn('back', '收合資訊欄', () => this.setSide(false), 'sm');
+      const closeBtn = root.UI.iconBtn('back', tr('game.closeSide'), () => this.setSide(false), 'sm');
       const online = this.kind === 'online';
-      const exitLabel = online ? '離開對局' : '暫停選單';
-      this.sideHead = h('div', { class: 'side-head' }, h('h3', null, '對局'), root.UI.iconBtn(online ? 'close' : 'pause', exitLabel, () => this.cfg.onEsc && this.cfg.onEsc(), 'sm exit-in'), closeBtn);
+      const exitLabel = online ? tr('game.leaveMatch') : tr('game.pauseMenu');
+      this.sideTitle = h('h3', null, tr('game.side'));
+      this.exitIn = root.UI.iconBtn(online ? 'close' : 'pause', exitLabel, () => this.cfg.onEsc && this.cfg.onEsc(), 'sm exit-in');
+      this.closeSideBtn = closeBtn;
+      this.sideHead = h('div', { class: 'side-head' }, this.sideTitle, this.exitIn, closeBtn);
       this.exitBtn = root.UI.iconBtn(online ? 'close' : 'pause', exitLabel, () => this.cfg.onEsc && this.cfg.onEsc(), 'exit-btn');
       this.mapEl = this.buildMapInfo();
-      this.side = h('aside', { class: 'game-side', 'aria-label': '對局資訊與聊天室' }, this.sideHead, this.mapEl, this.sumEl, this.statsEl, this.buffEl, this.curseEl, this.specEl);
+      this.side = h('aside', { class: 'game-side', 'aria-label': tr('game.sideAria') }, this.sideHead, this.mapEl, this.sumEl, this.statsEl, this.buffEl, this.curseEl, this.specEl);
 
       if (this.kind === 'online' && this.cfg.chat) {
         this.chat = createChat({ send: t => this.cfg.chat.send(t) });
@@ -105,7 +123,7 @@
       }
 
       this.badge = h('span', { class: 'badge', hidden: true });
-      this.toggle = h('button', { type: 'button', class: 'icon-btn side-toggle on-wide', 'aria-label': '展開資訊欄與聊天室', title: '資訊欄', onClick: () => this.setSide(true) },
+      this.toggle = h('button', { type: 'button', class: 'icon-btn side-toggle on-wide', 'aria-label': tr('game.openSide'), title: tr('game.sideTitle'), onClick: () => this.setSide(true) },
         h('span', { html: Art.icon('list', 22) }), this.badge);
 
       this.main = h('div', { class: 'game-main' }, this.board, this.hud);
@@ -114,7 +132,7 @@
       this.touchEl = null;
       if (this.slot != null) this.buildTouch();
       /* 線上：右上角（設定鈕下方）顯示來回延遲 */
-      this.pingEl = online ? h('div', { class: 'ping', role: 'status', 'aria-label': '連線延遲' }, '-- ms') : null;
+      this.pingEl = online ? h('div', { class: 'ping', role: 'status', 'aria-label': tr('game.ping') }, '-- ms') : null;
       this.root = h('div', { class: 'game' }, this.side, this.main, this.toggle, this.exitBtn, this.pingEl);
       /* 滑鼠／觸控點完按鈕就放掉焦點：不然暫停→繼續後焦點回到暫停鈕，按空白鍵會再開一次選單而不是放炸彈（鍵盤 Tab 過去的照常可按） */
       this.root.addEventListener('pointerup', e => { const b = e.target.closest && e.target.closest('button'); if (b) b.blur(); });
@@ -127,8 +145,30 @@
     /** 「對局」標題下面一行：目前地圖的主題・版型（放不下的部分用刪節號，完整內容在滑過時顯示） */
     buildMapInfo() {
       const v = this.view, th = Art.THEMES[v.themeId] || Art.THEMES[0];
-      const layout = (R.LAYOUT_NAMES[v.layout] || '') + '版型';
-      return h('div', { class: 'map-info', 'aria-label': '地圖資訊', title: '地圖：' + th.name + '／' + layout }, th.name + '・' + layout);
+      const layout = tr('rules.layoutSuffix', { l: R.LAYOUT_NAMES[v.layout] || '' });
+      return h('div', { class: 'map-info', 'aria-label': tr('game.mapInfo'), title: tr('game.mapTitle', { th: th.name, lay: layout }) }, th.name + '・' + layout);
+    }
+
+    /** 切換語言：對戰畫面不重建（不然會重開一局），只把文字與標籤換成新語言 */
+    relang() {
+      const online = this.kind === 'online';
+      const exitLabel = online ? tr('game.leaveMatch') : tr('game.pauseMenu');
+      const lab = (el, text) => { if (el) { el.setAttribute('aria-label', text); if (el.hasAttribute('title')) el.setAttribute('title', text); } };
+      this.canvas.setAttribute('aria-label', tr('game.canvas'));
+      this.timerEl.setAttribute('aria-label', tr('game.timeLeft'));
+      this.sumEl.setAttribute('aria-label', tr('game.playerStatus'));
+      this.specEl.textContent = tr('game.spectating');
+      this.sideTitle.textContent = tr('game.side');
+      lab(this.closeSideBtn, tr('game.closeSide')); lab(this.exitIn, exitLabel); lab(this.exitBtn, exitLabel);
+      this.side.setAttribute('aria-label', tr('game.sideAria'));
+      this.toggle.setAttribute('aria-label', tr('game.openSide')); this.toggle.setAttribute('title', tr('game.sideTitle'));
+      if (this.pingEl) this.pingEl.setAttribute('aria-label', tr('game.ping'));
+      if (this.stick) this.stick.setAttribute('aria-label', tr('game.stick'));
+      if (this.bombBtn) this.bombBtn.setAttribute('aria-label', tr('game.bomb'));
+      const mapEl = this.buildMapInfo(); this.mapEl.replaceWith(mapEl); this.mapEl = mapEl;
+      if (this.chat) this.chat.relang(this.cfg.chat.list());
+      if (this.ffBtn) this.ffBtn.textContent = this.ff ? tr('game.ffOff') : tr('game.ff');
+      this.hudSig = ''; this.hudAt = -1;      /* 下一格重畫玩家列、能力、計時等文字 */
     }
 
     applyTheme() {
@@ -139,9 +179,9 @@
     buildTouch() {
       const st = this.settings;
       this.knob = h('span', { class: 'knob' });
-      this.stick = h('div', { class: 'stick', role: 'group', 'aria-label': '移動搖桿' },
+      this.stick = h('div', { class: 'stick', role: 'group', 'aria-label': tr('game.stick') },
         h('span', { class: 'arrow u' }), h('span', { class: 'arrow d' }), h('span', { class: 'arrow l' }), h('span', { class: 'arrow r' }), this.knob);
-      this.bombBtn = h('button', { type: 'button', class: 'bomb-btn', 'aria-label': '放炸彈' },
+      this.bombBtn = h('button', { type: 'button', class: 'bomb-btn', 'aria-label': tr('game.bomb') },
         h('img', { alt: '', src: Art.svgUrl(Art.bombSVG()) }));
       this.touchEl = h('div', { class: 'touch' + (st.stickSide === 'right' ? ' flip' : ''), 'aria-hidden': 'false' }, this.stick, this.bombBtn);
       this.main.appendChild(this.touchEl);
@@ -431,7 +471,7 @@
       }
       /* 計時 */
       let txt;
-      if (v.phase === 'countdown') txt = '準備！';
+      if (v.phase === 'countdown') txt = tr('game.ready');
       else if (v.timeLimit > 0) {
         const left = Math.max(0, v.timeLimit - v.time);
         txt = Math.floor(left / 60) + ':' + String(Math.floor(left % 60)).padStart(2, '0');
@@ -455,11 +495,12 @@
       this.sumEl.textContent = '';
       for (const p of v.players) {
         const lvl = p.kind === 'ai' && p.level ? root.AI.LEVELS[p.level].name : '';
+        const who = lvl ? tr('game.cpuLevel', { lv: lvl }) : (p.kind === 'ai' ? tr('game.cpu') : tr('game.player'));
         this.sumEl.appendChild(h('div', { class: 'sum-row' + (p.slot === this.slot ? ' me' : '') + (p.alive ? '' : ' dead'), role: 'listitem' },
           h('span', { class: 'sum-dot', style: { background: R.SLOT_COLORS[p.slot % 8] } }),
           avatar(p.animal, 32),
-          h('span', { class: 'nm' }, p.name + (p.slot === this.slot ? '（你）' : ''), h('small', null, (lvl ? '電腦・' + lvl : (p.kind === 'ai' ? '電腦' : '玩家')) + (p.alive ? '' : (p.left ? '・已離場' : '・已淘汰')))),
-          h('span', { class: 'kills', title: '擊倒數' }, '擊倒 ' + p.kills)));
+          h('span', { class: 'nm' }, Art.playerName(p) + (p.slot === this.slot ? tr('game.you') : ''), h('small', null, who + (p.alive ? '' : (p.left ? tr('game.left') : tr('game.out'))))),
+          h('span', { class: 'kills', title: tr('game.killsTitle') }, tr('game.kills', { n: p.kills }))));
       }
       this.specEl.hidden = this.slot != null;
       this.statsEl.hidden = !me;
@@ -467,18 +508,18 @@
         const tile = (type, val, label, on) => h('div', { class: 'stat' + (on === false ? ' off' : '') }, h('img', { alt: '', src: Art.svgUrl(Art.itemSVG(type)) }), String(val), h('small', null, label));
         this.statsEl.textContent = '';
         this.statsEl.append(
-          tile('fire', R.fireOf(me), '火力'), tile('bomb', R.maxBombsOf(me), '炸彈'), tile('speed', R.speedLvlOf(me) + 1, '速度'),
-          tile('kick', me.kick ? '有' : '無', '踢炸彈', me.kick), tile('shield', me.shield ? '有' : '無', '護盾', me.shield));
+          tile('fire', R.fireOf(me), tr('game.fire')), tile('bomb', R.maxBombsOf(me), tr('game.bombs')), tile('speed', R.speedLvlOf(me) + 1, tr('game.speed')),
+          tile('kick', me.kick ? tr('game.yes') : tr('game.no'), tr('game.kick'), me.kick), tile('shield', me.shield ? tr('game.yes') : tr('game.no'), tr('game.shield'), me.shield));
         const buffs = [];
-        if (me.alive && me.ghostT > 0) buffs.push(Art.ITEM_NAMES.ghost + '・' + Math.ceil(me.ghostT) + ' 秒');
-        if (me.alive && me.superT > 0) buffs.push(Art.ITEM_NAMES.super + '・' + Math.ceil(me.superT) + ' 秒');
+        if (me.alive && me.ghostT > 0) buffs.push(tr('game.buff', { name: Art.ITEM_NAMES.ghost, s: Math.ceil(me.ghostT) }));
+        if (me.alive && me.superT > 0) buffs.push(tr('game.buff', { name: Art.ITEM_NAMES.super, s: Math.ceil(me.superT) }));
         this.buffEl.hidden = !buffs.length; this.buffEl.textContent = buffs.join('　');
-        if (me.curse) { this.curseEl.hidden = false; this.curseEl.textContent = Art.ITEM_NAMES[me.curse.type] + '・' + Math.ceil(me.curse.t) + ' 秒'; } else this.curseEl.hidden = true;
+        if (me.curse) { this.curseEl.hidden = false; this.curseEl.textContent = tr('game.buff', { name: Art.ITEM_NAMES[me.curse.type], s: Math.ceil(me.curse.t) }); } else this.curseEl.hidden = true;
         if (!me.alive) {
-          this.ghost.hidden = false; this.ghost.textContent = me.left ? '已離場' : '淘汰';
+          this.ghost.hidden = false; this.ghost.textContent = me.left ? tr('game.leftShort') : tr('game.eliminated');
           if (this.kind === 'solo' && v.phase === 'play') {
-            this.ghost.textContent = '淘汰';
-            if (!this.ffBtn) { this.ffBtn = h('button', { type: 'button', class: 'btn btn-sun btn-sm', style: { marginLeft: '10px', pointerEvents: 'auto' }, onClick: () => { this.ff = !this.ff; this.ffBtn.textContent = this.ff ? '恢復速度' : '快轉'; } }, '快轉'); this.ghost.style.pointerEvents = 'auto'; }
+            this.ghost.textContent = tr('game.eliminated');
+            if (!this.ffBtn) { this.ffBtn = h('button', { type: 'button', class: 'btn btn-sun btn-sm', style: { marginLeft: '10px', pointerEvents: 'auto' }, onClick: () => { this.ff = !this.ff; this.ffBtn.textContent = this.ff ? tr('game.ffOff') : tr('game.ff'); } }, this.ff ? tr('game.ffOff') : tr('game.ff')); this.ghost.style.pointerEvents = 'auto'; }
             this.ghost.appendChild(this.ffBtn);
           }
         } else this.ghost.hidden = true;

@@ -561,7 +561,8 @@
       }
       /* 暱稱（倒數時自己頭上改放箭頭，避免上排出生點被畫面邊緣切掉） */
       if (o.names !== false && !(view.phase === 'countdown' && o.selfSlot != null && p.slot === o.selfSlot)) {
-        const label = p.kind === 'ai' && p.level && root.AI ? p.name + '·' + root.AI.LEVELS[p.level].name : p.name;
+        const pname = Art.playerName(p);
+        const label = p.kind === 'ai' && p.level && root.AI ? pname + '·' + root.AI.LEVELS[p.level].name : pname;
         const fs = Math.max(12, Math.round(T * 0.33));      /* 角色頭上的名字（原本 0.26 倍格子，稍微加大） */
         ctx.font = '800 ' + fs + 'px "Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif';
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';

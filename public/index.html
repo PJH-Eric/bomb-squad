@@ -1,11 +1,12 @@
 <!doctype html>
-<html lang="zh-Hant">
+<html lang="zh-Hant" data-i18n-title="meta.title">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <meta name="theme-color" content="#1d1640">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="description" content="可愛風炸彈人：單機對戰電腦、線上房間、觀戰與邀請連結，放炸彈、炸磚塊、撿道具，當最後的小隊長！" data-i18n-content="meta.desc">
   <title>炸彈小隊</title>
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="manifest" href="manifest.webmanifest">
@@ -13,13 +14,15 @@
 </head>
 <body>
   <div id="app" class="app"></div>
-  <a id="lobby-home-link" class="lobby-home-link" href="https://pjh-eric.github.io/game-lobby/" aria-label="回遊戲大廳" hidden>← 回遊戲大廳</a>
-  <button id="gear" class="icon-btn gear" type="button" aria-label="設定" title="設定"></button>
+  <a id="lobby-home-link" class="lobby-home-link" href="https://pjh-eric.github.io/game-lobby/" data-i18n="lobbyLink.text" data-i18n-attr="aria-label=lobbyLink.aria" aria-label="回遊戲大廳" hidden>← 回遊戲大廳</a>
+  <button id="gear" class="icon-btn gear" type="button" aria-label="設定" title="設定" data-i18n-attr="aria-label=settings.open;title=settings.open"></button>
   <div id="banner" aria-live="polite"></div>
   <div id="toasts" class="toasts" aria-live="polite"></div>
   <div id="modals"></div>
-  <noscript><p style="padding:24px;font-weight:800">炸彈小隊需要開啟 JavaScript 才能玩。</p></noscript>
+  <noscript><p style="padding:24px;font-weight:800" data-i18n="noscript">炸彈小隊需要開啟 JavaScript 才能玩。<br>Bomb Squad needs JavaScript to play.</p></noscript>
 
+  <script src="js/i18n.js?v=20261016"></script>
+  <script src="js/locales.js?v=20261016"></script>
   <script src="js/config.js?v=20261005"></script>
   <script src="js/rules.js?v=20261105"></script>
   <script src="js/ai.js?v=20261103"></script>
