@@ -4,7 +4,7 @@
  *   - 房間、對局、電腦全部沿用 lib/rooms.js（純邏輯，不碰網路），規則不會跟 Node 版漂移
  *   - 全站只有一個 Durable Object「lobby」持有所有房間（等同 Node 版的單一行程），
  *     第一次建立時指定亞太區，台灣玩家延遲較低
- *   - 前端仍放在 GitHub Pages，這裡只提供 /ws、/health、/api/presence
+ *   - 前端仍放在 GitHub Pages，這裡只提供 /ws、/health
  *
  * 環境變數：GAME_ALLOWED_ORIGIN（允許的前端 origin，逗號分隔；留空或 * 代表不限制）
  */
@@ -47,7 +47,6 @@ export default {
     const url = new URL(req.url);
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(env, req, new Headers()) });
     if (url.pathname === '/health') return json(env, req, { ok: true, game: 'bomb-squad', runtime: 'cloudflare', colo: req.cf && req.cf.colo });
-    if (url.pathname === '/api/presence') return json(env, req, Object.assign({ gameId: 'bomb-squad' }, await lobby(env).stats(), { updatedAt: new Date().toISOString() }));
     if (url.pathname === '/ws') {
       if ((req.headers.get('Upgrade') || '').toLowerCase() !== 'websocket') return new Response('expected websocket', { status: 426 });
       if (!originOk(env, req.headers.get('Origin'))) return new Response('forbidden', { status: 403 });
@@ -72,8 +71,6 @@ export class GameHub extends DurableObject {
       }
     });
   }
-
-  stats() { return this.hub.stats(); }
 
   /* 有連線或有房間時才跑 60 Hz 的對局迴圈；都沒有就停掉，讓 Durable Object 可以休息 */
   ensureTick() {
