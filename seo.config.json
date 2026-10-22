@@ -6,5 +6,8 @@
   "lobbyUrl": "https://pjh-eric.github.io/game-lobby/",
   "googleSiteVerification": "",
   "genre": "動作",
-  "players": "1-4"
+  "players": "1-4",
+  "iconUrl": "https://pjh-eric.github.io/bomb-squad/favicon-96.png",
+  "ogImage": "https://pjh-eric.github.io/bomb-squad/og-image.png",
+  "ogImageAlt": "炸彈小隊遊戲圖示"
 }
