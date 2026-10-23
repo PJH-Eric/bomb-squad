@@ -1,0 +1,38 @@
+{
+  "zh-Hant": {
+    "name": "炸彈小隊",
+    "summary": "放炸彈、炸磚塊、撿道具，在連鎖爆炸裡活到最後當小隊長！",
+    "modes": [
+      "單機對戰",
+      "四段 AI",
+      "線上房間",
+      "觀戰",
+      "邀請連結"
+    ],
+    "controls": "方向鍵／WASD 移動，空白鍵放炸彈；手機用左下搖桿與炸彈鈕"
+  },
+  "zh-Hans": {
+    "name": "炸弹小队",
+    "summary": "放炸弹、炸砖块、捡道具，在连锁爆炸里活到最后当小队长！",
+    "modes": [
+      "单机对战",
+      "四段 AI",
+      "线上房间",
+      "观战",
+      "邀请连结"
+    ],
+    "controls": "方向键／WASD 移动，空白键放炸弹；手机用左下摇杆与炸弹钮"
+  },
+  "en": {
+    "name": "Bomb Squad",
+    "summary": "Drop bombs, blast bricks, grab power-ups, and be the last one standing in the chain explosions!",
+    "modes": [
+      "Solo Battle",
+      "Four AI Levels",
+      "Online Room",
+      "Spectate",
+      "Invite Link"
+    ],
+    "controls": "Arrow keys / WASD to move, space bar to drop a bomb; on phones use the joystick and bomb button"
+  }
+}
