@@ -8,6 +8,6 @@
   "genre": "動作",
   "players": "1-4",
   "iconUrl": "https://pjh-eric.github.io/bomb-squad/favicon-96.png",
-  "ogImage": "https://pjh-eric.github.io/bomb-squad/og-image.png",
-  "ogImageAlt": "炸彈小隊遊戲圖示"
+  "ogImage": "https://pjh-eric.github.io/bomb-squad/assets/images/cover.webp",
+  "ogImageAlt": "炸彈小隊 遊戲封面"
 }
