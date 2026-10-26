@@ -41,6 +41,7 @@
   }
   function focusables() { return Array.from(App.el.querySelectorAll('button:not([disabled]),input:not([disabled]),[tabindex]:not([tabindex="-1"])')); }
   function go(name, params, opt) {
+    if (root.ServerOutage) root.ServerOutage.setScreen(name);
     let focusIdx = -1;
     if (opt && opt.keepFocus && App.el.contains(document.activeElement)) focusIdx = focusables().indexOf(document.activeElement);
     clear();
