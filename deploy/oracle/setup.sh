@@ -6,7 +6,7 @@
 #   sudo bash setup.sh 你的網域.duckdns.org [允許的前端網址]
 #
 # 會做的事（重複執行也安全，之後要更新程式就再跑一次）：
-#   1. 安裝 Node.js 22、git、Caddy（自動申請 HTTPS 憑證）
+#   1. 安裝 Node.js 26、git、Caddy（自動申請 HTTPS 憑證）
 #   2. 把專案 clone 到 /opt/bomb-squad，用 systemd 常駐（當掉自動重啟、開機自動啟動）
 #   3. Caddy 把 https://你的網域 轉給 Node（WebSocket 也一起轉）
 #   4. 打開 VM 內建防火牆的 80／443 埠（Oracle 的 Ubuntu 映像預設會擋）
@@ -31,12 +31,14 @@ export DEBIAN_FRONTEND=noninteractive
 echo "== 1/5 安裝套件"
 apt-get update -y
 apt-get install -y git curl ca-certificates gnupg debian-keyring debian-archive-keyring apt-transport-https iptables-persistent
-NODE_MAJOR=0
-if command -v node >/dev/null 2>&1; then NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"; fi
-if [ "$NODE_MAJOR" -lt 22 ]; then
-  curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+if ! command -v node >/dev/null 2>&1 || ! node -e 'const [major, minor, patch] = process.versions.node.split(".").map(Number); process.exit(major === 26 && (minor > 12 || (minor === 12 && patch >= 1)) ? 0 : 1)'; then
+  curl -fsSL https://deb.nodesource.com/setup_26.x | bash -
   apt-get install -y nodejs
 fi
+node -e 'const [major, minor, patch] = process.versions.node.split(".").map(Number); process.exit(major === 26 && (minor > 12 || (minor === 12 && patch >= 1)) ? 0 : 1)' || {
+  echo "Node.js 26.12.1 or newer 26.x patch release is required" >&2
+  exit 1
+}
 if ! command -v caddy >/dev/null 2>&1; then
   curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor --yes -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
   curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' > /etc/apt/sources.list.d/caddy-stable.list

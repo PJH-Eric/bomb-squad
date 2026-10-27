@@ -1,6 +1,6 @@
 # 炸彈小隊
 
-可愛街機風的炸彈人遊戲（原創角色與名稱）。單機＋四段 AI、線上房間、觀戰、邀請連結；響應式 PWA，平板觸控優先，也支援滑鼠與鍵盤。零依賴（只需要 Node.js 22 以上）。
+可愛街機風的炸彈人遊戲（原創角色與名稱）。單機＋四段 AI、線上房間、觀戰、邀請連結；響應式 PWA，平板觸控優先，也支援滑鼠與鍵盤。零依賴（只需要 Node.js 26.12.1 或更新的 26.x 修補版）。
 
 ## 玩法與模式
 
@@ -69,7 +69,7 @@ npm run cf:deploy        # 部署（之後每次更新也是這行）
 1. 建立 VM：映像選 **Ubuntu 22.04 或 24.04**；規格選 Always Free（`VM.Standard.A1.Flex` 1 OCPU／6 GB，或 `VM.Standard.E2.1.Micro`）；下載 SSH 私鑰；記下公用 IP。
 2. 開雲端防火牆：VM 的子網路 → Security List → Add Ingress Rules，來源 `0.0.0.0/0`、TCP 目的埠 `80,443`。
 3. 申請免費網域：到 [DuckDNS](https://www.duckdns.org/) 建一個子網域（例如 `bomb-squad-tw.duckdns.org`），IP 填 VM 的公用 IP。
-4. SSH 進 VM 執行（會裝 Node.js 22、Caddy 自動 HTTPS、systemd 常駐、打開 VM 內的 80／443）：
+4. SSH 進 VM 執行（會裝 Node.js 26.12.1、Caddy 自動 HTTPS、systemd 常駐、打開 VM 內的 80／443）：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/PJH-Eric/bomb-squad/main/deploy/oracle/setup.sh -o setup.sh
