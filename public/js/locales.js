@@ -379,6 +379,7 @@
   L('online.phase.playing', '對戰中', 'Playing');
   L('online.phase.finished', '已結束', 'Finished');
   L('lobby.title', '線上大廳', 'Online Lobby');
+  L('lobby.onlineCount', '目前在線：{count} 人', 'Online now: {count}');
   L('lobby.me', '我', 'Me');
   L('lobby.start', '開始', 'Start');
   L('lobby.rooms', '房間列表', 'Rooms');
@@ -905,6 +906,7 @@
     "online.phase.playing": "对战中",
     "online.phase.finished": "已结束",
     "lobby.title": "线上大厅",
+    "lobby.onlineCount": "当前在线：{count} 人",
     "lobby.me": "我",
     "lobby.start": "开始",
     "lobby.rooms": "房间列表",

@@ -39,6 +39,20 @@ test('暱稱去掉控制字元與 HTML 符號、限制 10 個字', () => {
 });
 
 console.log('\n建立／加入／席位');
+test('在線人數包含房內玩家，斷線後更新，返回大廳可重新取得', () => {
+  const x = setup();
+  x.join('aaaaaaaa1');
+  x.join('bbbbbbbb2');
+  assert.strictEqual(x.last('aaaaaaaa1', 'onlineCount').count, 2);
+  x.hub.handle('bbbbbbbb2', { type: 'create', name: 'B', animal: 'cat', roomName: '測試房', max: 4 });
+  x.join('cccccccc3');
+  assert.strictEqual(x.last('aaaaaaaa1', 'onlineCount').count, 3);
+  x.hub.disconnect('cccccccc3');
+  assert.strictEqual(x.last('aaaaaaaa1', 'onlineCount').count, 2);
+  x.hub.handle('bbbbbbbb2', { type: 'leave' });
+  x.hub.handle('bbbbbbbb2', { type: 'lobbySub' });
+  assert.strictEqual(x.last('bbbbbbbb2', 'onlineCount').count, 2);
+});
 test('建立房間：建立者是房主，大廳列表看得到', () => {
   const x = setup(); x.join('aaaaaaaa1', 'A'); x.join('bbbbbbbb2', 'B');
   x.hub.handle('aaaaaaaa1', { type: 'create', name: 'A', animal: 'cat', roomName: '測試房', max: 4 });

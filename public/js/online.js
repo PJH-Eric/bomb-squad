@@ -79,17 +79,26 @@
   /* ================= 大廳 ================= */
   App.screens.lobby = function () {
     App.onlineGame = false;
+    App.onlineCount = null;
     const ui = App.lobbyUI = {};
     const C = root.Config || {};
 
     ui.statusBox = h('span', { class: 'lobby-status' });
+    ui.countBox = h('p', { class: 'pill gray', 'aria-live': 'polite' });
     ui.inviteBox = h('div');
     ui.noticeBox = h('div');
     ui.profileBox = h('div');
     ui.actionBox = h('div');
     ui.listBox = h('div', { class: 'room-list', 'aria-live': 'polite' });
 
-    ui.paintStatus = () => { ui.statusBox.textContent = ''; ui.statusBox.appendChild(statusPill()); ui.paintActions(); };
+    ui.paintStatus = () => {
+      ui.statusBox.textContent = '';
+      ui.statusBox.appendChild(statusPill());
+      const showCount = online() && Number.isInteger(App.onlineCount);
+      ui.countBox.hidden = !showCount;
+      ui.countBox.textContent = showCount ? tr('lobby.onlineCount', { count: App.onlineCount }) : '';
+      ui.paintActions();
+    };
     ui.paintNotice = () => {
       ui.noticeBox.textContent = '';
       if (App.lobbyNotice) {
@@ -174,7 +183,7 @@
 
     const el = U.screenBox('', h('div', { class: 'wrap' },
       U.topbar(tr('lobby.title'), () => App.go('home'), ui.statusBox),
-      unsetNote, ui.noticeBox, ui.inviteBox,
+      ui.countBox, unsetNote, ui.noticeBox, ui.inviteBox,
       h('div', { class: 'room-grid' },
         h('div', { style: { display: 'grid', gap: '14px' } },
           h('section', { class: 'card' }, h('h3', null, tr('lobby.me')), ui.profileBox),
@@ -182,6 +191,7 @@
         h('section', { class: 'card' }, h('h3', null, tr('lobby.rooms'), h('span', { class: 'pill gray', style: { marginLeft: '8px' } }, tr('lobby.canJoin'))), ui.listBox))));
     ui.paintStatus(); ui.paintNotice(); ui.paintProfile(); ui.paintList(); ui.paintInvite();
     Net.open(profile());
+    if (online()) Net.send({ type: 'lobbySub' });
     if (App.invite && !App.invite.info && !App.invite.error && online()) askInvite();
     return el;
   };
@@ -403,6 +413,7 @@
   function init() {
     Net.onStatus((s, detail) => {
       App.netStatus = s;
+      if (s !== 'open') App.onlineCount = null;
       const inOnline = App.screen === 'lobby' || App.screen === 'room' || (App.screen === 'game' && App.onlineGame);
       if (!inOnline) { App.banner(''); return; }
       App.netDetail = detail;
@@ -425,6 +436,11 @@
     Net.on('rooms', m => {
       App.rooms = m.rooms || [];
       if (App.lobbyUI && App.screen === 'lobby') App.lobbyUI.paintList();
+    });
+    Net.on('onlineCount', m => {
+      if (!Number.isInteger(m.count) || m.count < 0) return;
+      App.onlineCount = m.count;
+      if (App.lobbyUI && App.screen === 'lobby') App.lobbyUI.paintStatus();
     });
     Net.on('room', m => {
       App.room = m.room || null;
