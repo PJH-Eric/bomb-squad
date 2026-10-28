@@ -36,6 +36,8 @@ node scripts/online-check.js
 
 ## 部署（GitHub Pages ＋ Render／Oracle Cloud／Cloudflare Workers／Cloud Run）
 
+目前公開前端的後端網址為 `https://bomb-squad.duckdns.org`，不是 Render 免費服務；下列部署方式是可選方案，不代表目前使用的供應商。連線失敗只顯示「請稍後重試，期間可繼續遊玩單機版」，不顯示 Render 次月額度重置日期。
+
 1. **後端（Render）**：用 `render.yaml` 建立 Web Service（免費方案，區域選 Singapore，台灣連線延遲最低；建立後無法改區域），啟動指令 `node server.js`，健康檢查 `/health`。環境變數 `GAME_ALLOWED_ORIGIN` 填前端網址，例如 `https://帳號.github.io`。
 2. **前端（GitHub Pages）**：Settings → Pages 選 GitHub Actions；Settings → Variables 新增 `GAME_SERVER_URL`＝Render 的 https 網址。推到 `main` 後 `.github/workflows/pages.yml` 會跑測試、注入網址並部署 `public/`。
 3. 也可臨時用網址參數：`https://前端/?server=https://後端`。

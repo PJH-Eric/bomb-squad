@@ -39,7 +39,7 @@
     return u.toString();
   }
 
-  /** 先打 /health：Render 免費方案休眠時要 30～60 秒才醒，這段時間顯示喚醒動畫 */
+  /** 線上流程先確認伺服器就緒，尚未就緒時顯示等候狀態並重試。 */
   async function wake(base, my) {
     const started = Date.now();
     for (let i = 0; wantOpen && my === gen; i++) {

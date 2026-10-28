@@ -77,18 +77,18 @@ local.api.state('connecting'); local.tick(10000); local.api.state('open'); local
 assert.equal(local.document.body.children.length, 1, 'Successful cold start cancels the notice');
 local.api.state('connecting'); local.api.state('idle'); local.tick(110000);
 assert.equal(local.document.body.children.length, 1, 'Leaving online cancels pending notices');
-for (let month = 0; month < 12; month++) {
-  const text = local.api.copy(new Date(2026, month, 28), 'zh-Hant')[1];
-  assert.ok(text.includes(((month + 1) % 12 + 1) + ' 月 1 日'), 'Next month including December rollover');
+for (const language of ['zh-Hant', 'zh-Hans', 'en']) {
+  const text = local.api.copy(new Date(2026, 11, 31), language)[1];
+  assert.doesNotMatch(text, /Render|quota|reset|重置|額度|额度|\{date\}/i, 'Non-Render hosting must not claim a monthly quota reset');
+  assert.equal(text, local.api.copy(new Date(2027, 0, 1), language)[1], 'Generic outage advice is independent of the calendar');
 }
-assert.match(local.api.copy(new Date(2026, 11, 31), 'en')[1], /January 1/);
 assert.match(local.api.copy(new Date(2026, 9, 31), 'zh-Hans')[1], /单机版/);
 assert.match(local.api.copy(new Date(2026, 9, 31), 'zh-Hant')[1], /單機版/);
 const html = fs.readFileSync(path.join(__dirname, '../public/index.html'), 'utf8');
 assert.match(html, /js\/server-outage\.js/);
 assert.match(html, /css\/server-outage\.css/);
 assert.ok(!/\b(?:alert|confirm|prompt)\s*\(/.test(fs.readFileSync(path.join(__dirname, '../public/js/server-outage.js'), 'utf8')), 'No browser-native alerts');
-console.log('Server outage: timing, recovery, cancellation, deduplication, focus, translations and 12 month boundaries passed');
+console.log('Server outage: timing, recovery, cancellation, deduplication, focus, translations and generic non-Render advice passed');
 
 const scoped = setup();
 scoped.api.setScreen('lobby'); scoped.api.state('connecting'); scoped.tick(20000);

@@ -54,6 +54,7 @@ const server = http.createServer((req, res) => {
         throw error;
       });
       for (const [width, height] of sizes) {
+        assert.doesNotMatch(await page.getByRole('alertdialog').innerText(), /Render|quota|reset|重置|額度|额度/i, project + ': generic outage advice only');
         await page.setViewportSize({ width, height });
         const bounds = await page.getByRole('alertdialog').boundingBox();
         assert.ok(bounds.x >= 0 && bounds.y >= 0 && bounds.x + bounds.width <= width && bounds.y + bounds.height <= height, project + ': dialog fits viewport');
@@ -100,6 +101,7 @@ const server = http.createServer((req, res) => {
         }, lang);
         await page.clock.fastForward(30000);
         const text = await page.getByRole('alertdialog').innerText();
+        assert.doesNotMatch(text, /Render|quota|reset|重置|額度|额度/i, project + ': no Render quota claims on non-Render hosting');
         assert.match(text, lang === 'en' ? /keep playing offline/ : /单机版/);
         await page.setViewportSize({ width: 390, height: 844 });
         const bounds = await page.getByRole('alertdialog').boundingBox();
