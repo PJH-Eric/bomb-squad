@@ -15,7 +15,8 @@ const VIEWS = [
   ['tablet-p', 820, 1180, true], ['tablet-l', 1180, 820, true], ['desktop', 1440, 900, false]
 ];
 let fails = 0;
-const ok = (c, m) => { console.log((c ? '  ok  ' : ' FAIL ') + m); if (!c) fails++; };
+const mkOk = out => (c, m) => { out.push((c ? '  ok  ' : ' FAIL ') + m); if (!c) fails++; };
+const ok = mkOk({ push: m => console.log(m) });
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 async function mkPage(browser, v, errors, tag) {
@@ -56,8 +57,9 @@ const click = (page, text) => page.getByRole('button', { name: text }).first().c
 (async () => {
   const browser = await pw.chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
   const errors = [];
-  for (const v of VIEWS) {
-    console.log('== ' + v[0]);
+  /* 五種視窗互相獨立，並行跑；各自緩衝輸出，結束後依序印出 */
+  const viewsRun = Promise.all(VIEWS.map(async v => {
+    const out = ['== ' + v[0]], ok = mkOk(out);
     const { ctx, page } = await mkPage(browser, v, errors, v[0]);
     await page.goto(BASE); await wait(500);
     ok(await overflow(page) <= 1, '首頁沒有水平溢出');
@@ -71,7 +73,7 @@ const click = (page, text) => page.getByRole('button', { name: text }).first().c
     ok(await overflow(page) <= 1, '單機設定沒有水平溢出');
     { const w = await wraps(page); ok(w.length === 0, '單機設定沒有被迫換行的控制項' + (w.length ? ' → ' + w.slice(0, 6).join('；') : '')); }
     await page.screenshot({ path: path.join(SHOTS, v[0] + '-solo.png') });
-    await click(page, '開始遊戲'); await wait(4500);
+    await click(page, '開始遊戲'); await page.locator('canvas').first().waitFor({ timeout: 10000 }); await wait(1500);
     const cv = await page.evaluate(() => { const c = document.querySelector('canvas'); if (!c) return null; const r = c.getBoundingClientRect(); return { w: r.width, h: r.height, vw: innerWidth, vh: innerHeight }; });
     ok(cv && cv.w > 200 && cv.h > 200, '對戰畫布有尺寸 ' + JSON.stringify(cv));
     ok(await overflow(page) <= 1, '對戰沒有水平溢出');
@@ -84,9 +86,12 @@ const click = (page, text) => page.getByRole('button', { name: text }).first().c
     { const w = await wraps(page); ok(w.length === 0, '設定彈窗沒有被迫換行的控制項' + (w.length ? ' → ' + w.slice(0, 6).join('；') : '')); }
     await page.screenshot({ path: path.join(SHOTS, v[0] + '-settings.png') });
     await ctx.close();
-  }
+    console.log(out.join('\n'));
+  }));
 
-  console.log('== 線上：房主＋受邀玩家＋觀戰');
+  /* 線上場景也與上面並行 */
+  const onlineRun = (async () => {
+  const out = ['== 線上：房主＋受邀玩家＋觀戰'], ok = mkOk(out);
   const V = VIEWS[3];
   const A = await mkPage(browser, V, errors, 'A'), B = await mkPage(browser, V, errors, 'B'), S = await mkPage(browser, VIEWS[4], errors, 'S');
   await A.page.goto(BASE); await click(A.page, '跟別人玩'); await wait(1200);
@@ -121,14 +126,14 @@ const click = (page, text) => page.getByRole('button', { name: text }).first().c
   await A.page.screenshot({ path: path.join(SHOTS, 'room-host.png') });
   await S.page.screenshot({ path: path.join(SHOTS, 'room-spec.png') });
 
-  await click(A.page, '開始遊戲'); await wait(5000);
+  await click(A.page, '開始遊戲'); await Promise.all([A, S].map(x => x.page.locator('canvas').first().waitFor({ timeout: 10000 }))); await wait(1500);
   ok(await A.page.locator('canvas').count() > 0 && await S.page.locator('canvas').count() > 0, '對局開始，玩家與觀戰者都進入對戰畫面');
   await A.page.keyboard.press('Space'); await wait(800);
   await A.page.screenshot({ path: path.join(SHOTS, 'online-game-host.png') });
   await S.page.screenshot({ path: path.join(SHOTS, 'online-game-spec.png') });
   await B.page.screenshot({ path: path.join(SHOTS, 'online-game-guest.png') });
 
-  console.log('== 零真人自動關閉');
+  out.push('== 零真人自動關閉');
   await A.page.keyboard.press('Escape'); await wait(300); await click(A.page, '離開房間'); await wait(300);
   await A.page.getByRole('button', { name: '離開' }).last().click(); await wait(800);
   await B.page.keyboard.press('Escape'); await wait(300); await click(B.page, '離開房間'); await wait(300);
@@ -136,8 +141,11 @@ const click = (page, text) => page.getByRole('button', { name: text }).first().c
   ok(await S.page.getByText('回到大廳').count() + await S.page.getByText('線上大廳').count() > 0, '真人都離開後觀戰者被送回大廳');
   await S.page.screenshot({ path: path.join(SHOTS, 'closed-spec.png') });
   for (const x of [A, B, S]) await x.ctx.close();
+  console.log(out.join('\n'));
+  })();
+  await Promise.all([viewsRun, onlineRun]);
 
-  await browser.close();
+  browser.close().catch(() => {}); /* 不等關閉完成，process.exit 會一併收掉瀏覽器 */
   console.log(errors.length ? '\nconsole 錯誤：\n' + errors.join('\n') : '\n沒有 console 錯誤');
   ok(errors.length === 0, 'console 無錯誤');
   console.log(fails ? '失敗 ' + fails + ' 項' : '全部通過');
