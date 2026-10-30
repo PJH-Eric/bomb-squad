@@ -477,6 +477,7 @@
   /* ---------- 介面小圖示（stroke = currentColor） ---------- */
   const ICONS = {
     gear: '<circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.9 1.9M16.6 16.6l1.9 1.9M18.5 5.5l-1.9 1.9M7.4 16.6l-1.9 1.9"/>',
+    rotate: '<rect x="6" y="3" width="12" height="18" rx="2.5"/><path d="M10.5 18h3"/><path d="M21 8.5a9 9 0 0 0-3-3"/><path d="M21 4v4.5h-4.5"/>',
     home: '<path d="M4 11.5 12 4l8 7.5V20H4z"/><path d="M10 20v-5h4v5"/>',
     back: '<path d="M14 5 7 12l7 7"/>',
     close: '<path d="M6 6l12 12M18 6 6 18"/>',

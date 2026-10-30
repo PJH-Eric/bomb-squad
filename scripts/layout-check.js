@@ -23,14 +23,15 @@ if (!chrome) { console.log('找不到 Chrome／Edge，略過實機版面檢查�
 const PUBLIC = path.join(__dirname, '..', 'public');
 const SHOTS = process.env.SHOTS || path.join(__dirname, '..', 'shots');
 fs.mkdirSync(SHOTS, { recursive: true });
-const VIEWS = [['phone-p', 390, 844], ['phone-l', 844, 390], ['tablet-p', 820, 1180], ['tablet-l', 1180, 820], ['desktop', 1440, 900]];
-const OLD = { 2: [15, 13], 8: [17, 15] };      /* 最初的格數，拿來比較每格縮了多少 */
-const NEW = { 2: [17, 13], 8: [19, 15] };
+/* [名稱, 寬, 高, 觸控設定]：桌機用 auto（沒有觸控螢幕就不顯示搖桿），其餘一律顯示才量得到搖桿與炸彈鈕 */
+const VIEWS = [['phone-p', 390, 844, 'on'], ['phone-l', 844, 390, 'on'], ['tablet-p', 820, 1180, 'on'], ['tablet-l', 1180, 820, 'on'], ['desktop', 1440, 900, 'auto']];
+const OLD = { 2: [17, 13], 8: [19, 15] };      /* 改版前的格數，拿來比較每格縮了多少 */
+const NEW = { 2: [21, 11], 8: [25, 13] };
 let fails = 0;
 const ok = (c, m) => { console.log((c ? '  ok  ' : ' FAIL ') + m); if (!c) fails++; };
 
 /** 測試頁：複製 index.html，結尾加一段腳本開單機對局（n 個電腦），量完把結果寫進 #layout-out */
-function pageFor(n) {
+function pageFor(n, touchMode) {
   const html = fs.readFileSync(path.join(PUBLIC, 'index.html'), 'utf8');
   const probe = `<script>
     (function () {
@@ -39,7 +40,7 @@ function pageFor(n) {
         try {
           App.store.solo.levels = new Array(${n - 1}).fill('normal');
           App.store.solo.theme = 6; App.store.solo.layout = 'classic';
-          App.store.touchMode = 'on'; App.store.stickSide = 'left';      /* 一律顯示觸控鈕，才量得到搖桿與炸彈鈕 */
+          App.store.touchMode = '${touchMode}'; App.store.stickSide = 'left';
           App.startSolo();
           let tries = 0;
           const measure = setInterval(function () {
@@ -53,7 +54,10 @@ function pageFor(n) {
             out.textContent = JSON.stringify({ w: v.w, h: v.h, cw: r.width, ch: r.height, tile: r.width / v.w,
               availW: m.clientWidth - pad('paddingLeft') - pad('paddingRight'), availH: m.clientHeight - pad('paddingTop') - pad('paddingBottom'),
               left: r.left, right: r.right, top: r.top, bottom: r.bottom, vw: innerWidth, vh: innerHeight, spr: App.game.rend.constructor.SPRITE,
-              stick: rect('.stick'), bomb: rect('.bomb-btn'), plan: App.game.touchPlan && { mode: App.game.touchPlan.mode, gutter: App.game.touchPlan.gutter, bottom: App.game.touchPlan.bottom },
+              stick: rect('.stick'), bomb: rect('.bomb-btn'), hud: rect('.hud'), gear: rect('.gear'), lang: rect('.lang-toggle'), toggle: rect('.side-toggle'),
+              touchShown: !!document.querySelector('.touch') && !document.querySelector('.touch').hidden,
+              rotateShown: !!document.querySelector('.rotate-mask') && !document.querySelector('.rotate-mask').hidden,
+              plan: App.game.touchPlan && { mode: App.game.touchPlan.mode, gutter: App.game.touchPlan.gutter, bottom: App.game.touchPlan.bottom },
               sideClosed: document.querySelector('.game').classList.contains('side-closed') });
           }, 100);
         } catch (e) { out.textContent = JSON.stringify({ error: String(e && e.stack || e) }); }
@@ -66,9 +70,9 @@ function pageFor(n) {
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bomb-layout-'));
 for (const n of [2, 8]) {
   console.log(`\n${n} 人對局`);
-  const file = path.join(tmp, 'p' + n + '.html');
-  fs.writeFileSync(file, pageFor(n));
-  for (const [name, w, h] of VIEWS) {
+  for (const [name, w, h, touchMode] of VIEWS) {
+    const file = path.join(tmp, 'p' + n + touchMode + '.html');
+    fs.writeFileSync(file, pageFor(n, touchMode));
     const shot = path.join(SHOTS, `layout-${n}p-${name}.png`);
     const base = ['--headless=new', '--disable-gpu', '--hide-scrollbars', '--allow-file-access-from-files', `--window-size=${w},${h}`, '--virtual-time-budget=9000', '--user-data-dir=' + path.join(tmp, 'prof-' + n + name)];
     spawnSync(chrome, base.concat(['--screenshot=' + shot, 'file:///' + file.replace(/\\/g, '/')]), { encoding: 'utf8' });
@@ -85,18 +89,34 @@ for (const n of [2, 8]) {
     ok(d.w === NEW[n][0] && d.h === NEW[n][1], `${name} ${n} 人：地圖 ${d.w}×${d.h}`);
     ok(d.left >= -0.5 && d.top >= -0.5 && d.right <= d.vw + 0.5 && d.bottom <= d.vh + 0.5, `${name}：地圖完整在畫面內（${Math.round(d.cw)}×${Math.round(d.ch)}／視窗 ${d.vw}×${d.vh}）`);
     ok(d.tile >= 12 && d.tile >= oldTile * 0.55, `${name}：每格 ${d.tile.toFixed(1)}px，最初的格數約 ${oldTile}px（${Math.round((d.tile / oldTile - 1) * 100)}%）`);
-    /* 觸控操作版面：控制鈕在畫面內、夠大；橫放放兩側不擋可玩的格子；直放在地圖下方；觸控裝置預設收起資訊欄 */
-    if (d.stick && d.bomb) {
+    /* 資訊欄：整列在棋盤最上面那圈外牆裡（不蓋可玩格），語言與設定鈕貼著棋盤右上角，且側欄所有裝置預設收起 */
+    ok(d.sideClosed, `${name}：側欄預設收起`);
+    if (d.hud) {
+      ok(d.hud.left >= d.left - 1 && d.hud.right <= d.right + 1 && d.hud.top >= d.top - 1 && d.hud.bottom <= d.top + Math.max(d.tile, 26) + 1,
+        `${name}：資訊欄在上方外牆圈內（高 ${Math.round(d.hud.h)}px，每格 ${d.tile.toFixed(1)}px）`);
+      ok(d.gear && d.lang && d.gear.right <= d.right + 1 && d.gear.top >= d.top - 1 && d.gear.bottom <= d.top + Math.max(d.tile, 26) + 1 && d.lang.right <= d.gear.left + 1,
+        `${name}：語言鈕與設定鈕在資訊欄右側 gear=${JSON.stringify(d.gear && [Math.round(d.gear.left), Math.round(d.gear.right), Math.round(d.gear.top), Math.round(d.gear.bottom)])} lang=${JSON.stringify(d.lang && [Math.round(d.lang.left), Math.round(d.lang.right)])} board=${Math.round(d.right)},${Math.round(d.top)}`);
+    }
+    if (name === 'phone-p') {
+      ok(d.rotateShown, `${name}：手機直放顯示「請橫向遊玩」遮罩`);
+    } else {
+      ok(!d.rotateShown, `${name}：沒有轉向遮罩`);
+    }
+    /* 觸控操作版面：控制鈕在畫面內；手機橫放 overlay 不縮小；平板橫放最多蓋到最下方外牆圈；直放在地圖下方；桌機不顯示 */
+    if (name === 'desktop') {
+      ok(!d.touchShown, `${name}：桌機不顯示搖桿與放炸彈鍵`);
+    } else if (d.stick && d.bomb && name !== 'phone-p') {
       const inView = b => b.left >= -0.5 && b.top >= -0.5 && b.right <= d.vw + 0.5 && b.bottom <= d.vh + 0.5;
       ok(inView(d.stick) && inView(d.bomb), `${name}：搖桿與炸彈鈕都在畫面內`);
-      ok(d.stick.w >= 119 && d.bomb.w >= 85, `${name}：搖桿 ${Math.round(d.stick.w)}px、炸彈鈕 ${Math.round(d.bomb.w)}px（手指好按）`);
-      if (d.vw > d.vh && d.plan && d.plan.mode === 'gutter') {
-        const inL = d.left + d.tile, inR = d.right - d.tile;     /* 最外圈是邊牆，鈕可以壓在上面；其餘是可玩的格子 */
-        ok(d.stick.right <= inL + 1 && d.bomb.left >= inR - 1, `${name}：橫放控制鈕在地圖兩側，沒有擋到可玩的格子（模式 ${d.plan.mode}，兩側各留 ${d.plan.gutter}px）`);
+      if (name === 'phone-l') {
+        ok(d.plan.mode === 'overlay' && Math.abs(d.stick.w - Math.max(120, Math.min(172, Math.round(d.vh * 0.32)))) <= 1 && Math.abs(d.bomb.w - Math.max(86, Math.min(116, Math.round(d.vh * 0.23)))) <= 1,
+          `${name}：手機橫放固定 overlay，搖桿 ${Math.round(d.stick.w)}px、炸彈鈕 ${Math.round(d.bomb.w)}px（不縮小）`);
+      } else if (name === 'tablet-l') {
+        ok(d.plan.mode === 'bars' && d.stick.w >= 171 && d.bomb.w >= 115, `${name}：平板橫放搖桿 ${Math.round(d.stick.w)}px、炸彈鈕 ${Math.round(d.bomb.w)}px（模式 ${d.plan.mode}）`);
+        ok(d.stick.top >= d.bottom - d.tile - 1 && d.bomb.top >= d.bottom - d.tile - 1, `${name}：控制鈕最多蓋到最下方外牆圈，不蓋可玩格（地圖底 ${Math.round(d.bottom)}，搖桿頂 ${Math.round(d.stick.top)}）`);
       } else if (d.vw <= d.vh) {
         ok(d.stick.top >= d.bottom - 1 && d.bomb.top >= d.bottom - 1, `${name}：直放控制鈕在地圖下方（地圖底 ${Math.round(d.bottom)}，搖桿頂 ${Math.round(d.stick.top)}）`);
       }
-      ok(d.sideClosed, `${name}：觸控裝置預設收起資訊欄`);
     }
     ok(d.tile * d.spr.animal <= d.tile * 1.2, `${name}：人物 ${(d.tile * d.spr.animal).toFixed(0)}px，道具 ${(d.tile * d.spr.item).toFixed(0)}px，炸彈 ${(d.tile * d.spr.bomb).toFixed(0)}px`);
   }

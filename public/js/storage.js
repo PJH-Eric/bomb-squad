@@ -9,7 +9,9 @@
     reduceMotion: false,
     colorAssist: false,      /* 暱稱旁用形狀區分玩家，不只靠顏色 */
     touchMode: 'auto',       /* auto 觸控裝置才顯示／on 一律顯示／off 不顯示 */
-    stickSide: 'left'        /* 搖桿放左手或右手邊 */
+    stickSide: 'left',       /* 搖桿放左手或右手邊 */
+    touchScale: 1,           /* 操作鈕大小倍率 0.8～1.3，直接乘在預設尺寸上 */
+    touchOpacity: 0.45       /* 操作鈕平時的透明度（按住時約 0.8） */
   };
   const SOLO_DEFAULTS = {
     levels: ['easy', 'normal', 'hard'],   /* 每個電腦各自的難度（最多 7 個） */

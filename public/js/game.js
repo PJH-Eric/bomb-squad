@@ -98,7 +98,6 @@
 
       this.timerEl = h('div', { class: 'hud-timer', 'aria-label': tr('game.timeLeft') }, '--:--');
       this.chipsEl = h('div', { class: 'hud-chips' });
-      this.hud = h('div', { class: 'hud' }, this.timerEl, this.chipsEl);
 
       this.sumEl = h('div', { class: 'summary', role: 'list', 'aria-label': tr('game.playerStatus') });
       this.statsEl = h('div', { class: 'mystats' });
@@ -130,22 +129,27 @@
       }
 
       this.badge = h('span', { class: 'badge', hidden: true });
-      this.toggle = h('button', { type: 'button', class: 'icon-btn side-toggle on-wide', 'aria-label': tr('game.openSide'), title: tr('game.sideTitle'), onClick: () => this.setSide(true) },
+      this.toggle = h('button', { type: 'button', class: 'icon-btn side-toggle', 'aria-label': tr('game.openSide'), title: tr('game.sideTitle'), onClick: () => this.setSide(true) },
         h('span', { html: Art.icon('list', 22) }), this.badge);
 
+      /* 上方資訊欄：整列放進棋盤最上面那圈外牆，不蓋可玩格（位置與大小由 layout() 依棋盤算）。左：側欄開關、選單／暫停；中：計時與玩家頭像；右：線上延遲（右上角另有全域的語言與設定鈕） */
+      this.pingEl = online ? h('div', { class: 'ping', role: 'status', 'aria-label': tr('game.ping') }, '-- ms') : null;
+      this.hud = h('div', { class: 'hud' },
+        h('div', { class: 'hud-l' }, this.toggle, this.exitBtn),
+        h('div', { class: 'hud-c' }, this.timerEl, this.chipsEl),
+        h('div', { class: 'hud-r' }, this.pingEl));
       this.main = h('div', { class: 'game-main' }, this.board, this.hud);
       this.ghost = h('div', { class: 'ghost-msg', hidden: true });
       this.main.appendChild(this.ghost);
       this.touchEl = null;
       if (this.slot != null) this.buildTouch();
-      /* 線上：右上角（設定鈕下方）顯示來回延遲 */
-      this.pingEl = online ? h('div', { class: 'ping', role: 'status', 'aria-label': tr('game.ping') }, '-- ms') : null;
-      this.root = h('div', { class: 'game' }, this.side, this.main, this.toggle, this.exitBtn, this.pingEl);
+      /* 手機直放：擋住畫面請玩家轉橫（觀戰者不擋）；玩家照常在場上，轉橫後立刻可以操作 */
+      this.rotateEl = h('div', { class: 'rotate-mask', role: 'alert', hidden: true }, h('span', { class: 'rotate-ico', html: Art.icon('rotate', 56) }), h('p', null, tr('game.rotate')));
+      this.root = h('div', { class: 'game' }, this.side, this.main, this.rotateEl);
       /* 滑鼠／觸控點完按鈕就放掉焦點：不然暫停→繼續後焦點回到暫停鈕，按空白鍵會再開一次選單而不是放炸彈（鍵盤 Tab 過去的照常可按） */
       this.root.addEventListener('pointerup', e => { const b = e.target.closest && e.target.closest('button'); if (b) b.blur(); });
-      /* 窄螢幕、直放、或顯示觸控鈕的裝置（手機、平板）預設收起資訊欄，把空間留給地圖與控制鈕；要看再點左上角展開 */
-      const narrow = root.innerWidth < 860 || root.innerHeight > root.innerWidth || this.touchVisible();
-      if (narrow) this.root.classList.add('side-closed');
+      /* 所有裝置的側欄（計分板、聊天室）預設收起、點開從左側滑出，棋盤才能用滿整個畫面 */
+      this.root.classList.add('side-closed');
       this.applyTheme();
     }
 
@@ -170,6 +174,7 @@
       this.side.setAttribute('aria-label', tr('game.sideAria'));
       this.toggle.setAttribute('aria-label', tr('game.openSide')); this.toggle.setAttribute('title', tr('game.sideTitle'));
       if (this.pingEl) this.pingEl.setAttribute('aria-label', tr('game.ping'));
+      this.rotateEl.querySelector('p').textContent = tr('game.rotate');
       if (this.stick) this.stick.setAttribute('aria-label', tr('game.stick'));
       if (this.bombBtn) this.bombBtn.setAttribute('aria-label', tr('game.bomb'));
       const mapEl = this.buildMapInfo(); this.mapEl.replaceWith(mapEl); this.mapEl = mapEl;
@@ -193,7 +198,11 @@
       this.touchEl = h('div', { class: 'touch' + (st.stickSide === 'right' ? ' flip' : ''), 'aria-hidden': 'false' }, this.stick, this.bombBtn);
       this.main.appendChild(this.touchEl);
 
-      let activeId = null;
+      /* 搖桿與放炸彈鍵各自記錄自己的 pointerId（Pointer Events，不用 touch*）：按住搖桿時可以同時按炸彈，兩邊互不中斷；
+         搖桿已有手指時忽略第二根，炸彈鍵只有自己的那根手指放開才算放開 */
+      let stickId = null, bombId = null;
+      const arrows = { U: this.stick.querySelector('.arrow.u'), D: this.stick.querySelector('.arrow.d'), L: this.stick.querySelector('.arrow.l'), R: this.stick.querySelector('.arrow.r') };
+      const paintArrows = d => { for (const k of Object.keys(arrows)) arrows[k].classList.toggle('on', k === d); };
       const update = e => {
         const r = this.stick.getBoundingClientRect();
         const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
@@ -213,16 +222,39 @@
           if (d === 'L' || d === 'R') { if (ay > ax * 0.45) d2 = dy > 0 ? 'D' : 'U'; }
           else if (ax > ay * 0.45) d2 = dx > 0 ? 'R' : 'L';
         }
+        paintArrows(d);      /* 按住的方向箭頭亮起，其餘保持淡 */
         this.stickDir = d; this.stickDir2 = d2; this.refreshDir();
       };
-      this.stick.addEventListener('pointerdown', e => { activeId = e.pointerId; this.stick.setPointerCapture(e.pointerId); update(e); e.preventDefault(); });
-      this.stick.addEventListener('pointermove', e => { if (e.pointerId === activeId) update(e); });
-      const end = e => { if (e.pointerId !== activeId) return; activeId = null; this.stickDir = null; this.stickDir2 = null; this.knob.style.transform = ''; this.refreshDir(); };
-      this.stick.addEventListener('pointerup', end); this.stick.addEventListener('pointercancel', end);
-      this.bombBtn.addEventListener('pointerdown', e => { e.preventDefault(); this.bombBtn.classList.add('down'); this.pressBomb(); });
-      const up = () => this.bombBtn.classList.remove('down');
-      this.bombBtn.addEventListener('pointerup', up); this.bombBtn.addEventListener('pointercancel', up); this.bombBtn.addEventListener('pointerleave', up);
+      this.stick.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        if (stickId !== null) return;
+        stickId = e.pointerId; this.stick.classList.add('down');
+        try { this.stick.setPointerCapture(e.pointerId); } catch (err) { /* 忽略 */ }
+        update(e);
+      });
+      this.stick.addEventListener('pointermove', e => { if (e.pointerId === stickId) update(e); });
+      const stickEnd = e => {
+        if (e.pointerId !== stickId) return;
+        stickId = null; this.stickDir = null; this.stickDir2 = null; this.knob.style.transform = '';
+        this.stick.classList.remove('down'); paintArrows(null); this.refreshDir();
+      };
+      for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) this.stick.addEventListener(ev, stickEnd);
+      this.bombBtn.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        if (bombId !== null) return;
+        bombId = e.pointerId; this.bombBtn.classList.add('down');
+        try { this.bombBtn.setPointerCapture(e.pointerId); } catch (err) { /* 忽略 */ }
+        this.pressBomb();
+      });
+      const bombUp = e => { if (e.pointerId !== bombId) return; bombId = null; this.bombBtn.classList.remove('down'); };
+      for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) this.bombBtn.addEventListener(ev, bombUp);
       this.bombBtn.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.pressBomb(); } });
+      /* 切到別的 App、頁面隱藏、失去焦點：完整重置（方向、記錄的手指、搖桿外觀、炸彈鍵），不會殘留往一個方向跑 */
+      this.resetTouch = () => {
+        stickId = null; bombId = null; this.stickDir = null; this.stickDir2 = null;
+        this.knob.style.transform = ''; this.stick.classList.remove('down'); this.bombBtn.classList.remove('down'); paintArrows(null);
+        this.refreshDir();
+      };
     }
 
     touchVisible() {
@@ -260,11 +292,14 @@
         const i = this.keys.indexOf(d); if (i >= 0) this.keys.splice(i, 1);
         this.refreshDir();
       };
-      this.onBlur = () => { this.keys = []; this.stickDir = null; this.stickDir2 = null; this.refreshDir(); };
+      this.onBlur = () => { this.keys = []; if (this.resetTouch) this.resetTouch(); else { this.stickDir = null; this.stickDir2 = null; this.refreshDir(); } };
+      this.onHidden = () => { if (document.visibilityState === 'hidden') this.onBlur(); };
       this.onResize = () => this.layout();
       document.addEventListener('keydown', this.onKeyDown);
       document.addEventListener('keyup', this.onKeyUp);
       root.addEventListener('blur', this.onBlur);
+      root.addEventListener('pagehide', this.onBlur);
+      document.addEventListener('visibilitychange', this.onHidden);
       root.addEventListener('resize', this.onResize);
       root.addEventListener('orientationchange', this.onResize);
       if (root.ResizeObserver) { this.ro = new ResizeObserver(() => this.layout()); this.ro.observe(this.main); }
@@ -312,7 +347,7 @@
       this.main.classList.toggle('has-touch', showTouch);
       this.main.classList.toggle('portrait', portrait);
       this.touchEl && this.touchEl.classList.toggle('flip', this.settings.stickSide === 'right');
-      /* 控制鈕大小依裝置（手機／平板 × 直放／橫放）決定，位置見 touchlayout.js：直放留底部、橫放放兩側空位 */
+      /* 控制鈕大小與位置依裝置（手機／平板 × 直放／橫放）決定，見 touchlayout.js */
       const TL = root.TouchLayout;
       this.main.style.setProperty('--gut', '0px'); this.main.style.setProperty('--gut-b', '0px');
       const cs = getComputedStyle(this.main);
@@ -320,16 +355,35 @@
       const baseW = this.main.clientWidth - pad('paddingLeft') - pad('paddingRight');
       const baseH = this.main.clientHeight - pad('paddingTop') - pad('paddingBottom');
       if (baseW < 40 || baseH < 40) return;
-      const plan = TL.plan({ vw: root.innerWidth, vh: root.innerHeight, availW: baseW, availH: baseH, mapW: this.view.w, mapH: this.view.h, touch: showTouch, tile: root.Renderer.tileCss });
-      const rs = this.root.style;      /* 控制鈕實際大小以 plan 為準（橫放空位不夠時會縮小一點） */
-      rs.setProperty('--stick', plan.sizes.stick + 'px'); rs.setProperty('--knob', plan.sizes.knob + 'px'); rs.setProperty('--bomb', plan.sizes.bomb + 'px');
+      const plan = TL.plan({ vw: root.innerWidth, vh: root.innerHeight, availW: baseW, availH: baseH, mapW: this.view.w, mapH: this.view.h, touch: showTouch, scale: this.settings.touchScale, player: this.slot != null, tile: root.Renderer.tileCss });
+      const rs = this.root.style;
+      rs.setProperty('--stick', plan.sizes.stick + 'px'); rs.setProperty('--knob', plan.sizes.knob + 'px'); rs.setProperty('--bomb', plan.sizes.bomb + 'px'); rs.setProperty('--edge', plan.edge + 'px');
+      const op = Number(this.settings.touchOpacity);
+      const idle = Number.isFinite(op) ? Math.max(TL.OPACITY_MIN, Math.min(TL.OPACITY_MAX, op)) : TL.OPACITY_IDLE;
+      rs.setProperty('--tc-op', String(idle)); rs.setProperty('--tc-op-down', String(Math.max(idle, TL.OPACITY_DOWN)));
       this.main.style.setProperty('--gut', plan.gutter + 'px'); this.main.style.setProperty('--gut-b', plan.bottom + 'px');
-      this.touchEl && this.touchEl.classList.toggle('overlay', plan.mode === 'overlay');
+      if (this.touchEl) this.touchEl.dataset.mode = plan.mode;
+      this.rotateEl.hidden = plan.mode !== 'rotate';
+      this.root.classList.toggle('rotate-block', plan.mode === 'rotate');
       this.touchPlan = plan;
       const availW = baseW - 2 * plan.gutter, availH = baseH - plan.bottom;
       if (availW < 40 || availH < 40) return;
-      this.rend.fit(availW, availH, this.view.w, this.view.h);
+      const fit = this.rend.fit(availW, availH, this.view.w, this.view.h);
       this.rend.dirty = true;
+      this.placeHud(fit.tile);
+    }
+
+    /** 把資訊欄對齊棋盤最上面那圈外牆（一格高）；右上角的語言與設定鈕也貼著棋盤右緣 */
+    placeHud(tile) {
+      const mr = this.main.getBoundingClientRect(), br = this.board.getBoundingClientRect();
+      if (!br.width) return;
+      const hh = Math.max(26, Math.round(tile));
+      const ms = this.main.style;
+      ms.setProperty('--hud-h', hh + 'px');
+      ms.setProperty('--hud-x', Math.round(br.left - mr.left) + 'px'); ms.setProperty('--hud-y', Math.round(br.top - mr.top) + 'px'); ms.setProperty('--hud-w', Math.round(br.width) + 'px');
+      const de = document.documentElement.style;
+      de.setProperty('--hud-h', hh + 'px'); de.setProperty('--hud-top', Math.round(br.top) + 'px'); de.setProperty('--hud-r', Math.round(root.innerWidth - br.right) + 'px');
+      document.body.classList.add('in-game');
     }
 
     /* ----- 每格畫面 ----- */
@@ -540,6 +594,10 @@
       document.removeEventListener('keydown', this.onKeyDown);
       document.removeEventListener('keyup', this.onKeyUp);
       root.removeEventListener('blur', this.onBlur);
+      root.removeEventListener('pagehide', this.onBlur);
+      document.removeEventListener('visibilitychange', this.onHidden);
+      for (const k of ['--hud-top', '--hud-r', '--hud-h']) document.documentElement.style.removeProperty(k);
+      document.body.classList.remove('in-game');
       root.removeEventListener('resize', this.onResize);
       root.removeEventListener('orientationchange', this.onResize);
       if (this.ro) this.ro.disconnect();

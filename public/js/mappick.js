@@ -24,7 +24,7 @@
   function paintMap(canvas, themeId, layout, seed, T, size) {
     const tid = themeId < 0 ? seed % R.THEME_COUNT : themeId;
     const lay = tid === R.FAB_THEME ? 'fab' : (layout === 'random' || layout === 'fab' ? R.RANDOM_LAYOUTS[seed % R.RANDOM_LAYOUTS.length] : layout);
-    const w = size ? size.w : 15, hh = size ? size.h : 13;
+    const sz = size || R.sizeFor(1), w = sz.w, hh = sz.h;      /* 預覽用小圖（≤4 人）的長方形尺寸 */
     const grid = R.generateMap(seed, w, hh, lay);
     const fx = R.generateFx(seed, w, hh, grid, tid, lay);
     const ts = tiles(tid, T);
@@ -47,11 +47,12 @@
 
   /** 「隨機」主題的縮圖：彩色拼貼加問號 */
   function paintRandom(canvas, T) {
-    canvas.width = 15 * T; canvas.height = 13 * T;
+    const sz = R.sizeFor(1), cw = sz.w, ch = sz.h;
+    canvas.width = cw * T; canvas.height = ch * T;
     const g = canvas.getContext('2d');
     const cols = Art.THEMES.map(t => t.floorA);
     const bars = ['#ff8fc4', '#7fe3ff', '#ffe03d', '#8be08a', '#b99bff', '#ff9a3c'];
-    for (let y = 0; y < 13; y++) for (let x = 0; x < 15; x++) {
+    for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) {
       g.fillStyle = cols[(x * 3 + y * 5) % cols.length]; g.fillRect(x * T, y * T, T, T);
       if ((x * 7 + y * 11) % 5 === 0) { g.fillStyle = bars[(x + y) % bars.length]; g.fillRect(x * T + 1, y * T + 1, T - 2, T - 2); }
     }

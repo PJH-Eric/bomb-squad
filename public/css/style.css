@@ -238,10 +238,10 @@ body.calm *, body.calm *::before, body.calm *::after { animation: none !importan
 /* ---------- 對戰畫面 ---------- */
 .game { position: absolute; inset: 0; display: flex; background: var(--stage, #ffd9ec); transition: background .3s; overflow: hidden; }
 .game-side {
-  flex: none; width: clamp(230px, 24vw, 300px); display: flex; flex-direction: column; gap: 10px; padding: calc(10px + var(--safe-t)) 10px calc(10px + var(--safe-b)) calc(10px + var(--safe-l));
+  position: absolute; top: 0; bottom: 0; left: 0; width: min(86vw, 330px); transform: translateX(0); transition: transform .2s; display: flex; flex-direction: column; gap: 10px; padding: calc(10px + var(--safe-t)) 10px calc(10px + var(--safe-b)) calc(10px + var(--safe-l));
   background: rgba(255, 255, 255, .86); backdrop-filter: blur(6px); border-right: 3px solid #fff; box-shadow: 4px 0 18px rgba(90, 50, 140, .14); z-index: 20; min-height: 0;
 }
-.game.side-closed .game-side { display: none; }
+.game.side-closed .game-side { transform: translateX(-105%); box-shadow: none; visibility: hidden; transition: transform .2s, visibility 0s .2s; }
 .side-head { display: flex; align-items: center; gap: 8px; }
 .side-head h3 { flex: 1; font-size: 1.05rem; font-weight: 900; }
 .map-info { margin: -2px 0 2px; padding: 4px 12px; border-radius: 999px; background: #f4ecff; color: var(--grape-d); font-size: .8rem; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* 真正的一行：放不下就用刪節號 */
@@ -265,38 +265,44 @@ body.calm *, body.calm *::before, body.calm *::after { animation: none !importan
 .side-chat { display: flex; flex-direction: column; min-height: 0; flex: 1 1 0; margin-top: auto; }
 .side-chat .chat-log { max-height: none; flex: 1; min-height: 70px; }
 .game { --stick: 150px; --knob: 64px; --bomb: 100px; }   /* 控制鈕大小由 game.js 依裝置設定（見 touchlayout.js） */
-.game-main { position: relative; flex: 1 1 auto; min-width: 0; display: flex; align-items: center; justify-content: center; padding: calc(60px + var(--safe-t)) calc(8px + var(--safe-r) + var(--gut, 0px)) calc(8px + var(--safe-b) + var(--gut-b, 0px)) calc(8px + var(--safe-l) + var(--gut, 0px)); }
+.game-main { position: relative; flex: 1 1 auto; min-width: 0; display: flex; align-items: center; justify-content: center; padding: calc(8px + var(--safe-t)) calc(8px + var(--safe-r) + var(--gut, 0px)) calc(8px + var(--safe-b) + var(--gut-b, 0px)) calc(8px + var(--safe-l) + var(--gut, 0px)); }
 .board { position: relative; border-radius: 14px; overflow: hidden; box-shadow: 0 0 0 5px #fff, 0 12px 30px rgba(60, 30, 100, .3); line-height: 0; }
 .board canvas { display: block; touch-action: none; }
-.hud { position: absolute; z-index: 15; top: calc(8px + var(--safe-t)); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; max-width: calc(100% - 140px); flex-wrap: wrap; justify-content: center; pointer-events: none; }
-.hud-timer { background: #fff; border-radius: 999px; padding: 4px 16px; font-weight: 900; font-size: 1.35rem; box-shadow: 0 4px 0 var(--line), 0 8px 14px rgba(60, 30, 100, .16); min-width: 5em; text-align: center; font-variant-numeric: tabular-nums; }
+/* 資訊欄：貼在棋盤最上面那圈外牆（位置、寬度、高度由 game.js 的 placeHud 設成 --hud-x／--hud-y／--hud-w／--hud-h）。左：側欄開關與選單／暫停；中：計時與玩家頭像；右：線上延遲，再右邊是全域的語言與設定鈕 */
+.hud { position: absolute; z-index: 15; left: var(--hud-x, 0); top: var(--hud-y, 0); width: var(--hud-w, 100%); height: var(--hud-h, 32px); display: flex; align-items: center; gap: 6px; padding: 0 4px; box-sizing: border-box; pointer-events: none; }
+.hud-l, .hud-r { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
+.hud-r { margin-left: auto; padding-right: calc(var(--hud-h, 32px) * 2 + 10px); }       /* 右邊讓出語言鈕與設定鈕 */
+.hud-c { flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.hud .icon-btn { width: calc(var(--hud-h, 32px) - 4px); height: calc(var(--hud-h, 32px) - 4px); pointer-events: auto; box-shadow: 0 2px 0 #cdbfe6; }
+.hud .icon-btn svg { width: 62%; height: 62%; }
+.hud-timer { background: #fff; border-radius: 999px; padding: 0 12px; line-height: calc(var(--hud-h, 32px) - 6px); font-weight: 900; font-size: calc(var(--hud-h, 32px) * .5); box-shadow: 0 2px 0 var(--line); min-width: 4.2em; text-align: center; font-variant-numeric: tabular-nums; flex: 0 0 auto; }
 .hud-timer.low { background: #ffe1e1; color: var(--red-d); animation: pulse .8s infinite; }
-.hud-chips { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; }
-.hud-chip { background: #fff; border-radius: 999px; padding: 2px 8px 2px 2px; display: inline-flex; align-items: center; gap: 4px; font-weight: 900; font-size: .85rem; box-shadow: 0 3px 0 var(--line); border: 3px solid transparent; }
+.hud-chips { display: flex; gap: 3px; flex-wrap: nowrap; justify-content: center; min-width: 0; }
+.hud-chip { background: #fff; border-radius: 999px; padding: 1px 6px 1px 1px; display: inline-flex; align-items: center; gap: 2px; font-weight: 900; font-size: calc(var(--hud-h, 32px) * .36); box-shadow: 0 2px 0 var(--line); border: 2px solid transparent; flex: 0 1 auto; min-width: 0; line-height: 1; }
+.hud-chip .avatar { width: calc(var(--hud-h, 32px) - 10px) !important; height: calc(var(--hud-h, 32px) - 10px) !important; }
 .hud-chip.dead { opacity: .4; filter: grayscale(.8); }
 .hud-chip.me { border-color: var(--grape); }
-.side-toggle { position: absolute; z-index: 30; top: calc(10px + var(--safe-t)); left: calc(10px + var(--safe-l)); }
+.side-toggle { position: relative; display: grid; }
 .side-toggle .badge { position: absolute; top: -4px; right: -4px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; background: var(--red); color: #fff; font-size: .74rem; font-weight: 900; display: grid; place-items: center; box-shadow: 0 2px 0 var(--red-d); }
-.game.side-closed .side-toggle, .game .side-toggle { display: grid; }
-.game:not(.side-closed) .side-toggle.on-wide { display: none; }
+.game:not(.side-closed) .side-toggle { display: none; }
 .spec-tag { position: absolute; z-index: 15; bottom: calc(10px + var(--safe-b)); left: 50%; transform: translateX(-50%); background: #fff; padding: 4px 16px; border-radius: 999px; font-weight: 900; box-shadow: 0 4px 0 var(--line); color: var(--grape-d); pointer-events: none; }
 .ghost-msg { position: absolute; z-index: 15; bottom: calc(10px + var(--safe-b)); left: 50%; transform: translateX(-50%); background: rgba(255, 255, 255, .92); padding: 4px 16px; border-radius: 999px; font-weight: 800; box-shadow: 0 4px 0 var(--line); pointer-events: none; }
 
 /* 觸控按鍵 */
-.touch { position: absolute; z-index: 18; bottom: calc(24px + var(--safe-b)); left: 0; right: 0; display: flex; justify-content: space-between; align-items: flex-end; padding: 0 calc(20px + var(--safe-r)) 0 calc(20px + var(--safe-l)); pointer-events: none; }
+.touch { position: absolute; z-index: 18; bottom: calc(var(--edge, 20px) + var(--safe-b)); left: 0; right: 0; display: flex; justify-content: space-between; align-items: flex-end; padding: 0 calc(var(--edge, 20px) + var(--safe-r)) 0 calc(var(--edge, 20px) + var(--safe-l)); pointer-events: none; }   /* 搖桿在左下、炸彈鍵在右下；邊距手機 20px、平板 32px（另加安全區） */
 .touch.flip { flex-direction: row-reverse; }
-.stick { position: relative; width: var(--stick); height: var(--stick); border-radius: 50%; pointer-events: auto; touch-action: none; background: radial-gradient(circle, rgba(255, 255, 255, .55) 0, rgba(255, 255, 255, .3) 70%); box-shadow: inset 0 0 0 4px rgba(255, 255, 255, .8), 0 8px 18px rgba(60, 30, 100, .22); opacity: .85; }
-.stick .arrow { position: absolute; width: 0; height: 0; border: 10px solid transparent; opacity: .75; }
+.stick { position: relative; width: var(--stick); height: var(--stick); border-radius: 50%; pointer-events: auto; touch-action: none; background: radial-gradient(circle, rgba(255, 255, 255, .55) 0, rgba(255, 255, 255, .3) 70%); box-shadow: inset 0 0 0 4px rgba(255, 255, 255, .8), 0 8px 18px rgba(60, 30, 100, .22); opacity: var(--tc-op, .45); transition: opacity .12s; }
+.stick.down, .bomb-btn.down { opacity: var(--tc-op-down, .8); }
+.stick .arrow { position: absolute; width: 0; height: 0; border: 10px solid transparent; opacity: .35; transition: opacity .08s; }
+.stick .arrow.on { opacity: 1; filter: drop-shadow(0 0 4px #fff); }
 .stick .arrow.u { top: 6px; left: 50%; margin-left: -10px; border-bottom-color: var(--grape-d); border-top-width: 0; }
 .stick .arrow.d { bottom: 6px; left: 50%; margin-left: -10px; border-top-color: var(--grape-d); border-bottom-width: 0; }
 .stick .arrow.l { left: 6px; top: 50%; margin-top: -10px; border-right-color: var(--grape-d); border-left-width: 0; }
 .stick .arrow.r { right: 6px; top: 50%; margin-top: -10px; border-left-color: var(--grape-d); border-right-width: 0; }
 .stick .knob { position: absolute; left: 50%; top: 50%; width: var(--knob); height: var(--knob); margin: calc(var(--knob) / -2) 0 0 calc(var(--knob) / -2); border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, var(--grape) 80%); box-shadow: 0 5px 0 var(--grape-d), 0 10px 16px rgba(60, 30, 100, .3); }
-.bomb-btn { pointer-events: auto; touch-action: none; width: var(--bomb); height: var(--bomb); border-radius: 50%; border: 0; display: grid; place-items: center; cursor: pointer; background: radial-gradient(circle at 35% 28%, #ffd0e4, var(--pink) 60%); box-shadow: 0 7px 0 var(--pink-d), 0 14px 22px rgba(60, 30, 100, .3), inset 0 3px 0 rgba(255, 255, 255, .5); opacity: .92; }
+.bomb-btn { pointer-events: auto; touch-action: none; width: var(--bomb); height: var(--bomb); border-radius: 50%; border: 0; display: grid; place-items: center; cursor: pointer; background: radial-gradient(circle at 35% 28%, #ffd0e4, var(--pink) 60%); box-shadow: 0 7px 0 var(--pink-d), 0 14px 22px rgba(60, 30, 100, .3), inset 0 3px 0 rgba(255, 255, 255, .5); opacity: var(--tc-op, .45); transition: opacity .12s; }
 .bomb-btn:active, .bomb-btn.down { transform: translateY(5px); box-shadow: 0 2px 0 var(--pink-d), 0 6px 10px rgba(60, 30, 100, .3); }
 .bomb-btn img { width: calc(var(--bomb) * .6); height: calc(var(--bomb) * .6); pointer-events: none; }
-/* 橫放而兩側空位不夠時，控制鈕疊在地圖邊緣：改半透明，少擋一點 */
-.touch.overlay .stick { opacity: .55; } .touch.overlay .bomb-btn { opacity: .7; }
 
 /* ---------- 彈窗 ---------- */
 .mask { position: fixed; inset: 0; z-index: 100; background: rgba(60, 30, 100, .45); display: flex; align-items: center; justify-content: center; padding: calc(12px + var(--safe-t)) calc(12px + var(--safe-r)) calc(12px + var(--safe-b)) calc(12px + var(--safe-l)); backdrop-filter: blur(3px); animation: fade .15s; }
@@ -333,11 +339,6 @@ body.calm *, body.calm *::before, body.calm *::after { animation: none !importan
 
 /* ---------- 響應式 ---------- */
 @media (max-width: 860px), (max-aspect-ratio: 1/1) {
-  .game-side { position: absolute; top: 0; bottom: 0; left: 0; width: min(86vw, 330px); transform: translateX(0); transition: transform .2s; }
-  .game.side-closed .game-side { display: flex; transform: translateX(-105%); box-shadow: none; visibility: hidden; transition: transform .2s, visibility 0s .2s; }
-  .game-main { padding-top: calc(58px + var(--safe-t)); }
-  .side-toggle.on-wide { display: grid !important; }
-  .game:not(.side-closed) .side-toggle.on-wide { display: none !important; }
   .room-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 560px) {
@@ -345,7 +346,6 @@ body.calm *, body.calm *::before, body.calm *::after { animation: none !importan
   .btn-lg { min-height: 58px; font-size: 1.15rem; }
   .field > .label { min-width: 100%; }
   .field > .ctl { justify-content: flex-start; }
-  .hud-timer { font-size: 1.1rem; padding: 2px 12px; }
 }
 @media (max-height: 460px) and (orientation: landscape) {
   .home { gap: 8px; flex-direction: row; justify-content: center; flex-wrap: wrap; }
@@ -470,8 +470,6 @@ body {
 .ai-row { min-width: 0; }
 .ai-row .name { white-space: nowrap; }
 .ai-row .seg { margin-left: auto; }
-.hud { flex-wrap: nowrap; }
-.hud-chips { flex-wrap: nowrap; }
 .hud-chip { flex: 0 1 auto; min-width: 0; }
 .sum-row .kills { white-space: nowrap; }
 .stat small { white-space: nowrap; }
@@ -504,13 +502,7 @@ body {
   .card { padding: 14px 12px; }
   .room-item { padding: 10px; gap: 8px; }
   .room-item .row .btn { padding-left: 12px; padding-right: 12px; }
-  .hud { flex-direction: column; gap: 4px; max-width: calc(100% - 128px); width: calc(100% - 128px); }
-  .hud-chips { gap: 3px; max-width: 100vw; justify-content: center; }
-  .hud-chip { padding: 1px 6px 1px 1px; font-size: .74rem; gap: 2px; border-width: 2px; }
-  .hud-chip .avatar { width: 20px !important; height: 20px !important; }
-  .game-main { padding-top: calc(86px + var(--safe-t)); }
 }
-@media (max-width: 560px) and (orientation: landscape) { .game-main { padding-top: calc(60px + var(--safe-t)); } .hud { flex-direction: row; width: auto; } }
 @media (max-width: 400px) { .topbar h2 { font-size: 1.15rem; } .hero-sub { font-size: .92rem; } }
 /* 房間標題：寬螢幕和代號同一行；窄螢幕代號換到下一行，房名才不會被擠成一個字 */
 .room-head { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
@@ -555,15 +547,11 @@ body {
 .sc-hide.can-l.can-r { -webkit-mask-image: linear-gradient(to right, transparent, #000 22px, #000 calc(100% - 22px), transparent); mask-image: linear-gradient(to right, transparent, #000 22px, #000 calc(100% - 22px), transparent); }
 
 /* 對局中的離開／暫停鈕 */
-.exit-btn { position: absolute; z-index: 30; top: calc(66px + var(--safe-t)); left: calc(10px + var(--safe-l)); }
+.exit-btn { position: relative; }
 .game:not(.side-closed) .exit-btn { display: none; }
 .exit-in { margin-left: auto; margin-right: 6px; }
 /* 線上延遲：設定鈕下方的輕巧狀態徽章，不遮住右上角工具。 */
 .ping {
-  position: absolute;
-  z-index: 30;
-  top: calc(64px + var(--safe-t));
-  right: calc(12px + var(--safe-r));
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -596,8 +584,6 @@ body {
 .ping.mid::before { background: #ff9a3c; box-shadow: 0 0 0 1px #bd7110, 0 0 6px #ff9a3c88; }
 .ping.bad { color: #bd3434; }
 .ping.bad::before { background: #ff4d4d; box-shadow: 0 0 0 1px #b52d36, 0 0 6px #ff4d4d88; }
-@media (min-width: 861px) and (min-aspect-ratio: 1/1) { .game.side-closed .exit-btn { top: calc(66px + var(--safe-t)); } }
-@media (max-width: 560px) and (orientation: landscape) { .exit-btn { top: calc(62px + var(--safe-t)); } }
 
 /* 網格欄位不可被內容撐寬（否則手機上右側會被切掉） */
 .room-grid { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
@@ -665,7 +651,7 @@ body {
 .map-btn { display: flex; align-items: center; gap: 10px; width: 100%; min-width: 0; padding: 6px 12px 6px 6px; font: inherit; color: #17122b; text-align: left; background: #fffdf3; border: 3px solid #17122b; border-radius: 14px; box-shadow: 3px 3px 0 #17122b; cursor: pointer; }
 .map-btn:hover:not(:disabled) { background: #fff6bd; }
 .map-btn:active:not(:disabled) { transform: translate(3px, 3px); box-shadow: none; }
-.map-thumb { width: 64px; height: auto; aspect-ratio: 15 / 13; border-radius: 8px; border: 2px solid #17122b; flex: 0 0 auto; image-rendering: auto; }
+.map-thumb { width: 64px; height: auto; aspect-ratio: 21 / 11; border-radius: 8px; border: 2px solid #17122b; flex: 0 0 auto; image-rendering: auto; }
 .map-btn-txt { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
 .map-btn-txt b { font-weight: 900; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .map-btn-txt small { color: #5b5378; font-weight: 700; font-size: .78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -673,7 +659,7 @@ body {
 .dialog.map-dialog { width: min(760px, 100%); }
 .map-pick { display: grid; gap: 10px; min-width: 0; }
 .map-preview { display: grid; gap: 8px; justify-items: center; padding: 10px; background: #f3edff; border: 3px solid #17122b; border-radius: 16px; }
-.map-big { width: min(100%, 420px); height: auto; aspect-ratio: 15 / 13; border: 3px solid #17122b; border-radius: 10px; box-shadow: 3px 3px 0 #17122b; }
+.map-big { width: min(100%, 420px); height: auto; aspect-ratio: 21 / 11; border: 3px solid #17122b; border-radius: 10px; box-shadow: 3px 3px 0 #17122b; }
 .map-preview-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; min-width: 0; }
 .map-preview-bar .btn { flex: 0 0 auto; }
 .map-fx { display: flex; gap: 10px; align-items: flex-start; padding: 10px; background: #fff; border: 3px solid #17122b; border-radius: 14px; min-width: 0; }
@@ -687,7 +673,7 @@ body {
 .map-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px; }
 .map-card { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 4px; padding: 5px; font: inherit; color: #17122b; background: #fff; border: 3px solid #17122b; border-radius: 12px; box-shadow: 2px 2px 0 #17122b; cursor: pointer; min-width: 0; }
 .map-card:hover { background: #fff6bd; }
-.map-card-cv { width: 100%; height: auto; aspect-ratio: 15 / 13; border-radius: 7px; border: 2px solid #17122b; }
+.map-card-cv { width: 100%; height: auto; aspect-ratio: 21 / 11; border-radius: 7px; border: 2px solid #17122b; }
 .map-card-name { font-weight: 900; font-size: .9rem; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .map-card-ok { display: none; position: absolute; top: -8px; right: -8px; width: 24px; height: 24px; border-radius: 50%; background: #ffe03d; border: 3px solid #17122b; }
 .map-card-ok::after { content: ""; position: absolute; left: 6px; top: 2px; width: 5px; height: 10px; border-right: 3px solid #17122b; border-bottom: 3px solid #17122b; transform: rotate(45deg); }
@@ -701,3 +687,18 @@ body {
 .map-lay[aria-checked="true"] small { color: #e8e4f7; }
 .map-card:focus-visible, .map-lay:focus-visible, .map-btn:focus-visible { outline: 3px solid #8b5cff; outline-offset: 2px; }
 @media (max-width: 560px) { .map-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .map-card-name { font-size: .8rem; } .map-thumb { width: 52px; } }
+
+
+/* 手機直放：請橫向遊玩的遮罩（觀戰者不會出現）；玩家場上照常進行，所以只蓋畫面、不暫停 */
+.rotate-mask { position: absolute; inset: 0; z-index: 90; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px; text-align: center; background: rgba(23, 18, 43, .94); color: #fff; font-weight: 900; font-size: 1.3rem; }
+.rotate-mask[hidden] { display: none; }
+.rotate-mask .rotate-ico { display: inline-grid; place-items: center; color: #ffe03d; animation: rotate-tip 1.8s ease-in-out infinite; }
+@keyframes rotate-tip { 0%, 30% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
+/* 遊戲中語言鈕與設定鈕（i18n.js 把它們包在 .language-controls 裡）縮到跟資訊欄同高，貼著棋盤右上角（--hud-top／--hud-r／--hud-h 由 game.js 設定） */
+body.in-game .language-controls { top: var(--hud-top, 10px) !important; right: var(--hud-r, 12px) !important; gap: 0 !important; }
+body.in-game .language-controls > .lang-toggle, body.in-game .language-controls > .gear { width: calc(var(--hud-h, 48px) - 4px) !important; height: calc(var(--hud-h, 48px) - 4px) !important; min-width: 0 !important; min-height: 0 !important; flex: 0 0 auto !important; margin: 2px !important; }
+body.in-game .language-controls > .lang-toggle { border-width: 2px; border-radius: 10px; box-shadow: 0 2px 0 #17122b; }
+body.in-game .language-controls > .gear { box-shadow: 0 2px 0 #17122b; }
+body.in-game .language-controls > .gear svg, body.in-game .language-controls > .lang-toggle > svg { width: 62%; height: 62%; transform: none !important; }
+.hud-timer, .hud-chip { border-width: 2px; box-shadow: 2px 2px 0 #17122b; }
+.hud .icon-btn { box-shadow: 0 2px 0 #17122b; }

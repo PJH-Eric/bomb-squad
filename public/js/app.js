@@ -392,12 +392,15 @@
       const assistSw = toggle({ label: tr('settings.assist'), value: st.colorAssist, onChange: v => { st.colorAssist = v; save(); } });
       const touchSeg = seg({ label: tr('settings.touch'), options: [{ v: 'auto', label: tr('settings.auto') }, { v: 'on', label: tr('settings.show') }, { v: 'off', label: tr('settings.hide') }], value: st.touchMode, onChange: v => { st.touchMode = v; save(); App.game && App.game.layout(); } });
       const sideSeg = seg({ label: tr('settings.stick'), options: [{ v: 'left', label: tr('settings.left') }, { v: 'right', label: tr('settings.right') }], value: st.stickSide, onChange: v => { st.stickSide = v; save(); App.game && App.game.layout(); } });
+      const scaleSeg = seg({ label: tr('settings.touchScale'), cls: 'small', options: [0.8, 0.9, 1, 1.1, 1.2, 1.3].map(v => ({ v, label: '×' + v })), value: st.touchScale, onChange: v => { st.touchScale = v; save(); App.game && App.game.layout(); } });
+      const opacitySeg = seg({ label: tr('settings.touchOpacity'), cls: 'small', options: [0.3, 0.45, 0.6, 0.8].map(v => ({ v, label: Math.round(v * 100) + '%' })), value: st.touchOpacity, onChange: v => { st.touchOpacity = v; save(); App.game && App.game.layout(); } });
       const f = (label, ctl, hint) => h('div', { class: 'field' }, h('span', { class: 'label' }, label, hint ? h('span', { class: 'muted small' }, hint) : null), h('div', { class: 'ctl' }, ctl));
       const body = h('div', null,
         h('h3', { style: { margin: '4px 0' } }, tr('settings.sound')),
         f(tr('settings.bgm'), [bgmSw, bgmVol]), f(tr('settings.sfx'), [sfxSw, sfxVol]),
         h('h3', { style: { margin: '10px 0 4px' } }, tr('settings.controls')),
         f(tr('settings.touch'), touchSeg), f(tr('settings.stick'), sideSeg),
+        f(tr('settings.touchScale'), scaleSeg), f(tr('settings.touchOpacity'), opacitySeg),
         navigator.vibrate ? f(tr('settings.vibrate'), vibSw) : null,
         f(tr('settings.calm'), calmSw), f(tr('settings.assist'), assistSw),
         h('p', { class: 'muted small' }, tr('settings.assistNote')));
