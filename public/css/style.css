@@ -651,7 +651,7 @@ body {
 .map-btn { display: flex; align-items: center; gap: 10px; width: 100%; min-width: 0; padding: 6px 12px 6px 6px; font: inherit; color: #17122b; text-align: left; background: #fffdf3; border: 3px solid #17122b; border-radius: 14px; box-shadow: 3px 3px 0 #17122b; cursor: pointer; }
 .map-btn:hover:not(:disabled) { background: #fff6bd; }
 .map-btn:active:not(:disabled) { transform: translate(3px, 3px); box-shadow: none; }
-.map-thumb { width: 64px; height: auto; aspect-ratio: 21 / 11; border-radius: 8px; border: 2px solid #17122b; flex: 0 0 auto; image-rendering: auto; }
+.map-thumb { width: 64px; height: auto; aspect-ratio: 23 / 11; border-radius: 8px; border: 2px solid #17122b; flex: 0 0 auto; image-rendering: auto; }
 .map-btn-txt { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
 .map-btn-txt b { font-weight: 900; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .map-btn-txt small { color: #5b5378; font-weight: 700; font-size: .78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -659,7 +659,7 @@ body {
 .dialog.map-dialog { width: min(760px, 100%); }
 .map-pick { display: grid; gap: 10px; min-width: 0; }
 .map-preview { display: grid; gap: 8px; justify-items: center; padding: 10px; background: #f3edff; border: 3px solid #17122b; border-radius: 16px; }
-.map-big { width: min(100%, 420px); height: auto; aspect-ratio: 21 / 11; border: 3px solid #17122b; border-radius: 10px; box-shadow: 3px 3px 0 #17122b; }
+.map-big { width: min(100%, 420px); height: auto; aspect-ratio: 23 / 11; border: 3px solid #17122b; border-radius: 10px; box-shadow: 3px 3px 0 #17122b; }
 .map-preview-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; min-width: 0; }
 .map-preview-bar .btn { flex: 0 0 auto; }
 .map-fx { display: flex; gap: 10px; align-items: flex-start; padding: 10px; background: #fff; border: 3px solid #17122b; border-radius: 14px; min-width: 0; }
@@ -673,7 +673,7 @@ body {
 .map-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px; }
 .map-card { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 4px; padding: 5px; font: inherit; color: #17122b; background: #fff; border: 3px solid #17122b; border-radius: 12px; box-shadow: 2px 2px 0 #17122b; cursor: pointer; min-width: 0; }
 .map-card:hover { background: #fff6bd; }
-.map-card-cv { width: 100%; height: auto; aspect-ratio: 21 / 11; border-radius: 7px; border: 2px solid #17122b; }
+.map-card-cv { width: 100%; height: auto; aspect-ratio: 23 / 11; border-radius: 7px; border: 2px solid #17122b; }
 .map-card-name { font-weight: 900; font-size: .9rem; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .map-card-ok { display: none; position: absolute; top: -8px; right: -8px; width: 24px; height: 24px; border-radius: 50%; background: #ffe03d; border: 3px solid #17122b; }
 .map-card-ok::after { content: ""; position: absolute; left: 6px; top: 2px; width: 5px; height: 10px; border-right: 3px solid #17122b; border-bottom: 3px solid #17122b; transform: rotate(45deg); }
