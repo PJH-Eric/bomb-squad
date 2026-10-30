@@ -702,3 +702,5 @@ body.in-game .language-controls > .gear { box-shadow: 0 2px 0 #17122b; }
 body.in-game .language-controls > .gear svg, body.in-game .language-controls > .lang-toggle > svg { width: 62%; height: 62%; transform: none !important; }
 .hud-timer, .hud-chip { border-width: 2px; box-shadow: 2px 2px 0 #17122b; }
 .hud .icon-btn { box-shadow: 0 2px 0 #17122b; }
+/* 側欄收起時（移到畫面外、visibility:hidden），它的自訂捲軸滑軌是同層元素，要一起藏起來，不然會留一條黃色直條在畫面中間 */
+.game.side-closed > .sc-track { visibility: hidden; pointer-events: none; }

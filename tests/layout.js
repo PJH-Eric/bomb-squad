@@ -367,6 +367,11 @@ test('game.js／style.css 用的是 touchlayout 的變數，沒有殘留寫死�
   const game = fs.readFileSync(path.join(__dirname, '../public/js/game.js'), 'utf8');
   assert(/TouchLayout/.test(game) && /Renderer\.tileCss/.test(game));
 });
+test('側欄收起時，它的自訂捲軸滑軌也要藏起來（不然畫面中間會多一條黃色直條）', () => {
+  const css = fs.readFileSync(path.join(__dirname, '../public/css/style.css'), 'utf8');
+  assert(css.includes('.game.side-closed > .sc-track { visibility: hidden'));
+  assert(fs.readFileSync(path.join(__dirname, '../public/js/scroll.js'), 'utf8').includes('.game-side'), 'scroll.js 仍會替 .game-side 掛滑軌，所以 CSS 這條不能少');
+});
 test('多點觸控基礎：搖桿與炸彈鍵各自記錄 pointerId、用 Pointer Events（不是 touch*）、頁面隱藏與 pagehide 會完整重置', () => {
   const game = fs.readFileSync(path.join(__dirname, '../public/js/game.js'), 'utf8');
   assert(/let stickId = null, bombId = null/.test(game) && /e\.pointerId !== bombId/.test(game) && /if \(stickId !== null\) return/.test(game));
