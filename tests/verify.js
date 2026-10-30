@@ -39,6 +39,22 @@ test('地圖尺寸：≤4 人 21×11，5～8 人 25×13', () => {
   assert.deepStrictEqual(R.sizeFor(5), { w: 25, h: 13 });
   assert.deepStrictEqual(R.sizeFor(8), { w: 25, h: 13 });
 });
+test('2 人固定對角出生（兩組對角都會出現）；3～4 人、5～8 人沿用洗牌、出生點不重複', () => {
+  const seen = new Set();
+  for (let seed = 1; seed <= 200; seed++) {
+    const g = mk(2, { seed }), [a, b] = g.players, w = g.w, h = g.h;
+    const ax = Math.floor(a.x), ay = Math.floor(a.y), bx = Math.floor(b.x), by = Math.floor(b.y);
+    assert(ax !== bx && ay !== by, '2 人必須在對角：' + [ax, ay, bx, by]);
+    assert([1, w - 2].includes(ax) && [1, h - 2].includes(ay) && [1, w - 2].includes(bx) && [1, h - 2].includes(by), '2 人只用四個角');
+    assert.strictEqual(ax + bx, w - 1); assert.strictEqual(ay + by, h - 1);     /* 兩人互相鏡射，位置對稱公平 */
+    seen.add(ax + ',' + ay + '/' + bx + ',' + by);
+  }
+  assert.strictEqual(seen.size, 4, '兩組對角、先後順序都要出現：' + [...seen]);
+  for (const n of [3, 4, 5, 8]) for (let seed = 1; seed <= 50; seed++) {
+    const g = mk(n, { seed }), pts = g.players.map(p => Math.floor(p.x) + ',' + Math.floor(p.y));
+    assert.strictEqual(new Set(pts).size, n, n + ' 人出生點不能重複');
+  }
+});
 test('同一個 seed 產生同一張地圖，不同 seed 不同', () => {
   const a = R.generateMap(5, 21, 11, 'classic'), b = R.generateMap(5, 21, 11, 'classic'), c = R.generateMap(6, 21, 11, 'classic');
   assert.deepStrictEqual(a, b);

@@ -16,40 +16,38 @@ function test(name, fn) {
   try { fn(); passed++; console.log('  ✓ ' + name); } catch (e) { failed.push(name); console.log('  ✗ ' + name + '\n      ' + (e && e.message)); }
 }
 
-const OLD = { small: { w: 15, h: 13 }, large: { w: 17, h: 15 } };      /* 改版前的格數 */
+const OLD = { small: { w: 17, h: 13 }, large: { w: 19, h: 15 } };      /* 改版前（方形）的格數 */
 const LAYOUTS = R.LAYOUTS;
 const SEEDS = 60;
 
-/** 各種裝置上，對局畫面留給地圖的可用空間（CSS 像素）：已扣掉頂端計時列、觸控搖桿與邊距 */
+/** 各種裝置上，對局畫面留給地圖的可用空間（CSS 像素）：資訊欄在棋盤上方外牆圈裡，所以只扣 8px 邊距。手機直放改為遮罩，不在此列 */
 const VIEWPORTS = [
-  { name: '手機直放', availW: 374, availH: 540 },
-  { name: '手機橫放', availW: 828, availH: 322 },
-  { name: '平板直放', availW: 804, availH: 902 },
-  { name: '平板橫放', availW: 1164, availH: 752 },
-  { name: '桌機', availW: 1084, availH: 832 }
+  { name: '手機橫放', availW: 828, availH: 374 },
+  { name: '平板直放', availW: 804, availH: 1164 },
+  { name: '平板橫放', availW: 1164, availH: 804 },
+  { name: '桌機', availW: 1424, availH: 884 }
 ];
 
 console.log('地圖尺寸');
-test('≤4 人用小圖 17×13，5～8 人用大圖 19×15，而且都是奇數（才有中心行列、才能左右上下對稱）', () => {
+test('≤4 人用小圖 21×11，5～8 人用大圖 25×13（長方形），而且都是奇數（才有中心行列、才能左右上下對稱）', () => {
   for (let n = 1; n <= 8; n++) {
     const z = R.sizeFor(n);
-    const want = n <= 4 ? { w: 17, h: 13 } : { w: 19, h: 15 };
+    const want = n <= 4 ? { w: 21, h: 11 } : { w: 25, h: 13 };
     assert.deepStrictEqual(z, want, n + ' 人');
     assert.strictEqual(z.w % 2, 1); assert.strictEqual(z.h % 2, 1);
   }
 });
-test('格子數盡量多：長寬都不少於最初（15×13／17×15），小圖 221 格、大圖 285 格', () => {
+test('長方形且格子夠多：寬比高多，內部格數小圖 171（原 165）、大圖 253（原 221），人多的地圖比較大', () => {
   const small = R.sizeFor(2), large = R.sizeFor(8);
-  assert(small.w >= OLD.small.w && small.h >= OLD.small.h, '小圖不能比最初小：' + small.w + '×' + small.h);
-  assert(large.w >= OLD.large.w && large.h >= OLD.large.h, '大圖不能比最初小：' + large.w + '×' + large.h);
-  assert(small.w * small.h >= OLD.small.w * OLD.small.h * 1.1, '小圖格數：' + small.w * small.h);
-  assert(large.w * large.h >= OLD.large.w * OLD.large.h * 1.1, '大圖格數：' + large.w * large.h);
+  assert(small.w > small.h && large.w > large.h, '要是橫向的長方形');
+  assert.strictEqual((small.w - 2) * (small.h - 2), 171); assert.strictEqual((large.w - 2) * (large.h - 2), 253);
   assert(large.w * large.h > small.w * small.h, '人多的地圖要比人少的大');
   assert(small.w * small.h >= 2 * 8 * 4 && large.w * large.h >= 8 * 8 * 3, '格子總數要夠 8 人出生點、軟磚與走位');
+  assert(R.isLargeMap(large.w) && !R.isLargeMap(small.w), '大圖旗標以寬度判斷');
 });
 test('sizeFor 每次回傳新物件，改動回傳值不會污染常數', () => {
   const a = R.sizeFor(2); a.w = 99;
-  assert.strictEqual(R.sizeFor(2).w, 17);
+  assert.strictEqual(R.sizeFor(2).w, 21);
 });
 test('出生點數量：小圖 4 個（四個角）、大圖 8 個；而且全部落在邊框內側', () => {
   assert.strictEqual(R.spawnCount(R.sizeFor(2).w, R.sizeFor(2).h), 4);
@@ -222,10 +220,10 @@ test('每種裝置：格子多了之後每格仍夠大（小圖 ≥ 17px、大�
   }
 });
 test('tileCss：取寬高較吃緊的那一邊、取整數、最小 12px、沒有上限', () => {
-  assert.strictEqual(Renderer.tileCss(1300, 550, 17, 13), 42);        /* 高度吃緊：550/13 */
-  assert.strictEqual(Renderer.tileCss(260, 900, 17, 13), 15);         /* 寬度吃緊：260/17 */
-  assert.strictEqual(Renderer.tileCss(10, 10, 17, 13), 12);           /* 太小時保底 12 */
-  assert(Renderer.tileCss(4000, 4000, 17, 13) > 200, '不該有格子上限');
+  assert.strictEqual(Renderer.tileCss(1300, 550, 21, 11), 50);        /* 高度吃緊：550/11 */
+  assert.strictEqual(Renderer.tileCss(300, 900, 21, 11), 14);         /* 寬度吃緊：300/21 */
+  assert.strictEqual(Renderer.tileCss(10, 10, 21, 11), 12);           /* 太小時保底 12 */
+  assert(Renderer.tileCss(4000, 4000, 21, 11) > 150, '不該有格子上限');
 });
 test('人物、道具、炸彈的大小是格子邊長的固定倍數，格子大小怎麼變它們就等比跟著變', () => {
   const S = Renderer.SPRITE;
@@ -240,7 +238,7 @@ test('人物、道具、炸彈的大小是格子邊長的固定倍數，格子�
   for (const vp of VIEWPORTS) for (const n of [2, 8]) {
     const z = R.sizeFor(n), t = Renderer.tileCss(vp.availW, vp.availH, z.w, z.h);
     const animal = Math.round(t * S.animal), item = Math.round(t * S.item), bomb = Math.round(t * S.bomb);
-    /* 手機直放的大圖最擠（每格約 17px），人物也要有 18px、道具 13px 才看得清楚 */
+    /* 手機橫放的大圖最擠（每格約 28px），人物也要有 18px、道具 13px 才看得清楚 */
     assert(animal >= 18 && item >= 13 && bomb >= 15, `${vp.name} ${n} 人 人物 ${animal}px／道具 ${item}px／炸彈 ${bomb}px 太小`);
     assert(Math.abs(animal / t - S.animal) < 0.05 && Math.abs(item / t - S.item) < 0.06, '倍數不成比例');
   }
@@ -266,13 +264,14 @@ test('Renderer.fit：畫布寬高 = 格數 × 格子像素，樣式尺寸與回�
 
 console.log('\n觸控操作版面（手機／平板 × 直放／橫放）');
 const TouchLayout = require('../public/js/touchlayout.js');
-/* vw×vh 是視窗；頂端要留計時列（手機直放 86px，其他 60px），其餘邊距 8px */
+/* vw×vh 是視窗；資訊欄在棋盤上方外牆圈裡，所以上下各只留 8px 邊距 */
 const TOUCH_VIEWS = [
-  { name: '手機直放', vw: 390, vh: 844, top: 86 }, { name: '手機橫放', vw: 844, vh: 390, top: 60 },
-  { name: '小手機橫放', vw: 667, vh: 375, top: 60 }, { name: '平板直放', vw: 820, vh: 1180, top: 60 },
-  { name: '平板橫放', vw: 1180, vh: 820, top: 60 }, { name: '大平板橫放', vw: 1366, vh: 1024, top: 60 }
-].map(v => Object.assign(v, { availW: v.vw - 16, availH: v.vh - v.top - 8 }));
-const planFor = (v, n, touch) => { const z = R.sizeFor(n); return TouchLayout.plan({ vw: v.vw, vh: v.vh, availW: v.availW, availH: v.availH, mapW: z.w, mapH: z.h, touch, tile: Renderer.tileCss }); };
+  { name: '手機直放', vw: 390, vh: 844 }, { name: '手機橫放', vw: 844, vh: 390 },
+  { name: '小手機橫放', vw: 667, vh: 375 }, { name: '平板直放', vw: 820, vh: 1180 },
+  { name: '平板橫放', vw: 1180, vh: 820 }, { name: '大平板橫放', vw: 1366, vh: 1024 }
+].map(v => Object.assign(v, { availW: v.vw - 16, availH: v.vh - 16 }));
+const planFor = (v, n, touch, extra) => { const z = R.sizeFor(n); return TouchLayout.plan(Object.assign({ vw: v.vw, vh: v.vh, availW: v.availW, availH: v.availH, mapW: z.w, mapH: z.h, touch, tile: Renderer.tileCss }, extra || {})); };
+const byName = name => TOUCH_VIEWS.find(v => v.name === name);
 
 test('裝置分類：短邊 < 560 是手機，其餘是平板；橫放看寬 > 高', () => {
   assert.strictEqual(TouchLayout.deviceClass(390, 844).key, 'phone-p');
@@ -280,80 +279,99 @@ test('裝置分類：短邊 < 560 是手機，其餘是平板；橫放看寬 > �
   assert.strictEqual(TouchLayout.deviceClass(820, 1180).key, 'tablet-p');
   assert.strictEqual(TouchLayout.deviceClass(1180, 820).key, 'tablet-l');
 });
-test('控制鈕大小：平板比手機大、直放比橫放大；搖桿 ≥ 120px、炸彈鈕 ≥ 86px，手指好按，球心不超過搖桿', () => {
-  const S = TouchLayout.SIZES;
-  assert(S['tablet-p'].stick > S['phone-p'].stick && S['tablet-l'].stick > S['phone-l'].stick, '平板的搖桿要比手機大');
-  assert(S['tablet-p'].bomb > S['phone-p'].bomb && S['tablet-l'].bomb > S['phone-l'].bomb, '平板的炸彈鈕要比手機大');
-  assert(S['phone-p'].stick > S['phone-l'].stick && S['tablet-p'].stick > S['tablet-l'].stick, '直放比橫放寬裕');
-  for (const [k, s] of Object.entries(S)) {
-    assert(s.stick >= 120 && s.bomb >= 86, k + ' 控制鈕太小');
-    assert(s.knob < s.stick * 0.6 && s.knob >= s.stick * 0.38, k + ' 搖桿球與底盤比例不對');
-  }
-  assert.deepStrictEqual(TouchLayout.sizes(390, 844), S['phone-p']);
+test('橫放控制鈕大小依螢幕高度等比例：搖桿 32%（120～172px）、炸彈鈕 23%（86～116px）；手機 844×390 約 125／90px，平板 1180×820 取上限 172／116px', () => {
+  const ph = TouchLayout.sizes(844, 390), tb = TouchLayout.sizes(1180, 820);
+  assert.strictEqual(ph.stick, Math.round(390 * 0.32)); assert.strictEqual(ph.bomb, Math.round(390 * 0.23));
+  assert(ph.stick >= 120 && ph.bomb >= 86 && ph.stick <= 172 && ph.bomb <= 116);
+  assert.strictEqual(tb.stick, 172); assert.strictEqual(tb.bomb, 116);
+  assert.strictEqual(TouchLayout.sizes(667, 375).stick, 120, '小手機取下限 120px');
+  assert.strictEqual(TouchLayout.sizes(667, 375).bomb, 86, '小手機炸彈鈕取下限 86px');
+  for (const s of [ph, tb]) assert(s.knob < s.stick * 0.6 && s.knob >= s.stick * 0.38, '搖桿球與底盤比例不對');
 });
+test('設定的大小倍率（0.8～1.3）直接乘在預設尺寸上，可以超出搖桿 120～172px、炸彈鈕 86～116px 的上下限；不合法的倍率會夾回範圍', () => {
+  const base = TouchLayout.sizes(1180, 820, 1);
+  assert.strictEqual(TouchLayout.sizes(1180, 820, 1.3).stick, Math.round(172 * 1.3));
+  assert(TouchLayout.sizes(1180, 820, 1.3).stick > TouchLayout.MAX_STICK && TouchLayout.sizes(1180, 820, 1.3).bomb > TouchLayout.MAX_BOMB, '放大後要能超出上限');
+  assert(TouchLayout.sizes(667, 375, 0.8).stick < TouchLayout.MIN_STICK, '縮小後要能低於下限');
+  assert.strictEqual(TouchLayout.sizes(1180, 820, 5).stick, TouchLayout.sizes(1180, 820, 1.3).stick);
+  assert.strictEqual(TouchLayout.sizes(1180, 820, 0).stick, TouchLayout.sizes(1180, 820, 0.8).stick);
+  assert.deepStrictEqual(TouchLayout.sizes(1180, 820, NaN), base); assert.deepStrictEqual(TouchLayout.sizes(1180, 820), base);
+});
+test('預設透明度平時約 45%、按住約 80%；邊距手機 20px、平板 32px；不再有 overlay 縮小（SHRINK）', () => {
+  assert.strictEqual(TouchLayout.OPACITY_IDLE, 0.45); assert.strictEqual(TouchLayout.OPACITY_DOWN, 0.8);
+  assert.strictEqual(TouchLayout.EDGE['phone-l'], 20); assert.strictEqual(TouchLayout.EDGE['tablet-l'], 32); assert.strictEqual(TouchLayout.EDGE['tablet-p'], 32);
+  assert.strictEqual(TouchLayout.SHRINK, undefined);
+  const css = fs.readFileSync(path.join(__dirname, '../public/css/style.css'), 'utf8');
+  assert(!/\.touch\.overlay/.test(css), 'CSS 不該再有 overlay 縮小的特例');
+  assert(Storage_defaults().touchOpacity === 0.45 && Storage_defaults().touchScale === 1, '設定預設值');
+});
+function Storage_defaults() {
+  const sandbox = { self: {}, localStorage: { getItem() { return null; }, setItem() {} } };
+  require('vm').runInNewContext(fs.readFileSync(path.join(__dirname, '../public/js/storage.js'), 'utf8'), sandbox);
+  return sandbox.self.Store.SETTING_DEFAULTS;
+}
 test('沒有觸控鈕（桌機、滑鼠）：不留任何空位', () => {
   for (const v of TOUCH_VIEWS) for (const n of [2, 8]) {
-    const p = planFor(v, n, false);
+    const p = planFor(v, n, false, { player: false });      /* player:false＝觀戰者，手機直放也不擋 */
     assert.strictEqual(p.mode, 'none'); assert.strictEqual(p.gutter, 0); assert.strictEqual(p.bottom, 0);
   }
 });
-test('直放：控制鈕放底部，按搖桿大小留出剛好的底部空間，地圖整張仍在可用空間內', () => {
-  for (const v of TOUCH_VIEWS.filter(v => v.vh > v.vw)) for (const n of [2, 8]) {
+test('手機直放：玩家看到「請橫向遊玩」遮罩（rotate），觀戰者不會被擋', () => {
+  for (const n of [2, 8]) {
+    assert.strictEqual(planFor(byName('手機直放'), n, true).mode, 'rotate');
+    assert.strictEqual(planFor(byName('手機直放'), n, false).mode, 'rotate', '沒顯示觸控鈕的手機直放玩家一樣要轉橫');
+    assert.notStrictEqual(planFor(byName('手機直放'), n, false, { player: false }).mode, 'rotate', '觀戰者直放也能看');
+  }
+  for (const name of ['手機橫放', '小手機橫放', '平板直放', '平板橫放']) assert.notStrictEqual(planFor(byName(name), 2, true).mode, 'rotate', name);
+});
+test('手機橫放：固定 overlay、格子與沒有控制鈕時一樣大（不縮格子、不留位置），控制鈕不縮小', () => {
+  for (const name of ['手機橫放', '小手機橫放']) for (const n of [2, 8]) {
+    const v = byName(name), p = planFor(v, n, true), z = R.sizeFor(n);
+    assert.strictEqual(p.mode, 'overlay'); assert.strictEqual(p.gutter, 0); assert.strictEqual(p.bottom, 0);
+    assert.strictEqual(p.tile, Renderer.tileCss(v.availW, v.availH, z.w, z.h), 'overlay 不該縮小格子');
+    assert.deepStrictEqual(p.sizes, TouchLayout.sizes(v.vw, v.vh), '控制鈕只由高度比例與倍率決定，不再縮小');
+    assert.strictEqual(p.edge, 20);
+  }
+});
+test('平板橫放：控制鈕放棋盤上下留白，最多蓋到最下方外牆圈、不蓋可玩格；格子至少保有 80%；邊距 32px', () => {
+  for (const name of ['平板橫放', '大平板橫放']) for (const n of [2, 8]) for (const scale of [0.8, 1, 1.3]) {
+    const v = byName(name), p = planFor(v, n, true, { scale }), z = R.sizeFor(n);
+    const free = Renderer.tileCss(v.availW, v.availH, z.w, z.h);
+    assert.strictEqual(p.mode, 'bars'); assert.strictEqual(p.gutter, 0); assert.strictEqual(p.edge, 32);
+    assert(p.tile * z.w <= v.availW && p.tile * z.h <= v.availH - p.bottom + 0.001, `${name} ${n} 人 ×${scale} 地圖超出`);
+    const need = p.sizes.stick + p.edge, below = (v.availH - p.bottom - p.tile * z.h) / 2 + p.bottom;
+    assert(below + p.tile >= need - 0.001, `${name} ${n} 人 ×${scale} 控制鈕會蓋到可玩格（下方留白 ${below}＋外牆 ${p.tile} < ${need}）`);
+    assert(p.tile >= free * 0.8, `${name} ${n} 人 ×${scale} 格子縮太多：${free}→${p.tile}`);
+  }
+  const p1180 = planFor(byName('平板橫放'), 2, true);
+  assert.strictEqual(p1180.sizes.stick, 172); assert.strictEqual(p1180.sizes.bomb, 116);
+});
+test('平板直放：維持 bottom 模式，按搖桿大小留出底部空間，地圖整張仍在可用空間內', () => {
+  const v = byName('平板直放');
+  for (const n of [2, 8]) {
     const p = planFor(v, n, true), z = R.sizeFor(n);
     assert.strictEqual(p.mode, 'bottom'); assert.strictEqual(p.gutter, 0);
-    assert.strictEqual(p.bottom, p.sizes.stick + TouchLayout.BOTTOM + TouchLayout.GAP, v.name);
-    assert(p.tile * z.w <= v.availW && p.tile * z.h <= v.availH - p.bottom, `${v.name} ${n} 人地圖超出`);
-    assert(p.tile >= 14, `${v.name} ${n} 人每格只有 ${p.tile}px`);
+    assert.strictEqual(p.bottom, p.sizes.stick + TouchLayout.BOTTOM + TouchLayout.GAP);
+    assert(p.tile * z.w <= v.availW && p.tile * z.h <= v.availH - p.bottom, `${n} 人地圖超出`);
+    assert.strictEqual(p.edge, 32);
   }
-});
-test('橫放：控制鈕放在地圖兩側的空位，控制鈕只壓到最外圈邊牆，格子至少保有原本的 85%', () => {
-  let gutters = 0;
-  for (const v of TOUCH_VIEWS.filter(v => v.vw > v.vh)) for (const n of [2, 8]) {
-    const p = planFor(v, n, true), z = R.sizeFor(n);
-    const free = Renderer.tileCss(v.availW, v.availH, z.w, z.h);
-    if (p.mode === 'gutter') {
-      gutters++;
-      const need = Math.max(p.sizes.stick, p.sizes.bomb) + TouchLayout.EDGE + TouchLayout.GAP;
-      assert(p.gutter + p.tile * TouchLayout.OVERLAP >= need - 0.001, `${v.name} 兩側空位放不下控制鈕（留 ${p.gutter}px，要 ${need}px）`);
-      assert(p.gutter < need, '空位不該比控制鈕還寬（壓邊牆可以省下一點）');
-      assert(p.tile * z.w + 2 * p.gutter <= v.availW + 0.001, `${v.name} ${n} 人地圖加兩側空位超出畫面`);
-      assert(p.tile >= free * TouchLayout.MIN_KEEP, `${v.name} ${n} 人格子縮太多：${free}→${p.tile}`);
-    } else {
-      assert.strictEqual(p.mode, 'overlay', v.name + ' 橫放只會是 gutter 或 overlay');
-      assert.strictEqual(p.tile, free, 'overlay 不該縮小格子');
-    }
-    assert.strictEqual(p.bottom, 0);
-  }
-  assert(gutters >= 6, '橫放多數情況要能把控制鈕放進兩側空位，實際只有 ' + gutters + ' 種');
-});
-test('橫放的 4 人小圖（17×13）在常見的手機與大小平板上都能放兩側，不用疊在地圖上', () => {
-  for (const v of TOUCH_VIEWS.filter(v => v.vw > v.vh)) assert.strictEqual(planFor(v, 2, true).mode, 'gutter', v.name);
-});
-test('橫放兩側空位不夠時控制鈕會先縮小，但不會小於搖桿 120px、炸彈鈕 86px', () => {
-  const v = { vw: 1366, vh: 1024, availW: 1350, availH: 948 }, p = planFor(v, 2, true), std = TouchLayout.sizes(v.vw, v.vh);   /* 大 iPad 橫放、4 人小圖 */
-  assert.strictEqual(p.mode, 'gutter');
-  assert(p.sizes.stick < std.stick, '這個情況控制鈕應該縮小才放得下');
-  for (const x of TOUCH_VIEWS) for (const n of [2, 8]) { const q = planFor(x, n, true); assert(q.sizes.stick >= TouchLayout.MIN_STICK && q.sizes.bomb >= TouchLayout.MIN_BOMB, `${x.name} ${n} 人控制鈕太小`); assert(q.sizes.knob < q.sizes.stick); }
-});
-test('overlay 退路：視窗小到兩側怎麼放都會讓格子縮太多時，才疊在地圖上，而且用最小的鈕、格子不縮', () => {
-  const v = { vw: 1024, vh: 768, availW: 1008, availH: 692 };       /* iPad 橫放、4 人小圖：兩側怎麼放格子都縮超過 15% */
-  const p = planFor(v, 2, true), z = R.sizeFor(2);
-  assert.strictEqual(p.mode, 'overlay'); assert.strictEqual(p.gutter, 0);
-  assert.strictEqual(p.tile, Renderer.tileCss(v.availW, v.availH, z.w, z.h), 'overlay 不該縮小格子');
-  const k = TouchLayout.SHRINK[TouchLayout.SHRINK.length - 1];
-  assert.strictEqual(p.sizes.stick, Math.max(TouchLayout.MIN_STICK, Math.round(TouchLayout.sizes(v.vw, v.vh).stick * k)), 'overlay 要用最小的鈕');
 });
 test('plan 不修改傳入的資料，尺寸物件是複本', () => {
   const a = TouchLayout.sizes(390, 844); a.stick = 1;
-  assert.strictEqual(TouchLayout.sizes(390, 844).stick, TouchLayout.SIZES['phone-p'].stick);
+  assert.strictEqual(TouchLayout.sizes(390, 844).stick, 150);
 });
 test('game.js／style.css 用的是 touchlayout 的變數，沒有殘留寫死的搖桿尺寸', () => {
   const css = fs.readFileSync(path.join(__dirname, '../public/css/style.css'), 'utf8');
-  assert(/--stick/.test(css) && /--bomb/.test(css) && /--gut/.test(css));
+  assert(/--stick/.test(css) && /--bomb/.test(css) && /--gut/.test(css) && /--tc-op/.test(css));
   assert(!/width: 156px; height: 156px/.test(css), '還有寫死的 156px 搖桿');
-  assert(!/padding-bottom: calc\((210|190)px/.test(css), '還有寫死的底部留白');
   const game = fs.readFileSync(path.join(__dirname, '../public/js/game.js'), 'utf8');
   assert(/TouchLayout/.test(game) && /Renderer\.tileCss/.test(game));
+});
+test('多點觸控基礎：搖桿與炸彈鍵各自記錄 pointerId、用 Pointer Events（不是 touch*）、頁面隱藏與 pagehide 會完整重置', () => {
+  const game = fs.readFileSync(path.join(__dirname, '../public/js/game.js'), 'utf8');
+  assert(/let stickId = null, bombId = null/.test(game) && /e\.pointerId !== bombId/.test(game) && /if \(stickId !== null\) return/.test(game));
+  assert(!/touchstart|touchmove|touchend/.test(game), '不能改成 touch* 事件');
+  assert(/visibilitychange/.test(game) && /pagehide/.test(game) && /this\.resetTouch = /.test(game));
 });
 
 console.log('\n殘留檢查');
