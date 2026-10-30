@@ -291,12 +291,12 @@ body.calm *, body.calm *::before, body.calm *::after { animation: none !importan
 /* 觸控按鍵 */
 .touch { position: absolute; z-index: 18; bottom: calc(var(--edge, 20px) + var(--safe-b)); left: 0; right: 0; display: flex; justify-content: space-between; align-items: flex-end; padding: 0 calc(var(--edge, 20px) + var(--safe-r)) 0 calc(var(--edge, 20px) + var(--safe-l)); pointer-events: none; }   /* 搖桿在左下、炸彈鍵在右下；邊距手機 20px、平板 32px（另加安全區） */
 .touch.flip { flex-direction: row-reverse; }
-.stick { position: relative; width: var(--stick); height: var(--stick); pointer-events: none; }
-.direction-key { position: absolute; width: 36%; height: 36%; min-width: 36px; min-height: 36px; display: grid; place-items: center; padding: 0; border: 2px solid rgba(255, 255, 255, .65); border-radius: 12px; background: rgba(255, 253, 243, .14); color: #fffdf3; font: inherit; font-size: calc(var(--stick) * .19); text-shadow: 0 1px 3px #17122b; pointer-events: auto; touch-action: none; cursor: pointer; opacity: var(--tc-op, .45); transition: background .08s, opacity .08s, box-shadow .08s; }
-.direction-key.u { top: 0; left: 32%; }
-.direction-key.d { bottom: 0; left: 32%; }
-.direction-key.l { left: 0; top: 32%; }
-.direction-key.r { right: 0; top: 32%; }
+.stick { position: relative; width: var(--stick); height: var(--stick); min-width: 120px; min-height: 120px; display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); gap: 6px; pointer-events: none; }
+.direction-key { width: 100%; height: 100%; min-width: 36px; min-height: 36px; display: grid; place-items: center; padding: 0; border: 2px solid rgba(255, 255, 255, .65); border-radius: 12px; background: rgba(255, 253, 243, .14); color: #fffdf3; font: inherit; font-size: calc(var(--stick) * .19); text-shadow: 0 1px 3px #17122b; pointer-events: auto; touch-action: none; cursor: pointer; opacity: var(--tc-op, .45); transition: background .08s, opacity .08s, box-shadow .08s; }
+.direction-key.u { grid-area: 1 / 2; }
+.direction-key.d { grid-area: 3 / 2; }
+.direction-key.l { grid-area: 2 / 1; }
+.direction-key.r { grid-area: 2 / 3; }
 .direction-key.on { background: rgba(255, 224, 61, .8); color: #17122b; border-color: #fff5a1; opacity: var(--tc-op-down, .8); box-shadow: 0 0 14px rgba(255, 224, 61, .8); text-shadow: none; }
 .direction-key:focus-visible { outline: 3px solid #ffe03d; outline-offset: 3px; }
 .bomb-btn.down { opacity: var(--tc-op-down, .8); }
