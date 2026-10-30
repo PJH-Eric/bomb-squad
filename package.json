@@ -16,6 +16,7 @@
     "ai:power": "node scripts/ai-power.js",
     "layout:check": "node scripts/layout-check.js",
     "touch:check": "node scripts/touch-check.js",
+    "layout:matrix": "node scripts/layout-matrix.js",
     "inject": "node scripts/inject-server-url.js",
     "cf:dev": "npx wrangler@4 dev",
     "cf:deploy": "npx wrangler@4 deploy",
