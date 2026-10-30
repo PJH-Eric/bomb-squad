@@ -319,7 +319,7 @@
     const next = M.MISSIONS.find(m => m.id === id + 1);
     const spec = () => ({
       title: null, aria: tr('mission.title'),
-      content: h('div', { class: 'big-result' },
+      content: h('div', { class: 'big-result', 'data-result-share': '' },
         h('div', { class: 'head' }, win ? tr('mission.win') : tr('mission.fail.' + (r.reason || 'dead'))),
         win ? h('div', { class: 'mission-stars big', 'aria-label': tr('mission.stars', { n: r.stars }) }, '★'.repeat(r.stars) + '☆'.repeat(3 - r.stars)) : null,
         win && !next ? h('p', { class: 'muted' }, tr('mission.allDone')) : null),
@@ -409,7 +409,7 @@
           h('span', { class: 'kills' }, tr('game.kills', { n: kills[slot] || 0 })));
       }));
       const mins = Math.floor(result.time / 60), secs = Math.floor(result.time % 60);
-      const body = h('div', { class: 'big-result' }, h('div', { class: 'head' }, head), h('p', { class: 'muted' }, sub), rank,
+      const body = h('div', { class: 'big-result', 'data-result-share': '' }, h('div', { class: 'head' }, head), h('p', { class: 'muted' }, sub), rank,
         h('p', { class: 'muted small', style: { marginTop: '10px', textAlign: 'center' } }, tr('result.length', { m: mins, s: secs }) + (rec ? '　' + tr('result.record', { w: rec.win, p: rec.play }) : '')));
       let actions;
       if (o.kind === 'solo') {
