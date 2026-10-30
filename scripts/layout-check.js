@@ -26,7 +26,7 @@ fs.mkdirSync(SHOTS, { recursive: true });
 /* [名稱, 寬, 高, 觸控設定]：桌機用 auto（沒有觸控螢幕就不顯示搖桿），其餘一律顯示才量得到搖桿與炸彈鈕 */
 const VIEWS = [['phone-p', 390, 844, 'on'], ['phone-l', 844, 390, 'on'], ['tablet-p', 820, 1180, 'on'], ['tablet-l', 1180, 820, 'on'], ['desktop', 1440, 900, 'auto']];
 const OLD = { 2: [17, 13], 8: [19, 15] };      /* 改版前的格數，拿來比較每格縮了多少 */
-const NEW = { 2: [21, 11], 8: [25, 13] };
+const NEW = { 2: [23, 11], 8: [27, 13] };
 let fails = 0;
 const ok = (c, m) => { console.log((c ? '  ok  ' : ' FAIL ') + m); if (!c) fails++; };
 

@@ -33,11 +33,11 @@ function run(s, inputs, sec) {
 const put = (p, x, y) => { p.x = x + 0.5; p.y = y + 0.5; };
 
 console.log('\n地圖');
-test('地圖尺寸：≤4 人 21×11，5～8 人 25×13', () => {
-  assert.deepStrictEqual(R.sizeFor(2), { w: 21, h: 11 });
-  assert.deepStrictEqual(R.sizeFor(4), { w: 21, h: 11 });
-  assert.deepStrictEqual(R.sizeFor(5), { w: 25, h: 13 });
-  assert.deepStrictEqual(R.sizeFor(8), { w: 25, h: 13 });
+test('地圖尺寸：≤4 人 23×11，5～8 人 27×13', () => {
+  assert.deepStrictEqual(R.sizeFor(2), { w: 23, h: 11 });
+  assert.deepStrictEqual(R.sizeFor(4), { w: 23, h: 11 });
+  assert.deepStrictEqual(R.sizeFor(5), { w: 27, h: 13 });
+  assert.deepStrictEqual(R.sizeFor(8), { w: 27, h: 13 });
 });
 test('2 人固定對角出生（兩組對角都會出現）；3～4 人、5～8 人沿用洗牌、出生點不重複', () => {
   const seen = new Set();
@@ -56,12 +56,12 @@ test('2 人固定對角出生（兩組對角都會出現）；3～4 人、5～8 
   }
 });
 test('同一個 seed 產生同一張地圖，不同 seed 不同', () => {
-  const a = R.generateMap(5, 21, 11, 'classic'), b = R.generateMap(5, 21, 11, 'classic'), c = R.generateMap(6, 21, 11, 'classic');
+  const a = R.generateMap(5, 23, 11, 'classic'), b = R.generateMap(5, 23, 11, 'classic'), c = R.generateMap(6, 23, 11, 'classic');
   assert.deepStrictEqual(a, b);
   assert.notDeepStrictEqual(a, c);
 });
 test('三種版型 × 多個 seed：四向對稱、全連通、出生點安全區沒有軟磚', () => {
-  for (const layout of R.LAYOUTS) for (const [w, h] of [[21, 11], [25, 13]]) for (let seed = 1; seed <= 25; seed++) {
+  for (const layout of R.LAYOUTS) for (const [w, h] of [[23, 11], [27, 13]]) for (let seed = 1; seed <= 25; seed++) {
     const g = R.generateMap(seed, w, h, layout);
     assert(R.connected(g, w, h), `${layout} ${w}x${h} seed ${seed} 不連通`);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -77,16 +77,16 @@ test('三種版型 × 多個 seed：四向對稱、全連通、出生點安全�
   }
 });
 test('邊框全是硬牆', () => {
-  const g = R.generateMap(3, 21, 11, 'open');
-  for (let x = 0; x < 21; x++) { assert.strictEqual(g[x], 1); assert.strictEqual(g[10 * 21 + x], 1); }
-  for (let y = 0; y < 11; y++) { assert.strictEqual(g[y * 21], 1); assert.strictEqual(g[y * 21 + 20], 1); }
+  const g = R.generateMap(3, 23, 11, 'open');
+  for (let x = 0; x < 23; x++) { assert.strictEqual(g[x], 1); assert.strictEqual(g[10 * 23 + x], 1); }
+  for (let y = 0; y < 11; y++) { assert.strictEqual(g[y * 23], 1); assert.strictEqual(g[y * 23 + 22], 1); }
 });
 test('密集版型比經典多硬牆', () => {
-  const count = g => g.filter(v => v === 1).length - (2 * (21 + 11) - 4);   /* 扣掉外框那圈牆，只比裡面的硬牆 */
+  const count = g => g.filter(v => v === 1).length - (2 * (23 + 11) - 4);   /* 扣掉外框那圈牆，只比裡面的硬牆 */
   /* 每張圖的硬牆量本來就會在 0.6～1.2 倍之間浮動，所以不逐張比，用 100 個 seed 的總量與多數決判斷 */
   let more = 0, dense = 0, classic = 0;
   for (let seed = 1; seed <= 100; seed++) {
-    const d = count(R.generateMap(seed, 21, 11, 'dense')), c = count(R.generateMap(seed, 21, 11, 'classic'));
+    const d = count(R.generateMap(seed, 23, 11, 'dense')), c = count(R.generateMap(seed, 23, 11, 'classic'));
     dense += d; classic += c; if (d > c) more++;
   }
   assert(dense >= classic * 1.2, '密集的硬牆總量應該明顯比經典多：' + dense + ' vs ' + classic);
@@ -882,7 +882,7 @@ const flipX = c => (c === 6 ? 7 : c === 7 ? 6 : c), flipY = c => (c === 4 ? 5 : 
 const KIND_OF = c => (c === R.FX_GRASS ? 'grass' : c === R.FX_SLOW ? 'slow' : c === R.FX_SPIKE ? 'spike' : R.isBelt(c) ? 'belt' : null);
 test('機關：同 seed 一樣、輸送帶四向鏡像且方向跟著翻、只在主題允許的種類、不放硬牆與出生點旁；尖刺小圖 1／3／5、大圖 3／5 個', () => {
   let total = 0, asymmetric = 0;
-  for (let themeId = 0; themeId < R.THEME_COUNT; themeId++) for (const [w, h] of [[21, 11], [25, 13]]) for (let seed = 1; seed <= 30; seed++) {
+  for (let themeId = 0; themeId < R.THEME_COUNT; themeId++) for (const [w, h] of [[23, 11], [27, 13]]) for (let seed = 1; seed <= 30; seed++) {
     const grid = R.generateMap(seed, w, h, 'classic');
     const fx = R.generateFx(seed, w, h, grid, themeId);
     assert.deepStrictEqual(fx, R.generateFx(seed, w, h, R.generateMap(seed, w, h, 'classic'), themeId), '同 seed 不一致');   /* generateFx 會就地改 grid（拿掉磚、補牆），所以第二次要用新的地圖 */
@@ -904,14 +904,14 @@ test('機關：同 seed 一樣、輸送帶四向鏡像且方向跟著翻、只�
       }
     }
     assert(allowed.length <= 1, '每個主題最多 1 種機關');
-    if (spikes) { const counts = w > 21 ? [3, 5] : [1, 3, 5]; assert(counts.includes(spikes), `尖刺、草叢數量 ${spikes}（${w}x${h}）`); total++; }
+    if (spikes) { const counts = w > 23 ? [3, 5] : [1, 3, 5]; assert(counts.includes(spikes), `尖刺、草叢數量 ${spikes}（${w}x${h}）`); total++; }
   }
   assert(total > 50, '尖刺出現的次數太少：' + total);
   assert(asymmetric > 0, '尖刺、草叢、緩速格應該能不對稱分布');
 });
 test('輸送帶：每一圈都頭尾相連（順著方向走一定繞回原點、每格只有一個上游）、形狀不全是長方形', () => {
   let loops = 0, irregular = 0;
-  for (const themeId of [1, 2, 12]) for (const [w, h] of [[21, 11], [25, 13]]) for (let seed = 1; seed <= 40; seed++) {
+  for (const themeId of [1, 2, 12]) for (const [w, h] of [[23, 11], [27, 13]]) for (let seed = 1; seed <= 40; seed++) {
     const fx = R.generateFx(seed, w, h, R.generateMap(seed, w, h, 'classic'), themeId);
     const indeg = new Map(), seen = new Set();
     for (let i = 0; i < fx.length; i++) {
@@ -940,7 +940,7 @@ test('輸送帶：每一圈都頭尾相連（順著方向走一定繞回原點�
 });
 test('產線一定有輸送帶：日月光廠房（任何版型）每張圖都有，而且只有輸送帶；產線版型只有日月光有，其他主題選 fab 會當成隨機版型', () => {
   const hasBelt = fx => fx.some(v => R.isBelt(v)), only = fx => fx.every(v => v === 0 || R.isBelt(v));
-  for (const [w, h] of [[21, 11], [25, 13]]) for (let seed = 1; seed <= 30; seed++) {
+  for (const [w, h] of [[23, 11], [27, 13]]) for (let seed = 1; seed <= 30; seed++) {
     for (let themeId = 0; themeId < R.THEME_COUNT; themeId++) {
       const fx = R.generateFx(seed, w, h, R.generateMap(seed, w, h, 'fab'), themeId, 'fab');
       assert(hasBelt(fx) && only(fx), `產線版型 主題 ${themeId} seed ${seed} 沒有輸送帶（或混了別的機關）`);
@@ -951,7 +951,7 @@ test('產線一定有輸送帶：日月光廠房（任何版型）每張圖都�
     }
   }
   /* 其他版型的其他主題，仍照主題規則（森林沒有輸送帶） */
-  assert(!hasBelt(R.generateFx(3, 21, 11, R.generateMap(3, 21, 11, 'classic'), 3, 'classic')));
+  assert(!hasBelt(R.generateFx(3, 23, 11, R.generateMap(3, 23, 11, 'classic'), 3, 'classic')));
   /* createGame：隨機版型的日月光會用產線版型，所以一定有輸送帶 */
   for (let seed = 1; seed <= 20; seed++) { const g = mk(2, { seed, themeId: R.FAB_THEME, layout: 'random', fx: true }); assert.strictEqual(g.layout, 'fab'); assert(hasBelt(g.fx), '日月光隨機版型沒有輸送帶'); }
   /* 日月光不管選什麼版型都是產線；其他主題選 fab（舊設定）會當成隨機版型，不會是產線 */
@@ -961,7 +961,7 @@ test('產線一定有輸送帶：日月光廠房（任何版型）每張圖都�
 test('輸送帶：每格找得到前一格（進來的方向），環上有轉角、直的格子進出同方向', () => {
   let corners = 0, straight = 0;
   for (const themeId of [1, 2, 12]) for (let seed = 1; seed <= 30; seed++) {
-    const w = 21, h = 11, fx = R.generateFx(seed, w, h, R.generateMap(seed, w, h, 'classic'), themeId);
+    const w = 23, h = 11, fx = R.generateFx(seed, w, h, R.generateMap(seed, w, h, 'classic'), themeId);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
       const v = fx[y * w + x];
       if (!R.isBelt(v)) continue;
@@ -975,7 +975,7 @@ test('輸送帶：每格找得到前一格（進來的方向），環上有轉�
 });
 test('日月光產線：只有一條繞全地圖的輸送帶（單一環、沿路不規則轉彎、不壓硬牆與出生點）', () => {
   let rings = 0, fallback = 0;
-  for (const [w, h] of [[21, 11], [25, 13]]) for (let seed = 1; seed <= 100; seed++) {
+  for (const [w, h] of [[23, 11], [27, 13]]) for (let seed = 1; seed <= 100; seed++) {
     const grid = R.generateMap(seed, w, h, 'fab'), fx = R.generateFx(seed, w, h, grid, R.FAB_THEME, 'fab');
     const cells = []; fx.forEach((v, i) => { if (R.isBelt(v)) cells.push(i); });
     let k = cells[0], n = 0; const seen = new Set();
@@ -996,7 +996,7 @@ test('日月光產線：只有一條繞全地圖的輸送帶（單一環、沿�
 });
 test('輸送帶形狀夠隨機：不同的形狀、大小、順逆時針、橫放直放，每個角落的環數有 1 個也有 2 個，而且環與環不相鄰', () => {
   const shapes = new Set(), sizes = new Set(), dirs = new Set(), loopCounts = new Set(); let wide = 0, tall = 0;
-  for (let seed = 1; seed <= 300; seed++) for (const [w, h] of [[21, 11], [25, 13]]) {
+  for (let seed = 1; seed <= 300; seed++) for (const [w, h] of [[23, 11], [27, 13]]) {
     const fx = R.generateFx(seed, w, h, R.generateMap(seed, w, h, 'classic'), 1);
     const cx = (w - 1) / 2, cy = (h - 1) / 2, seen = new Set(); let n = 0;
     for (let y = 1; y < cy; y++) for (let x = 1; x < cx; x++) {          /* 只看左上四分之一（其他三個是鏡像） */
@@ -1058,7 +1058,7 @@ test('輸送帶：炸彈放在上面也被載走（速度同人、沿路轉彎�
 test('尖刺與緩速格：一格一格散開、彼此不相連（含斜角）、數量小圖 1／3／5、大圖 3／5、尖刺不蓋軟磚、緩速格可蓋軟磚、地圖連通', () => {
   for (const [themeId, code] of [[8, R.FX_SPIKE], [9, R.FX_SPIKE], [10, R.FX_SPIKE], [0, R.FX_SLOW], [4, R.FX_SLOW], [5, R.FX_SLOW]]) {
     let seen = 0, maps = 0, bricksUnder = 0;
-    for (const [w, h] of [[21, 11], [25, 13]]) for (const layout of R.LAYOUTS) for (let seed = 1; seed <= 40; seed++) {
+    for (const [w, h] of [[23, 11], [27, 13]]) for (const layout of R.LAYOUTS) for (let seed = 1; seed <= 40; seed++) {
       const orig = R.generateMap(seed, w, h, layout), grid = orig.slice(), fx = R.generateFx(seed, w, h, grid, themeId);
       let n = 0; maps++;
       for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
@@ -1068,7 +1068,7 @@ test('尖刺與緩速格：一格一格散開、彼此不相連（含斜角）�
         assert.notStrictEqual(grid[y * w + x], 1, '機關在硬牆上');
         for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && x + dx > 0 && y + dy > 0 && x + dx < w - 1 && y + dy < h - 1) assert.strictEqual(fx[(y + dy) * w + x + dx], 0, `機關相連：${themeId} seed ${seed} ${x},${y} 與 ${x + dx},${y + dy}`);
       }
-      if (n) assert((w > 21 ? [3, 5] : [1, 3, 5]).includes(n), '數量 ' + n);
+      if (n) assert((w > 23 ? [3, 5] : [1, 3, 5]).includes(n), '數量 ' + n);
       for (let i = 0; i < grid.length; i++) if (grid[i] !== orig[i]) assert(code === R.FX_SPIKE && fx[i] === code && orig[i] === 2, '只有尖刺格的軟磚會被拿掉');
       assert(R.connected(grid, w, h));
       if (n) seen++;
@@ -1079,7 +1079,7 @@ test('尖刺與緩速格：一格一格散開、彼此不相連（含斜角）�
 });
 test('草叢位置（森林、聖誕小鎮 × 兩種尺寸 × 四種版型 × 40 個 seed）：走道格、不相連（含斜角）、小圖 1／3／5 大圖 3／5、不靠邊框與出生點、不動硬牆、炸彈只沿一條直線炸', () => {
   let seen = 0, maps = 0, cells = 0;
-  for (const themeId of [3, 11]) for (const [w, h] of [[21, 11], [25, 13]]) for (const layout of R.LAYOUTS) for (let seed = 1; seed <= 40; seed++) {
+  for (const themeId of [3, 11]) for (const [w, h] of [[23, 11], [27, 13]]) for (const layout of R.LAYOUTS) for (let seed = 1; seed <= 40; seed++) {
     const orig = R.generateMap(seed, w, h, layout), grid = orig.slice(), fx = R.generateFx(seed, w, h, grid, themeId);
     assert.deepStrictEqual(fx, R.generateFx(seed, w, h, orig.slice(), themeId), '同 seed 要一樣');
     const at = (x, y) => y * w + x, wl = (x, y) => grid[at(x, y)] === 1;
@@ -1099,7 +1099,7 @@ test('草叢位置（森林、聖誕小鎮 × 兩種尺寸 × 四種版型 × 40
       const cellsHit = R.blast({ w, h, grid, bombs: [] }, { cx: x, cy: y, range: 9, id: -1, owner: 0, pass: [], sl: null }).cells;
       assert(cellsHit.every(c => c.x === x) || cellsHit.every(c => c.y === y), `草叢裡的炸彈火焰不只一條線：${x},${y}`);
     }
-    if (n) assert((w > 21 ? [3, 5] : [1, 3, 5]).includes(n), '草叢數量 ' + n);
+    if (n) assert((w > 23 ? [3, 5] : [1, 3, 5]).includes(n), '草叢數量 ' + n);
     assert(R.connected(grid, w, h), '地圖要連通');
     if (n) { seen++; cells += n; }
   }
@@ -1111,7 +1111,7 @@ test('機關：各主題的機關種類符合風格（草叢、輸送帶、緩�
   for (const k of ['grass', 'belt', 'slow', 'spike']) assert(has(k) >= 2, k + ' 太少主題用');
   for (const t of [0, 4, 5]) assert(R.THEME_FX[t].indexOf('slow') >= 0, '糖果、沙漠、雪地要有緩速格：' + t);
   assert.strictEqual(R.THEME_FX.length, R.THEME_COUNT);
-  assert(R.generateFx(3, 21, 11, R.generateMap(3, 21, 11, 'classic'), 99).every(v => v === 0));
+  assert(R.generateFx(3, 23, 11, R.generateMap(3, 23, 11, 'classic'), 99).every(v => v === 0));
   const s = mk(2, { fx: false });
   assert(s.fx.every(v => v === 0));
 });

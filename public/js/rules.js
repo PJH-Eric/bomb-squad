@@ -114,7 +114,7 @@
 
   /* ---------- 地圖 ---------- */
   /* 長方形地圖（含外圈，寬高必須是奇數）：橫向螢幕可以讓棋盤佔滿；每格大小仍由「可用空間 ÷ 格數」自動算，人物、道具、炸彈跟著等比縮放 */
-  const MAP_SMALL = { w: 21, h: 11 }, MAP_LARGE = { w: 25, h: 13 };
+  const MAP_SMALL = { w: 23, h: 11 }, MAP_LARGE = { w: 27, h: 13 };
   function sizeFor(count) { return count <= 4 ? Object.assign({}, MAP_SMALL) : Object.assign({}, MAP_LARGE); }
   /** 這種尺寸的地圖用幾個出生點：小圖只用四個角，大圖再加上四邊中點 */
   function spawnCount(w, h) { return isLargeMap(w) ? 8 : 4; }

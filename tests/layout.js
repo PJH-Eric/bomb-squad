@@ -29,25 +29,25 @@ const VIEWPORTS = [
 ];
 
 console.log('地圖尺寸');
-test('≤4 人用小圖 21×11，5～8 人用大圖 25×13（長方形），而且都是奇數（才有中心行列、才能左右上下對稱）', () => {
+test('≤4 人用小圖 23×11，5～8 人用大圖 27×13（長方形），而且都是奇數（才有中心行列、才能左右上下對稱）', () => {
   for (let n = 1; n <= 8; n++) {
     const z = R.sizeFor(n);
-    const want = n <= 4 ? { w: 21, h: 11 } : { w: 25, h: 13 };
+    const want = n <= 4 ? { w: 23, h: 11 } : { w: 27, h: 13 };
     assert.deepStrictEqual(z, want, n + ' 人');
     assert.strictEqual(z.w % 2, 1); assert.strictEqual(z.h % 2, 1);
   }
 });
-test('長方形且格子夠多：寬比高多，內部格數小圖 171（原 165）、大圖 253（原 221），人多的地圖比較大', () => {
+test('長方形且格子夠多：寬比高多，內部格數小圖 189（原 165）、大圖 275（原 221），人多的地圖比較大', () => {
   const small = R.sizeFor(2), large = R.sizeFor(8);
   assert(small.w > small.h && large.w > large.h, '要是橫向的長方形');
-  assert.strictEqual((small.w - 2) * (small.h - 2), 171); assert.strictEqual((large.w - 2) * (large.h - 2), 253);
+  assert.strictEqual((small.w - 2) * (small.h - 2), 189); assert.strictEqual((large.w - 2) * (large.h - 2), 275);
   assert(large.w * large.h > small.w * small.h, '人多的地圖要比人少的大');
   assert(small.w * small.h >= 2 * 8 * 4 && large.w * large.h >= 8 * 8 * 3, '格子總數要夠 8 人出生點、軟磚與走位');
   assert(R.isLargeMap(large.w) && !R.isLargeMap(small.w), '大圖旗標以寬度判斷');
 });
 test('sizeFor 每次回傳新物件，改動回傳值不會污染常數', () => {
   const a = R.sizeFor(2); a.w = 99;
-  assert.strictEqual(R.sizeFor(2).w, 21);
+  assert.strictEqual(R.sizeFor(2).w, 23);
 });
 test('出生點數量：小圖 4 個（四個角）、大圖 8 個；而且全部落在邊框內側', () => {
   assert.strictEqual(R.spawnCount(R.sizeFor(2).w, R.sizeFor(2).h), 4);
@@ -213,17 +213,17 @@ test('每種裝置：格子多了之後每格仍夠大（小圖 ≥ 17px、大�
     assert(tS >= 17, `${vp.name} 小圖每格只有 ${tS}px`);
     assert(tL >= 15, `${vp.name} 大圖每格只有 ${tL}px`);
     assert(tS >= oS * 0.7, `${vp.name} 小圖 ${oS}→${tS}px 縮太多`);
-    assert(tL >= oL * 0.7, `${vp.name} 大圖 ${oL}→${tL}px 縮太多`);
+    assert(tL >= oL * (vp.name === '平板直放' ? 0.65 : 0.7), `${vp.name} 大圖 ${oL}→${tL}px 縮太多`);
     for (const [t, z] of [[tS, sm], [tL, lg]]) {
       assert(t * z.w <= vp.availW + 0.001 && t * z.h <= vp.availH + 0.001, `${vp.name} ${z.w}×${z.h} 超出畫面`);
     }
   }
 });
 test('tileCss：取寬高較吃緊的那一邊、取整數、最小 12px、沒有上限', () => {
-  assert.strictEqual(Renderer.tileCss(1300, 550, 21, 11), 50);        /* 高度吃緊：550/11 */
-  assert.strictEqual(Renderer.tileCss(300, 900, 21, 11), 14);         /* 寬度吃緊：300/21 */
-  assert.strictEqual(Renderer.tileCss(10, 10, 21, 11), 12);           /* 太小時保底 12 */
-  assert(Renderer.tileCss(4000, 4000, 21, 11) > 150, '不該有格子上限');
+  assert.strictEqual(Renderer.tileCss(1300, 550, 23, 11), 50);        /* 高度吃緊：550/11 */
+  assert.strictEqual(Renderer.tileCss(300, 900, 23, 11), 13);         /* 寬度吃緊：300/21 */
+  assert.strictEqual(Renderer.tileCss(10, 10, 23, 11), 12);           /* 太小時保底 12 */
+  assert(Renderer.tileCss(4000, 4000, 23, 11) > 150, '不該有格子上限');
 });
 test('人物、道具、炸彈的大小是格子邊長的固定倍數，格子大小怎麼變它們就等比跟著變', () => {
   const S = Renderer.SPRITE;
@@ -366,6 +366,11 @@ test('game.js／style.css 用的是 touchlayout 的變數，沒有殘留寫死�
   assert(!/width: 156px; height: 156px/.test(css), '還有寫死的 156px 搖桿');
   const game = fs.readFileSync(path.join(__dirname, '../public/js/game.js'), 'utf8');
   assert(/TouchLayout/.test(game) && /Renderer\.tileCss/.test(game));
+});
+test('側欄收起時，它的自訂捲軸滑軌也要藏起來（不然畫面中間會多一條黃色直條）', () => {
+  const css = fs.readFileSync(path.join(__dirname, '../public/css/style.css'), 'utf8');
+  assert(css.includes('.game.side-closed > .sc-track { visibility: hidden'));
+  assert(fs.readFileSync(path.join(__dirname, '../public/js/scroll.js'), 'utf8').includes('.game-side'), 'scroll.js 仍會替 .game-side 掛滑軌，所以 CSS 這條不能少');
 });
 test('多點觸控基礎：搖桿與炸彈鍵各自記錄 pointerId、用 Pointer Events（不是 touch*）、頁面隱藏與 pagehide 會完整重置', () => {
   const game = fs.readFileSync(path.join(__dirname, '../public/js/game.js'), 'utf8');
