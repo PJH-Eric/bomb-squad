@@ -231,6 +231,7 @@
   L('game.mapInfo', '地圖資訊', 'Map info');
   L('game.mapTitle', '地圖：{th}／{lay}', 'Map: {th} / {lay}');
   L('game.stick', '移動搖桿', 'Move joystick');
+  L('game.rotate', '請橫向遊玩', 'Please rotate to landscape');
   L('game.bomb', '放炸彈', 'Place bomb');
   L('game.ready', '準備！', 'Get ready!');
   L('game.cpu', '電腦', 'CPU');
@@ -300,6 +301,8 @@
   L('settings.hide', '隱藏', 'Hide');
   L('settings.stick', '搖桿位置', 'Joystick side');
   L('settings.left', '左手邊', 'Left');
+  L('settings.touchScale', '操作鈕大小', 'Control size');
+  L('settings.touchOpacity', '操作鈕透明度', 'Control opacity');
   L('settings.right', '右手邊', 'Right');
   L('settings.vibrate', '震動', 'Vibration');
   L('settings.calm', '減少動態', 'Reduce motion');
@@ -765,6 +768,7 @@
     "game.mapInfo": "地图资讯",
     "game.mapTitle": "地图：{th}／{lay}",
     "game.stick": "移动摇杆",
+    "game.rotate": "请横向游玩",
     "game.bomb": "放炸弹",
     "game.ready": "准备！",
     "game.cpu": "电脑",
@@ -830,6 +834,8 @@
     "settings.hide": "隐藏",
     "settings.stick": "摇杆位置",
     "settings.left": "左手边",
+    "settings.touchScale": "操作钮大小",
+    "settings.touchOpacity": "操作钮透明度",
     "settings.right": "右手边",
     "settings.vibrate": "震动",
     "settings.calm": "减少动态",

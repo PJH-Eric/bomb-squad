@@ -33,19 +33,35 @@ function run(s, inputs, sec) {
 const put = (p, x, y) => { p.x = x + 0.5; p.y = y + 0.5; };
 
 console.log('\n地圖');
-test('地圖尺寸：≤4 人 17×13，5～8 人 19×15', () => {
-  assert.deepStrictEqual(R.sizeFor(2), { w: 17, h: 13 });
-  assert.deepStrictEqual(R.sizeFor(4), { w: 17, h: 13 });
-  assert.deepStrictEqual(R.sizeFor(5), { w: 19, h: 15 });
-  assert.deepStrictEqual(R.sizeFor(8), { w: 19, h: 15 });
+test('地圖尺寸：≤4 人 21×11，5～8 人 25×13', () => {
+  assert.deepStrictEqual(R.sizeFor(2), { w: 21, h: 11 });
+  assert.deepStrictEqual(R.sizeFor(4), { w: 21, h: 11 });
+  assert.deepStrictEqual(R.sizeFor(5), { w: 25, h: 13 });
+  assert.deepStrictEqual(R.sizeFor(8), { w: 25, h: 13 });
+});
+test('2 人固定對角出生（兩組對角都會出現）；3～4 人、5～8 人沿用洗牌、出生點不重複', () => {
+  const seen = new Set();
+  for (let seed = 1; seed <= 200; seed++) {
+    const g = mk(2, { seed }), [a, b] = g.players, w = g.w, h = g.h;
+    const ax = Math.floor(a.x), ay = Math.floor(a.y), bx = Math.floor(b.x), by = Math.floor(b.y);
+    assert(ax !== bx && ay !== by, '2 人必須在對角：' + [ax, ay, bx, by]);
+    assert([1, w - 2].includes(ax) && [1, h - 2].includes(ay) && [1, w - 2].includes(bx) && [1, h - 2].includes(by), '2 人只用四個角');
+    assert.strictEqual(ax + bx, w - 1); assert.strictEqual(ay + by, h - 1);     /* 兩人互相鏡射，位置對稱公平 */
+    seen.add(ax + ',' + ay + '/' + bx + ',' + by);
+  }
+  assert.strictEqual(seen.size, 4, '兩組對角、先後順序都要出現：' + [...seen]);
+  for (const n of [3, 4, 5, 8]) for (let seed = 1; seed <= 50; seed++) {
+    const g = mk(n, { seed }), pts = g.players.map(p => Math.floor(p.x) + ',' + Math.floor(p.y));
+    assert.strictEqual(new Set(pts).size, n, n + ' 人出生點不能重複');
+  }
 });
 test('同一個 seed 產生同一張地圖，不同 seed 不同', () => {
-  const a = R.generateMap(5, 17, 13, 'classic'), b = R.generateMap(5, 17, 13, 'classic'), c = R.generateMap(6, 17, 13, 'classic');
+  const a = R.generateMap(5, 21, 11, 'classic'), b = R.generateMap(5, 21, 11, 'classic'), c = R.generateMap(6, 21, 11, 'classic');
   assert.deepStrictEqual(a, b);
   assert.notDeepStrictEqual(a, c);
 });
 test('三種版型 × 多個 seed：四向對稱、全連通、出生點安全區沒有軟磚', () => {
-  for (const layout of R.LAYOUTS) for (const [w, h] of [[17, 13], [19, 15]]) for (let seed = 1; seed <= 25; seed++) {
+  for (const layout of R.LAYOUTS) for (const [w, h] of [[21, 11], [25, 13]]) for (let seed = 1; seed <= 25; seed++) {
     const g = R.generateMap(seed, w, h, layout);
     assert(R.connected(g, w, h), `${layout} ${w}x${h} seed ${seed} 不連通`);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -61,16 +77,16 @@ test('三種版型 × 多個 seed：四向對稱、全連通、出生點安全�
   }
 });
 test('邊框全是硬牆', () => {
-  const g = R.generateMap(3, 17, 13, 'open');
-  for (let x = 0; x < 17; x++) { assert.strictEqual(g[x], 1); assert.strictEqual(g[12 * 17 + x], 1); }
-  for (let y = 0; y < 13; y++) { assert.strictEqual(g[y * 17], 1); assert.strictEqual(g[y * 17 + 16], 1); }
+  const g = R.generateMap(3, 21, 11, 'open');
+  for (let x = 0; x < 21; x++) { assert.strictEqual(g[x], 1); assert.strictEqual(g[10 * 21 + x], 1); }
+  for (let y = 0; y < 11; y++) { assert.strictEqual(g[y * 21], 1); assert.strictEqual(g[y * 21 + 20], 1); }
 });
 test('密集版型比經典多硬牆', () => {
-  const count = g => g.filter(v => v === 1).length - (2 * (17 + 13) - 4);   /* 扣掉外框那圈牆，只比裡面的硬牆 */
+  const count = g => g.filter(v => v === 1).length - (2 * (21 + 11) - 4);   /* 扣掉外框那圈牆，只比裡面的硬牆 */
   /* 每張圖的硬牆量本來就會在 0.6～1.2 倍之間浮動，所以不逐張比，用 100 個 seed 的總量與多數決判斷 */
   let more = 0, dense = 0, classic = 0;
   for (let seed = 1; seed <= 100; seed++) {
-    const d = count(R.generateMap(seed, 17, 13, 'dense')), c = count(R.generateMap(seed, 17, 13, 'classic'));
+    const d = count(R.generateMap(seed, 21, 11, 'dense')), c = count(R.generateMap(seed, 21, 11, 'classic'));
     dense += d; classic += c; if (d > c) more++;
   }
   assert(dense >= classic * 1.2, '密集的硬牆總量應該明顯比經典多：' + dense + ' vs ' + classic);
@@ -250,7 +266,7 @@ test('半身機制（左右）：剛好一半在火線格裡是安全的，火�
   /* 火線在角色的「右邊」（火線格在右）：右門檻 64% —— 一半壓進去是安全的（半身機制） */
   const hitR = x => {
     const s = mk(3); arena(s);
-    put(s.players[0], 1, 1); put(s.players[2], 15, 11);
+    put(s.players[0], 1, 1); put(s.players[2], 19, 9);
     s.players[1].x = x; s.players[1].y = 3.5 + R.HURT_LIFT;
     s.bombs.push({ id: 1, owner: 0, cx: 9, cy: 3, t: 0, range: 2, pass: [], sl: null });      /* 火線 x∈[7,12)，左端 x=7 */
     R.step(s, {}, R.DT);
@@ -294,7 +310,7 @@ test('半身機制（上下）：剛好一半是安全的；站在炸彈格與�
 test('並排的火線：站在兩條並排火線的中間（各壓一半）會被炸；同一條線上各壓一半仍然安全（半身機制）', () => {
   const run1 = (bombs, x, y) => {
     const s = mk(3); arena(s);
-    put(s.players[0], 1, 1); put(s.players[2], 15, 11);
+    put(s.players[0], 1, 1); put(s.players[2], 19, 9);
     s.players[1].x = x; s.players[1].y = y;
     for (const [cx, cy] of bombs) s.bombs.push({ id: s.nextId++, owner: 0, cx, cy, t: 0, range: 4, pass: [], sl: null });
     R.step(s, {}, R.DT);
@@ -318,7 +334,7 @@ test('並排火線掃描：兩條並排的橫火，身體上下移動時，被�
   /* 炸彈 (3,3)、(3,4)，射程 4：第 3、4 列各有一條橫火；玩家在 x=6.5（離炸彈遠，只有橫火），身體垂直範圍 [y−0.76, y+0.19]（高 0.95） */
   const hit = (x, y) => {
     const s = mk(3); arena(s);
-    put(s.players[0], 1, 1); put(s.players[2], 15, 11);
+    put(s.players[0], 1, 1); put(s.players[2], 19, 9);
     s.players[1].x = x; s.players[1].y = y;
     s.bombs.push({ id: 1, owner: 0, cx: 3, cy: 3, t: 0, range: 4, pass: [], sl: null }, { id: 2, owner: 0, cx: 3, cy: 4, t: 0, range: 4, pass: [], sl: null });
     R.step(s, {}, R.DT);
@@ -354,7 +370,7 @@ test('影片情況：站在火線正上方一格、腳貼到火線就要被炸�
   /* 一個通用的測試場景：bombs 是 [cx, cy, range]，玩家在 (x, y)，回傳有沒有被炸死（炸彈 t=0，下一步就爆） */
   const hit = (bombs, x, y) => {
     const s = mk(3); arena(s);
-    put(s.players[0], 1, 1); put(s.players[2], 15, 11);
+    put(s.players[0], 1, 1); put(s.players[2], 19, 9);
     s.players[1].x = x; s.players[1].y = y;
     for (const [cx, cy, range] of bombs) s.bombs.push({ id: s.nextId++, owner: 0, cx, cy, t: 0, range, pass: [], sl: null });
     R.step(s, {}, R.DT);
@@ -396,7 +412,7 @@ test('影片情況：站在火線正上方一格、腳貼到火線就要被炸�
 test('十字斜角站半身：身體整個在一排橫火裡（炸彈格＋旁邊那格各一半），腳尖只擦到另一條火線一點點，不算並排，安全（影片 16-02-42／16-03-05）', () => {
   const hit = (x, y) => {
     const s = mk(3); arena(s);
-    put(s.players[0], 15, 11); put(s.players[2], 1, 11);
+    put(s.players[0], 19, 9); put(s.players[2], 1, 11);
     s.players[1].x = x; s.players[1].y = y;
     s.bombs.push({ id: 1, owner: 0, cx: 5, cy: 5, t: 0, range: 3, pass: [], sl: null });
     R.step(s, {}, R.DT);
@@ -413,7 +429,7 @@ test('十字斜角站半身：身體整個在一排橫火裡（炸彈格＋旁�
 test('並排火線（2×2）：身體橫跨兩排、兩欄，每格各壓約 25% 也會被炸；只在一排裡各壓一半仍安全', () => {
   const hitBombs = (bombs, x, y) => {
     const s = mk(3); arena(s);
-    put(s.players[0], 1, 1); put(s.players[2], 15, 11);
+    put(s.players[0], 1, 1); put(s.players[2], 19, 9);
     s.players[1].x = x; s.players[1].y = y;
     for (const [cx, cy] of bombs) s.bombs.push({ id: s.nextId++, owner: 0, cx, cy, t: 0, range: 5, pass: [], sl: null });
     R.step(s, {}, R.DT);
@@ -604,7 +620,7 @@ test('有尖刺的地圖提高踢球道具權重，其他地圖維持原權重',
 test('空襲：150 秒前不掉炸彈；每 2 秒掉一批，顆數 2:30→1、2:40→2、2:50 起 3，最多 3 顆', () => {
   assert.deepStrictEqual([R.SKY_START, R.SKY_EVERY, R.SKY_STEP, R.SKY_MAX, R.SKY_FUSE], [150, 2, 10, 3, 3]);
   assert.deepStrictEqual([0, 100, 149.9, 150, 159.9, 160, 169.9, 170, 180, 300].map(x => R.skyCount(x)), [0, 0, 0, 1, 1, 2, 2, 3, 3, 3]);
-  const s = mk(2); arena(s); put(s.players[0], 1, 1); put(s.players[1], 15, 11);
+  const s = mk(2); arena(s); put(s.players[0], 1, 1); put(s.players[1], 19, 9);
   s.players.forEach(p => { p.invuln = 1e9; });                   /* 不讓空襲把人炸死，才能一路數下去 */
   s.time = 140;
   const bucket = {};
@@ -624,7 +640,7 @@ test('空襲提前：2 分鐘的局最後 30 秒（1:30 起）也一定會空襲
   for (const [limit, start] of [[120, 90], [180, 150], [300, 150], [0, 150]]) {
     const s = mk(2, { timeLimit: limit, fx: false }); arena(s);
     assert.strictEqual(s.skyStart, start); assert.strictEqual(s.skyAt, start);
-    put(s.players[0], 1, 1); put(s.players[1], 15, 11);
+    put(s.players[0], 1, 1); put(s.players[1], 19, 9);
     let first = null;
     const end = limit > 0 ? limit : start + 30;
     while (s.time < end - 0.05 && s.phase === 'play') {
@@ -637,7 +653,7 @@ test('空襲提前：2 分鐘的局最後 30 秒（1:30 起）也一定會空襲
   }
 });
 test('空襲炸彈：不屬於任何人、引信 3 秒、火力橫掃到牆邊；落在空格上，不會掉在人腳下或磚塊裡', () => {
-  const s = mk(2); arena(s); put(s.players[0], 1, 1); put(s.players[1], 15, 11);
+  const s = mk(2); arena(s); put(s.players[0], 1, 1); put(s.players[1], 19, 9);
   s.players.forEach(p => { p.invuln = 1e9; });
   s.grid[6 * s.w + 8] = 2; s.grid[7 * s.w + 3] = 1;
   s.time = 149.99;
@@ -654,6 +670,7 @@ test('空襲炸彈：不屬於任何人、引信 3 秒、火力橫掃到牆邊�
   assert(!s.players.some(p => R.overlapsCell(p, landed.x, landed.y)), '不能掉在人腳下');
   assert(landed.x >= 1 && landed.y >= 1 && landed.x <= s.w - 2 && landed.y <= s.h - 2);
   /* 引爆瞬間：這一列、這一欄都被火焰燒到牆邊（軟磚擋住就停在磚，一樣的規則） */
+  const g0 = s.grid.slice();    /* 爆炸前的格子：軟磚炸掉後會變空格，要用爆炸前的判斷哪個方向有磚擋 */
   let boomed = false;
   for (let i = 0; i < 60 * 4 && !boomed; i++) { R.step(s, {}, R.DT); boomed = s.events.some(x => x.t === 'boom' && x.x === landed.x && x.y === landed.y); }
   assert(boomed, '3 秒後要爆炸');
@@ -662,28 +679,28 @@ test('空襲炸彈：不屬於任何人、引信 3 秒、火力橫掃到牆邊�
   /* 沒有磚擋的方向，火焰一路燒到最外圈牆前一格 */
   for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
     let blocked = false;
-    for (let x = landed.x + dx, y = landed.y + dy; x > 0 && y > 0 && x < s.w - 1 && y < s.h - 1; x += dx, y += dy) if (s.grid[y * s.w + x] !== 0) blocked = true;
+    for (let x = landed.x + dx, y = landed.y + dy; x > 0 && y > 0 && x < s.w - 1 && y < s.h - 1; x += dx, y += dy) if (g0[y * s.w + x] !== 0) blocked = true;
     if (!blocked) assert.strictEqual(reach(dx, dy), wallDist(dx, dy), '方向 ' + dx + ',' + dy + ' 應該一路燒到牆');
   }
 });
 test('空襲炸彈炸死人不算任何人的擊倒；每局亂數相同、掉落位置也相同', () => {
-  const s = mk(3); arena(s); put(s.players[0], 1, 1); put(s.players[1], 5, 5); put(s.players[2], 15, 11);
+  const s = mk(3); arena(s); put(s.players[0], 1, 1); put(s.players[1], 5, 5); put(s.players[2], 19, 9);
   s.bombs.push({ id: 99, owner: -1, cx: 5, cy: 5, t: 0, range: R.SKY_RANGE, pass: [], sl: null });
   R.step(s, {}, R.DT);
   assert(!s.players[1].alive, '被空襲炸到要淘汰');
   assert.strictEqual(s.players.reduce((a, p) => a + p.kills, 0), 0, '空襲不算擊倒');
   assert.strictEqual(s.players[1].cause, 'flame');
-  const drops = () => { const g = mk(2, { seed: 77 }); arena(g); put(g.players[0], 1, 1); put(g.players[1], 15, 11); g.players.forEach(p => { p.invuln = 1e9; }); g.time = 149.9; const out = []; for (let i = 0; i < 60 * 25; i++) { R.step(g, {}, R.DT); for (const e of g.events) if (e.t === 'sky') out.push(e.x + ',' + e.y); } return out.join('|'); };
+  const drops = () => { const g = mk(2, { seed: 77 }); arena(g); put(g.players[0], 1, 1); put(g.players[1], 19, 9); g.players.forEach(p => { p.invuln = 1e9; }); g.time = 149.9; const out = []; for (let i = 0; i < 60 * 25; i++) { R.step(g, {}, R.DT); for (const e of g.events) if (e.t === 'sky') out.push(e.x + ',' + e.y); } return out.join('|'); };
   const a = drops(); assert(a.length > 20 && a === drops(), '同 seed 掉落位置要一樣');
 });
 test('空襲：倒數與結束後不掉；沒有空格也不會出錯；快照裡帶得出去（owner -1、range 99）', () => {
   const c = mk(2); arena(c); c.phase = 'countdown'; c.countdown = 100; c.time = 200;
   R.step(c, {}, R.DT); assert.strictEqual(c.bombs.length, 0, '倒數中不掉');
-  const o = mk(2); arena(o); put(o.players[0], 1, 1); put(o.players[1], 15, 11); o.time = 200; o.phase = 'over'; o.endHold = 5;
+  const o = mk(2); arena(o); put(o.players[0], 1, 1); put(o.players[1], 19, 9); o.time = 200; o.phase = 'over'; o.endHold = 5;
   R.step(o, {}, R.DT); assert.strictEqual(o.bombs.length, 0, '結束後不掉');
   const f = mk(2); arena(f); for (let y = 1; y < f.h - 1; y++) for (let x = 1; x < f.w - 1; x++) f.grid[y * f.w + x] = 1;
   f.time = 150; R.step(f, {}, R.DT); assert.strictEqual(f.bombs.length, 0, '沒有空格就不掉，也不能當掉');
-  const s = mk(2); arena(s); put(s.players[0], 1, 1); put(s.players[1], 15, 11); s.players.forEach(p => { p.invuln = 1e9; }); s.time = 149.99;
+  const s = mk(2); arena(s); put(s.players[0], 1, 1); put(s.players[1], 19, 9); s.players.forEach(p => { p.invuln = 1e9; }); s.time = 149.99;
   for (let i = 0; i < 3; i++) R.step(s, {}, R.DT);
   assert(s.bombs.length >= 1);
   const v = R.viewFromStart(R.startInfo(s));
@@ -865,7 +882,7 @@ const flipX = c => (c === 6 ? 7 : c === 7 ? 6 : c), flipY = c => (c === 4 ? 5 : 
 const KIND_OF = c => (c === R.FX_GRASS ? 'grass' : c === R.FX_SLOW ? 'slow' : c === R.FX_SPIKE ? 'spike' : R.isBelt(c) ? 'belt' : null);
 test('機關：同 seed 一樣、輸送帶四向鏡像且方向跟著翻、只在主題允許的種類、不放硬牆與出生點旁；尖刺小圖 1／3／5、大圖 3／5 個', () => {
   let total = 0, asymmetric = 0;
-  for (let themeId = 0; themeId < R.THEME_COUNT; themeId++) for (const [w, h] of [[17, 13], [19, 15]]) for (let seed = 1; seed <= 30; seed++) {
+  for (let themeId = 0; themeId < R.THEME_COUNT; themeId++) for (const [w, h] of [[21, 11], [25, 13]]) for (let seed = 1; seed <= 30; seed++) {
     const grid = R.generateMap(seed, w, h, 'classic');
     const fx = R.generateFx(seed, w, h, grid, themeId);
     assert.deepStrictEqual(fx, R.generateFx(seed, w, h, R.generateMap(seed, w, h, 'classic'), themeId), '同 seed 不一致');   /* generateFx 會就地改 grid（拿掉磚、補牆），所以第二次要用新的地圖 */
@@ -887,14 +904,14 @@ test('機關：同 seed 一樣、輸送帶四向鏡像且方向跟著翻、只�
       }
     }
     assert(allowed.length <= 1, '每個主題最多 1 種機關');
-    if (spikes) { const counts = h > 13 ? [3, 5] : [1, 3, 5]; assert(counts.includes(spikes), `尖刺、草叢數量 ${spikes}（${w}x${h}）`); total++; }
+    if (spikes) { const counts = w > 21 ? [3, 5] : [1, 3, 5]; assert(counts.includes(spikes), `尖刺、草叢數量 ${spikes}（${w}x${h}）`); total++; }
   }
   assert(total > 50, '尖刺出現的次數太少：' + total);
   assert(asymmetric > 0, '尖刺、草叢、緩速格應該能不對稱分布');
 });
 test('輸送帶：每一圈都頭尾相連（順著方向走一定繞回原點、每格只有一個上游）、形狀不全是長方形', () => {
   let loops = 0, irregular = 0;
-  for (const themeId of [1, 2, 12]) for (const [w, h] of [[17, 13], [19, 15]]) for (let seed = 1; seed <= 40; seed++) {
+  for (const themeId of [1, 2, 12]) for (const [w, h] of [[21, 11], [25, 13]]) for (let seed = 1; seed <= 40; seed++) {
     const fx = R.generateFx(seed, w, h, R.generateMap(seed, w, h, 'classic'), themeId);
     const indeg = new Map(), seen = new Set();
     for (let i = 0; i < fx.length; i++) {
@@ -923,7 +940,7 @@ test('輸送帶：每一圈都頭尾相連（順著方向走一定繞回原點�
 });
 test('產線一定有輸送帶：日月光廠房（任何版型）每張圖都有，而且只有輸送帶；產線版型只有日月光有，其他主題選 fab 會當成隨機版型', () => {
   const hasBelt = fx => fx.some(v => R.isBelt(v)), only = fx => fx.every(v => v === 0 || R.isBelt(v));
-  for (const [w, h] of [[17, 13], [19, 15]]) for (let seed = 1; seed <= 30; seed++) {
+  for (const [w, h] of [[21, 11], [25, 13]]) for (let seed = 1; seed <= 30; seed++) {
     for (let themeId = 0; themeId < R.THEME_COUNT; themeId++) {
       const fx = R.generateFx(seed, w, h, R.generateMap(seed, w, h, 'fab'), themeId, 'fab');
       assert(hasBelt(fx) && only(fx), `產線版型 主題 ${themeId} seed ${seed} 沒有輸送帶（或混了別的機關）`);
@@ -934,7 +951,7 @@ test('產線一定有輸送帶：日月光廠房（任何版型）每張圖都�
     }
   }
   /* 其他版型的其他主題，仍照主題規則（森林沒有輸送帶） */
-  assert(!hasBelt(R.generateFx(3, 17, 13, R.generateMap(3, 17, 13, 'classic'), 3, 'classic')));
+  assert(!hasBelt(R.generateFx(3, 21, 11, R.generateMap(3, 21, 11, 'classic'), 3, 'classic')));
   /* createGame：隨機版型的日月光會用產線版型，所以一定有輸送帶 */
   for (let seed = 1; seed <= 20; seed++) { const g = mk(2, { seed, themeId: R.FAB_THEME, layout: 'random', fx: true }); assert.strictEqual(g.layout, 'fab'); assert(hasBelt(g.fx), '日月光隨機版型沒有輸送帶'); }
   /* 日月光不管選什麼版型都是產線；其他主題選 fab（舊設定）會當成隨機版型，不會是產線 */
@@ -944,7 +961,7 @@ test('產線一定有輸送帶：日月光廠房（任何版型）每張圖都�
 test('輸送帶：每格找得到前一格（進來的方向），環上有轉角、直的格子進出同方向', () => {
   let corners = 0, straight = 0;
   for (const themeId of [1, 2, 12]) for (let seed = 1; seed <= 30; seed++) {
-    const w = 17, h = 13, fx = R.generateFx(seed, w, h, R.generateMap(seed, w, h, 'classic'), themeId);
+    const w = 21, h = 11, fx = R.generateFx(seed, w, h, R.generateMap(seed, w, h, 'classic'), themeId);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
       const v = fx[y * w + x];
       if (!R.isBelt(v)) continue;
@@ -958,7 +975,7 @@ test('輸送帶：每格找得到前一格（進來的方向），環上有轉�
 });
 test('日月光產線：只有一條繞全地圖的輸送帶（單一環、沿路不規則轉彎、不壓硬牆與出生點）', () => {
   let rings = 0, fallback = 0;
-  for (const [w, h] of [[17, 13], [19, 15]]) for (let seed = 1; seed <= 100; seed++) {
+  for (const [w, h] of [[21, 11], [25, 13]]) for (let seed = 1; seed <= 100; seed++) {
     const grid = R.generateMap(seed, w, h, 'fab'), fx = R.generateFx(seed, w, h, grid, R.FAB_THEME, 'fab');
     const cells = []; fx.forEach((v, i) => { if (R.isBelt(v)) cells.push(i); });
     let k = cells[0], n = 0; const seen = new Set();
@@ -979,7 +996,7 @@ test('日月光產線：只有一條繞全地圖的輸送帶（單一環、沿�
 });
 test('輸送帶形狀夠隨機：不同的形狀、大小、順逆時針、橫放直放，每個角落的環數有 1 個也有 2 個，而且環與環不相鄰', () => {
   const shapes = new Set(), sizes = new Set(), dirs = new Set(), loopCounts = new Set(); let wide = 0, tall = 0;
-  for (let seed = 1; seed <= 300; seed++) for (const [w, h] of [[17, 13], [19, 15]]) {
+  for (let seed = 1; seed <= 300; seed++) for (const [w, h] of [[21, 11], [25, 13]]) {
     const fx = R.generateFx(seed, w, h, R.generateMap(seed, w, h, 'classic'), 1);
     const cx = (w - 1) / 2, cy = (h - 1) / 2, seen = new Set(); let n = 0;
     for (let y = 1; y < cy; y++) for (let x = 1; x < cx; x++) {          /* 只看左上四分之一（其他三個是鏡像） */
@@ -1013,7 +1030,7 @@ test('輸送帶形狀夠隨機：不同的形狀、大小、順逆時針、橫�
 });
 test('輸送帶：炸彈放在上面也被載走（速度同人、沿路轉彎、繞圈回到原點、離開帶子就停、被擋住就等）', () => {
   const s = fxOn(2); arena(s); s.fx.fill(0);
-  put(s.players[0], 1, 1); put(s.players[1], 15, 11);
+  put(s.players[0], 1, 1); put(s.players[1], 19, 9);
   const ring = [[3, 3, 7], [4, 3, 5], [4, 4, 6], [3, 4, 4]];                  /* 2×2 的環：右、下、左、上 */
   for (const [x, y, c] of ring) s.fx[y * s.w + x] = R.FX_BELT + (c - 4);
   s.fx[3 * s.w + 7] = R.FX_BELT + 3; s.fx[3 * s.w + 8] = R.FX_BELT + 3;       /* 另一條往右的直線：(7,3)(8,3)，之後是空地 */
@@ -1028,7 +1045,7 @@ test('輸送帶：炸彈放在上面也被載走（速度同人、沿路轉彎�
   assert.deepStrictEqual([c.cx, c.cy], [9, 3], '離開輸送帶就停在帶子外');
   assert(!c.sl && b.sl, '停下來的沒有滑行狀態，繞圈的還在走');
   /* 被擋住：前面有炸彈就停在原地 */
-  const t = fxOn(2); arena(t); t.fx.fill(0); put(t.players[0], 1, 1); put(t.players[1], 15, 11);
+  const t = fxOn(2); arena(t); t.fx.fill(0); put(t.players[0], 1, 1); put(t.players[1], 19, 9);
   t.fx[5 * t.w + 5] = R.FX_BELT + 3; t.fx[5 * t.w + 6] = R.FX_BELT + 3;
   t.bombs.push({ id: 1, owner: 0, cx: 5, cy: 5, t: 30, range: 2, pass: [], sl: null }, { id: 2, owner: 0, cx: 6, cy: 5, t: 30, range: 2, pass: [], sl: null });
   t.bombs.push({ id: 3, owner: 0, cx: 7, cy: 5, t: 30, range: 2, pass: [], sl: null });
@@ -1041,7 +1058,7 @@ test('輸送帶：炸彈放在上面也被載走（速度同人、沿路轉彎�
 test('尖刺與緩速格：一格一格散開、彼此不相連（含斜角）、數量小圖 1／3／5、大圖 3／5、尖刺不蓋軟磚、緩速格可蓋軟磚、地圖連通', () => {
   for (const [themeId, code] of [[8, R.FX_SPIKE], [9, R.FX_SPIKE], [10, R.FX_SPIKE], [0, R.FX_SLOW], [4, R.FX_SLOW], [5, R.FX_SLOW]]) {
     let seen = 0, maps = 0, bricksUnder = 0;
-    for (const [w, h] of [[17, 13], [19, 15]]) for (const layout of R.LAYOUTS) for (let seed = 1; seed <= 40; seed++) {
+    for (const [w, h] of [[21, 11], [25, 13]]) for (const layout of R.LAYOUTS) for (let seed = 1; seed <= 40; seed++) {
       const orig = R.generateMap(seed, w, h, layout), grid = orig.slice(), fx = R.generateFx(seed, w, h, grid, themeId);
       let n = 0; maps++;
       for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
@@ -1051,7 +1068,7 @@ test('尖刺與緩速格：一格一格散開、彼此不相連（含斜角）�
         assert.notStrictEqual(grid[y * w + x], 1, '機關在硬牆上');
         for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && x + dx > 0 && y + dy > 0 && x + dx < w - 1 && y + dy < h - 1) assert.strictEqual(fx[(y + dy) * w + x + dx], 0, `機關相連：${themeId} seed ${seed} ${x},${y} 與 ${x + dx},${y + dy}`);
       }
-      if (n) assert((h > 13 ? [3, 5] : [1, 3, 5]).includes(n), '數量 ' + n);
+      if (n) assert((w > 21 ? [3, 5] : [1, 3, 5]).includes(n), '數量 ' + n);
       for (let i = 0; i < grid.length; i++) if (grid[i] !== orig[i]) assert(code === R.FX_SPIKE && fx[i] === code && orig[i] === 2, '只有尖刺格的軟磚會被拿掉');
       assert(R.connected(grid, w, h));
       if (n) seen++;
@@ -1062,7 +1079,7 @@ test('尖刺與緩速格：一格一格散開、彼此不相連（含斜角）�
 });
 test('草叢位置（森林、聖誕小鎮 × 兩種尺寸 × 四種版型 × 40 個 seed）：走道格、不相連（含斜角）、小圖 1／3／5 大圖 3／5、不靠邊框與出生點、不動硬牆、炸彈只沿一條直線炸', () => {
   let seen = 0, maps = 0, cells = 0;
-  for (const themeId of [3, 11]) for (const [w, h] of [[17, 13], [19, 15]]) for (const layout of R.LAYOUTS) for (let seed = 1; seed <= 40; seed++) {
+  for (const themeId of [3, 11]) for (const [w, h] of [[21, 11], [25, 13]]) for (const layout of R.LAYOUTS) for (let seed = 1; seed <= 40; seed++) {
     const orig = R.generateMap(seed, w, h, layout), grid = orig.slice(), fx = R.generateFx(seed, w, h, grid, themeId);
     assert.deepStrictEqual(fx, R.generateFx(seed, w, h, orig.slice(), themeId), '同 seed 要一樣');
     const at = (x, y) => y * w + x, wl = (x, y) => grid[at(x, y)] === 1;
@@ -1082,7 +1099,7 @@ test('草叢位置（森林、聖誕小鎮 × 兩種尺寸 × 四種版型 × 40
       const cellsHit = R.blast({ w, h, grid, bombs: [] }, { cx: x, cy: y, range: 9, id: -1, owner: 0, pass: [], sl: null }).cells;
       assert(cellsHit.every(c => c.x === x) || cellsHit.every(c => c.y === y), `草叢裡的炸彈火焰不只一條線：${x},${y}`);
     }
-    if (n) assert((h > 13 ? [3, 5] : [1, 3, 5]).includes(n), '草叢數量 ' + n);
+    if (n) assert((w > 21 ? [3, 5] : [1, 3, 5]).includes(n), '草叢數量 ' + n);
     assert(R.connected(grid, w, h), '地圖要連通');
     if (n) { seen++; cells += n; }
   }
@@ -1094,7 +1111,7 @@ test('機關：各主題的機關種類符合風格（草叢、輸送帶、緩�
   for (const k of ['grass', 'belt', 'slow', 'spike']) assert(has(k) >= 2, k + ' 太少主題用');
   for (const t of [0, 4, 5]) assert(R.THEME_FX[t].indexOf('slow') >= 0, '糖果、沙漠、雪地要有緩速格：' + t);
   assert.strictEqual(R.THEME_FX.length, R.THEME_COUNT);
-  assert(R.generateFx(3, 17, 13, R.generateMap(3, 17, 13, 'classic'), 99).every(v => v === 0));
+  assert(R.generateFx(3, 21, 11, R.generateMap(3, 21, 11, 'classic'), 99).every(v => v === 0));
   const s = mk(2, { fx: false });
   assert(s.fx.every(v => v === 0));
 });
@@ -1152,7 +1169,7 @@ test('尖刺：炸彈放在上面當場爆炸（同一步），歸放炸彈的�
 test('尖刺：被踢的炸彈碰到尖刺立刻爆炸，不會繼續滑；空襲不會把炸彈掉在尖刺上', () => {
   const s = fxOn(2); arena(s);
   s.fx.fill(0); s.fx[5 * s.w + 8] = R.FX_SPIKE;
-  const p = s.players[0]; p.kick = true; put(p, 3, 5); put(s.players[1], 15, 11);
+  const p = s.players[0]; p.kick = true; put(p, 3, 5); put(s.players[1], 19, 9);
   R.placeBomb(s, p); p.bombsOut = 0;
   put(p, 2, 5);
   run(s, { 0: { dir: 'R' } }, 0.55);
@@ -1161,7 +1178,7 @@ test('尖刺：被踢的炸彈碰到尖刺立刻爆炸，不會繼續滑；空�
   /* 空襲 */
   const k = fxOn(2); arena(k); k.fx.fill(0);
   for (let y = 1; y < k.h - 1; y++) for (let x = 1; x < k.w - 1; x++) if (!(x === 7 && y === 7)) k.fx[y * k.w + x] = R.FX_SPIKE;
-  k.time = R.SKY_START; k.skyAt = R.SKY_START; put(k.players[0], 1, 1); put(k.players[1], 15, 11);
+  k.time = R.SKY_START; k.skyAt = R.SKY_START; put(k.players[0], 1, 1); put(k.players[1], 19, 9);
   for (let i = 0; i < 400; i++) R.step(k, {}, R.DT);
   assert(k.bombs.every(b => b.owner !== -1 || (b.cx === 7 && b.cy === 7)) || k.flames.length >= 0);
   for (const b of k.bombs) if (b.owner === -1) assert(k.fx[b.cy * k.w + b.cx] !== R.FX_SPIKE, '空襲炸彈掉在尖刺上');

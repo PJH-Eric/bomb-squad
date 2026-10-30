@@ -113,11 +113,13 @@
   }
 
   /* ---------- 地圖 ---------- */
-  /* 格子數盡量多（比最初每邊各多 2 格、小圖 221 格／大圖 285 格），走位與佈局空間大；每格大小仍由「可用空間 ÷ 格數」自動算，人物、道具、炸彈跟著等比縮放 */
-  const MAP_SMALL = { w: 17, h: 13 }, MAP_LARGE = { w: 19, h: 15 };
+  /* 長方形地圖（含外圈，寬高必須是奇數）：橫向螢幕可以讓棋盤佔滿；每格大小仍由「可用空間 ÷ 格數」自動算，人物、道具、炸彈跟著等比縮放 */
+  const MAP_SMALL = { w: 21, h: 11 }, MAP_LARGE = { w: 25, h: 13 };
   function sizeFor(count) { return count <= 4 ? Object.assign({}, MAP_SMALL) : Object.assign({}, MAP_LARGE); }
   /** 這種尺寸的地圖用幾個出生點：小圖只用四個角，大圖再加上四邊中點 */
-  function spawnCount(w, h) { return h <= MAP_SMALL.h ? 4 : 8; }
+  function spawnCount(w, h) { return isLargeMap(w) ? 8 : 4; }
+  /** 大圖旗標：以寬度判斷（小圖 21、大圖 25），不再靠高度 */
+  function isLargeMap(w) { return w > MAP_SMALL.w; }
 
   function spawnPoints(w, h) {
     const mx = (w - 1) / 2, my = (h - 1) / 2;
@@ -309,7 +311,7 @@
     const feats = line ? ['belt'] : (THEME_FX[themeId] || []);
     if (!feats.length) return fx;
     const rnd = mulberry32((seed ^ 0x7f4a7c15) >>> 0);
-    const cx = (w - 1) / 2, cy = (h - 1) / 2, large = h > MAP_SMALL.h;
+    const cx = (w - 1) / 2, cy = (h - 1) / 2, large = isLargeMap(w);
     const at = (x, y) => y * w + x;
     const near = new Uint8Array(w * h), safe = new Uint8Array(w * h);
     for (const [sx, sy] of spawnPoints(w, h).slice(0, spawnCount(w, h))) {
@@ -433,6 +435,9 @@
             let x0 = w, x1 = 0, y0 = h, y1 = 0;
             for (const c of cycle) { const x = c % w, y = (c / w) | 0; x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
             if (x1 - x0 < w - 11 || y1 - y0 < h - 9) continue;      /* 環太小、沒繞到全地圖，重抽 */
+            let turns = 0;      /* 轉角太少（接近長方形）也重抽：小圖高度只有 11，路標靠得近，容易繞成太規則的環 */
+            cycle.forEach((c, k) => { const p = cycle[(k + cycle.length - 1) % cycle.length], n = cycle[(k + 1) % cycle.length]; if ((c % w) - (p % w) !== (n % w) - (c % w) || ((c / w) | 0) - ((p / w) | 0) !== ((n / w) | 0) - ((c / w) | 0)) turns++; });
+            if (turns < 8) continue;
             cycle.forEach((c, k) => {
               const n = cycle[(k + 1) % cycle.length], dx = (n % w) - (c % w), dy = ((n / w) | 0) - ((c / w) | 0);
               fx[c] = FX_BELT + (dy < 0 ? 0 : dy > 0 ? 1 : dx < 0 ? 2 : 3);
@@ -497,8 +502,14 @@
     else if (!layout || layout === 'random' || layout === 'fab') layout = RANDOM_LAYOUTS[Math.floor(pick() * RANDOM_LAYOUTS.length)];
     const grid = generateMap(seed, w, h, layout, opts.density, opts.soften);
     /* 每局隨機分配出生點：只在「已清出安全區」的點之間洗牌，所以每個位置一樣公平；同一個 seed 洗出來一樣（連線雙方一致） */
-    const spawns = spawnPoints(w, h).slice(0, spawnCount(w, h));
-    { const sr = mulberry32((seed ^ 0x51ed270b) >>> 0); for (let i = spawns.length - 1; i > 0; i--) { const j = Math.floor(sr() * (i + 1)); const t = spawns[i]; spawns[i] = spawns[j]; spawns[j] = t; } }
+    let spawns = spawnPoints(w, h).slice(0, spawnCount(w, h));
+    { const sr = mulberry32((seed ^ 0x51ed270b) >>> 0);
+      if (count === 2) {
+        /* 2 人固定對角出生（spawnPoints 順序：左上、右下、右上、左下，0↔1、2↔3 為對角）；擇一組、順序也隨機 */
+        const pair = sr() < 0.5 ? [0, 1] : [2, 3];
+        if (sr() < 0.5) pair.reverse();
+        spawns = pair.map(i => spawns[i]);
+      } else for (let i = spawns.length - 1; i > 0; i--) { const j = Math.floor(sr() * (i + 1)); const t = spawns[i]; spawns[i] = spawns[j]; spawns[j] = t; } }
     const fx = opts.fx === false ? new Array(w * h).fill(0) : generateFx(seed, w, h, grid, themeId, layout);
     const state = {
       seed, rng: (seed ^ 0xa5a5a5a5) | 0, w, h, grid, fx, layout, themeId,
@@ -1188,7 +1199,7 @@
   root.Rules = {
     DT, DIRS, FUSE, AIR_EVERY, SKY_START, SKY_EVERY, SKY_STEP, SKY_MAX, SKY_FUSE, SKY_RANGE, SKY_LAST, skyStartFor, skyCount, PLANE_SPEED, FLAME_T, HALF, HALF_BODY, UPPER_HIT, SIDE_LEFT, SIDE_RIGHT, BODY_UP, BODY_DOWN, FEET_REACH, FEET_HIT, FEET_TOP, HURT_LIFT, hurtCells, START, MAX, SPEED, ANIMAL_STATS, statsOf, CURSE_T, CURSE_DUR, GHOST_T, SUPER_T, COUNTDOWN, SLIDE_SPEED,
     KICK_OVERLAP, KICK_REACH, ITEM_TYPES, POSITIVE, CURSES, LAYOUTS, RANDOM_LAYOUTS, FAB_THEME, LAYOUT_NAMES, THEME_COUNT, SHAPES, SLOT_COLORS, DROP_WEIGHTS, dropWeightsFor,
-    mulberry32, rand, sizeFor, spawnCount, MAP_SMALL, MAP_LARGE, spawnPoints, generateMap, connected, createGame, step,
+    mulberry32, rand, sizeFor, spawnCount, isLargeMap, MAP_SMALL, MAP_LARGE, spawnPoints, generateMap, connected, createGame, step,
     blast, bombAt, itemAt, flameAt, cellOf, cellIdx, inside, speedOf, rangeOf, maxBombsOf, fireOf, speedLvlOf, flipDir, hideInSnapshot,
     canPlaceBomb, placeBomb, overlapsCell, movePlayer, slideFree, getPlayer, alivePlayers, collides, removePlayer, finish,
     snapshot, startInfo, viewFromStart, applySnapshot, gridString,
