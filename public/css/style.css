@@ -265,10 +265,10 @@ body.calm *, body.calm *::before, body.calm *::after { animation: none !importan
 .side-chat { display: flex; flex-direction: column; min-height: 0; flex: 1 1 0; margin-top: auto; }
 .side-chat .chat-log { max-height: none; flex: 1; min-height: 70px; }
 .game { --stick: 150px; --knob: 64px; --bomb: 100px; }   /* 控制鈕大小由 game.js 依裝置設定（見 touchlayout.js） */
-.game-main { position: relative; flex: 1 1 auto; min-width: 0; display: flex; align-items: center; justify-content: center; padding: calc(8px + var(--safe-t)) calc(8px + var(--safe-r) + var(--gut, 0px)) calc(8px + var(--safe-b) + var(--gut-b, 0px)) calc(8px + var(--safe-l) + var(--gut, 0px)); }
+.game-main { position: relative; flex: 1 1 auto; min-width: 0; display: flex; align-items: center; justify-content: center; padding: calc(58px + var(--safe-t)) calc(8px + var(--safe-r) + var(--gut, 0px)) calc(8px + var(--safe-b) + var(--gut-b, 0px)) calc(8px + var(--safe-l) + var(--gut, 0px)); }
 .board { position: relative; border-radius: 14px; overflow: hidden; box-shadow: 0 0 0 5px #fff, 0 12px 30px rgba(60, 30, 100, .3); line-height: 0; }
 .board canvas { display: block; touch-action: none; }
-/* 資訊欄：貼在棋盤最上面那圈外牆（位置、寬度、高度由 game.js 的 placeHud 設成 --hud-x／--hud-y／--hud-w／--hud-h）。左：側欄開關與選單／暫停；中：計時與玩家頭像；右：線上延遲，再右邊是全域的語言與設定鈕 */
+/* 資訊欄：放在棋盤上方保留區（位置、寬度、高度由 game.js 的 placeHud 設成 --hud-x／--hud-y／--hud-w／--hud-h）。左：側欄開關與選單／暫停；中：計時與玩家頭像；右：線上延遲，再右邊是全域的語言與設定鈕 */
 .hud { position: absolute; z-index: 15; left: var(--hud-x, 0); top: var(--hud-y, 0); width: var(--hud-w, 100%); height: var(--hud-h, 32px); display: flex; align-items: center; gap: 6px; padding: 0 4px; box-sizing: border-box; pointer-events: none; }
 .hud-l, .hud-r { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
 .hud-r { margin-left: auto; padding-right: calc(var(--hud-h, 32px) * 2 + 10px); }       /* 右邊讓出語言鈕與設定鈕 */
@@ -291,15 +291,15 @@ body.calm *, body.calm *::before, body.calm *::after { animation: none !importan
 /* 觸控按鍵 */
 .touch { position: absolute; z-index: 18; bottom: calc(var(--edge, 20px) + var(--safe-b)); left: 0; right: 0; display: flex; justify-content: space-between; align-items: flex-end; padding: 0 calc(var(--edge, 20px) + var(--safe-r)) 0 calc(var(--edge, 20px) + var(--safe-l)); pointer-events: none; }   /* 搖桿在左下、炸彈鍵在右下；邊距手機 20px、平板 32px（另加安全區） */
 .touch.flip { flex-direction: row-reverse; }
-.stick { position: relative; width: var(--stick); height: var(--stick); border-radius: 50%; pointer-events: auto; touch-action: none; background: radial-gradient(circle, rgba(255, 255, 255, .55) 0, rgba(255, 255, 255, .3) 70%); box-shadow: inset 0 0 0 4px rgba(255, 255, 255, .8), 0 8px 18px rgba(60, 30, 100, .22); opacity: var(--tc-op, .45); transition: opacity .12s; }
-.stick.down, .bomb-btn.down { opacity: var(--tc-op-down, .8); }
-.stick .arrow { position: absolute; width: 0; height: 0; border: 10px solid transparent; opacity: .35; transition: opacity .08s; }
-.stick .arrow.on { opacity: 1; filter: drop-shadow(0 0 4px #fff); }
-.stick .arrow.u { top: 6px; left: 50%; margin-left: -10px; border-bottom-color: var(--grape-d); border-top-width: 0; }
-.stick .arrow.d { bottom: 6px; left: 50%; margin-left: -10px; border-top-color: var(--grape-d); border-bottom-width: 0; }
-.stick .arrow.l { left: 6px; top: 50%; margin-top: -10px; border-right-color: var(--grape-d); border-left-width: 0; }
-.stick .arrow.r { right: 6px; top: 50%; margin-top: -10px; border-left-color: var(--grape-d); border-right-width: 0; }
-.stick .knob { position: absolute; left: 50%; top: 50%; width: var(--knob); height: var(--knob); margin: calc(var(--knob) / -2) 0 0 calc(var(--knob) / -2); border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, var(--grape) 80%); box-shadow: 0 5px 0 var(--grape-d), 0 10px 16px rgba(60, 30, 100, .3); }
+.stick { position: relative; width: var(--stick); height: var(--stick); pointer-events: none; }
+.direction-key { position: absolute; width: 36%; height: 36%; min-width: 36px; min-height: 36px; display: grid; place-items: center; padding: 0; border: 2px solid rgba(255, 255, 255, .65); border-radius: 12px; background: rgba(255, 253, 243, .14); color: #fffdf3; font: inherit; font-size: calc(var(--stick) * .19); text-shadow: 0 1px 3px #17122b; pointer-events: auto; touch-action: none; cursor: pointer; opacity: var(--tc-op, .45); transition: background .08s, opacity .08s, box-shadow .08s; }
+.direction-key.u { top: 0; left: 32%; }
+.direction-key.d { bottom: 0; left: 32%; }
+.direction-key.l { left: 0; top: 32%; }
+.direction-key.r { right: 0; top: 32%; }
+.direction-key.on { background: rgba(255, 224, 61, .8); color: #17122b; border-color: #fff5a1; opacity: var(--tc-op-down, .8); box-shadow: 0 0 14px rgba(255, 224, 61, .8); text-shadow: none; }
+.direction-key:focus-visible { outline: 3px solid #ffe03d; outline-offset: 3px; }
+.bomb-btn.down { opacity: var(--tc-op-down, .8); }
 .bomb-btn { pointer-events: auto; touch-action: none; width: var(--bomb); height: var(--bomb); border-radius: 50%; border: 0; display: grid; place-items: center; cursor: pointer; background: radial-gradient(circle at 35% 28%, #ffd0e4, var(--pink) 60%); box-shadow: 0 7px 0 var(--pink-d), 0 14px 22px rgba(60, 30, 100, .3), inset 0 3px 0 rgba(255, 255, 255, .5); opacity: var(--tc-op, .45); transition: opacity .12s; }
 .bomb-btn:active, .bomb-btn.down { transform: translateY(5px); box-shadow: 0 2px 0 var(--pink-d), 0 6px 10px rgba(60, 30, 100, .3); }
 .bomb-btn img { width: calc(var(--bomb) * .6); height: calc(var(--bomb) * .6); pointer-events: none; }
@@ -435,8 +435,6 @@ body {
 .stat { background: #fff; border: 2px solid #17122b; border-radius: 10px; }
 .curse-bar { background: #8b5cff; color: #fff; border: 2px solid #17122b; }
 .buff-bar { background: var(--mint); color: #17122b; }
-.stick { background: rgba(255, 253, 243, .45); box-shadow: inset 0 0 0 4px #17122b; }
-.stick .knob { background: #ffe03d; border: 4px solid #17122b; box-shadow: 0 4px 0 #17122b; }
 .bomb-btn { background: var(--pink); border: 4px solid #17122b; box-shadow: 0 7px 0 #17122b; }
 .bomb-btn:active, .bomb-btn.down { box-shadow: 0 2px 0 #17122b; }
 :focus-visible { outline: 4px solid #ffe03d; box-shadow: 0 0 0 7px #17122b; }

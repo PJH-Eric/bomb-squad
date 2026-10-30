@@ -133,7 +133,7 @@
       this.toggle = h('button', { type: 'button', class: 'icon-btn side-toggle', 'aria-label': tr('game.openSide'), title: tr('game.sideTitle'), onClick: () => this.setSide(true) },
         h('span', { html: Art.icon('list', 22) }), this.badge);
 
-      /* 上方資訊欄：整列放進棋盤最上面那圈外牆，不蓋可玩格（位置與大小由 layout() 依棋盤算）。左：側欄開關、選單／暫停；中：計時與玩家頭像；右：線上延遲（右上角另有全域的語言與設定鈕） */
+      /* 上方資訊欄：保留獨立空間，不蓋棋盤（位置與大小由 layout() 依棋盤算）。左：側欄開關、選單／暫停；中：計時與玩家頭像；右：線上延遲（右上角另有全域的語言與設定鈕） */
       this.pingEl = online ? h('div', { class: 'ping', role: 'status', 'aria-label': tr('game.ping') }, '-- ms') : null;
       this.hud = h('div', { class: 'hud' },
         h('div', { class: 'hud-l' }, this.toggle, this.exitBtn),
@@ -207,6 +207,7 @@
       this.rotateEl.querySelector('p').textContent = tr('game.rotate');
       if (this.mission) this.paintMission(this.lastMission || null);
       if (this.stick) this.stick.setAttribute('aria-label', tr('game.stick'));
+      for (const [dir, button] of Object.entries(this.directionButtons || {})) button.setAttribute('aria-label', tr('game.direction.' + dir));
       if (this.bombBtn) this.bombBtn.setAttribute('aria-label', tr('game.bomb'));
       const mapEl = this.buildMapInfo(); this.mapEl.replaceWith(mapEl); this.mapEl = mapEl;
       if (this.chat) this.chat.relang(this.cfg.chat.list());
@@ -221,55 +222,55 @@
 
     buildTouch() {
       const st = this.settings;
-      this.knob = h('span', { class: 'knob' });
+      this.directionButtons = {};
       this.stick = h('div', { class: 'stick', role: 'group', 'aria-label': tr('game.stick') },
-        h('span', { class: 'arrow u' }), h('span', { class: 'arrow d' }), h('span', { class: 'arrow l' }), h('span', { class: 'arrow r' }), this.knob);
+        ...[['U', 'u', '▲'], ['D', 'd', '▼'], ['L', 'l', '◀'], ['R', 'r', '▶']].map(([dir, cls, glyph]) => {
+          const button = h('button', { type: 'button', class: 'direction-key ' + cls, 'aria-label': tr('game.direction.' + dir), 'aria-pressed': 'false' }, glyph);
+          this.directionButtons[dir] = button;
+          return button;
+        }));
       this.bombBtn = h('button', { type: 'button', class: 'bomb-btn', 'aria-label': tr('game.bomb') },
         h('img', { alt: '', src: Art.svgUrl(Art.bombSVG()) }));
       this.touchEl = h('div', { class: 'touch' + (st.stickSide === 'right' ? ' flip' : ''), 'aria-hidden': 'false' }, this.stick, this.bombBtn);
       this.main.appendChild(this.touchEl);
 
-      /* 搖桿與放炸彈鍵各自記錄自己的 pointerId（Pointer Events，不用 touch*）：按住搖桿時可以同時按炸彈，兩邊互不中斷；
-         搖桿已有手指時忽略第二根，炸彈鍵只有自己的那根手指放開才算放開 */
-      let stickId = null, bombId = null;
-      const arrows = { U: this.stick.querySelector('.arrow.u'), D: this.stick.querySelector('.arrow.d'), L: this.stick.querySelector('.arrow.l'), R: this.stick.querySelector('.arrow.r') };
-      const paintArrows = d => { for (const k of Object.keys(arrows)) arrows[k].classList.toggle('on', k === d); };
-      const update = e => {
-        const r = this.stick.getBoundingClientRect();
-        const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-        let dx = e.clientX - cx, dy = e.clientY - cy;
-        const rad = r.width / 2, dist = Math.hypot(dx, dy);
-        const lim = rad * 0.55;
-        const k = dist > lim ? lim / dist : 1;
-        this.knob.style.transform = 'translate(' + dx * k + 'px,' + dy * k + 'px)';
-        let d = null, d2 = null;
-        if (dist > rad * 0.24) {
-          const ax = Math.abs(dx), ay = Math.abs(dy);
-          const cur = this.stickDir;
-          if (cur === 'L' || cur === 'R') d = ay > ax * 1.3 ? (dy > 0 ? 'D' : 'U') : (dx > 0 ? 'R' : 'L');
-          else if (cur === 'U' || cur === 'D') d = ax > ay * 1.3 ? (dx > 0 ? 'R' : 'L') : (dy > 0 ? 'D' : 'U');
-          else d = ax > ay ? (dx > 0 ? 'R' : 'L') : (dy > 0 ? 'D' : 'U');
-          /* 斜推（次要軸至少主軸的 45%）：被擋住時沿次要軸走，貼著牆推也能滑到路口 */
-          if (d === 'L' || d === 'R') { if (ay > ax * 0.45) d2 = dy > 0 ? 'D' : 'U'; }
-          else if (ax > ay * 0.45) d2 = dx > 0 ? 'R' : 'L';
+      /* 方向鍵與炸彈各自記錄手指，支援同時移動與放炸彈。 */
+      let bombId = null;
+      const held = new Map();
+      const paintDirections = () => {
+        const dirs = [...held.values()];
+        this.stickDir = dirs.length ? dirs[dirs.length - 1] : null;
+        this.stickDir2 = dirs.slice(0, -1).reverse().find(d => (d === 'L' || d === 'R') !== (this.stickDir === 'L' || this.stickDir === 'R')) || null;
+        for (const [dir, button] of Object.entries(this.directionButtons)) {
+          const down = dirs.includes(dir);
+          button.classList.toggle('on', down);
+          button.setAttribute('aria-pressed', String(down));
         }
-        paintArrows(d);      /* 按住的方向箭頭亮起，其餘保持淡 */
-        this.stickDir = d; this.stickDir2 = d2; this.refreshDir();
+        this.refreshDir();
       };
-      this.stick.addEventListener('pointerdown', e => {
-        e.preventDefault();
-        if (stickId !== null) return;
-        stickId = e.pointerId; this.stick.classList.add('down');
-        try { this.stick.setPointerCapture(e.pointerId); } catch (err) { /* 忽略 */ }
-        update(e);
-      });
-      this.stick.addEventListener('pointermove', e => { if (e.pointerId === stickId) update(e); });
-      const stickEnd = e => {
-        if (e.pointerId !== stickId) return;
-        stickId = null; this.stickDir = null; this.stickDir2 = null; this.knob.style.transform = '';
-        this.stick.classList.remove('down'); paintArrows(null); this.refreshDir();
-      };
-      for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) this.stick.addEventListener(ev, stickEnd);
+      for (const [dir, button] of Object.entries(this.directionButtons)) {
+        button.addEventListener('pointerdown', e => {
+          e.preventDefault();
+          if (UI_open() || held.has(e.pointerId)) return;
+          held.set(e.pointerId, dir);
+          try { button.setPointerCapture(e.pointerId); } catch (err) { /* 忽略 */ }
+          paintDirections();
+        });
+        const release = e => {
+          if (held.get(e.pointerId) !== dir) return;
+          held.delete(e.pointerId); paintDirections();
+        };
+        for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) button.addEventListener(ev, release);
+        button.addEventListener('keydown', e => {
+          if (e.key !== 'Enter' && e.key !== ' ') return;
+          e.preventDefault(); e.stopPropagation();
+          if (UI_open()) return;
+          held.set('key-' + dir, dir); paintDirections();
+        });
+        const releaseKey = () => { held.delete('key-' + dir); paintDirections(); };
+        button.addEventListener('keyup', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); releaseKey(); } });
+        button.addEventListener('blur', releaseKey);
+      }
       this.bombBtn.addEventListener('pointerdown', e => {
         e.preventDefault();
         if (bombId !== null) return;
@@ -280,11 +281,10 @@
       const bombUp = e => { if (e.pointerId !== bombId) return; bombId = null; this.bombBtn.classList.remove('down'); };
       for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) this.bombBtn.addEventListener(ev, bombUp);
       this.bombBtn.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.pressBomb(); } });
-      /* 切到別的 App、頁面隱藏、失去焦點：完整重置（方向、記錄的手指、搖桿外觀、炸彈鍵），不會殘留往一個方向跑 */
+      /* 切到別的 App、頁面隱藏、失去焦點：完整重置（方向、記錄的手指、方向鍵外觀、炸彈鍵），不會殘留往一個方向跑 */
       this.resetTouch = () => {
-        stickId = null; bombId = null; this.stickDir = null; this.stickDir2 = null;
-        this.knob.style.transform = ''; this.stick.classList.remove('down'); this.bombBtn.classList.remove('down'); paintArrows(null);
-        this.refreshDir();
+        held.clear(); bombId = null;
+        this.bombBtn.classList.remove('down'); paintDirections();
       };
     }
 
@@ -399,21 +399,22 @@
       this.touchPlan = plan;
       const availW = baseW - 2 * plan.gutter, availH = baseH - plan.bottom;
       if (availW < 40 || availH < 40) return;
-      const fit = this.rend.fit(availW, availH, this.view.w, this.view.h);
+      this.rend.fit(availW, availH, this.view.w, this.view.h);
       this.rend.dirty = true;
-      this.placeHud(fit.tile);
+      this.placeHud();
     }
 
-    /** 把資訊欄對齊棋盤最上面那圈外牆（一格高）；右上角的語言與設定鈕也貼著棋盤右緣 */
-    placeHud(tile) {
+    /** 把資訊欄放在棋盤上方保留區；右上角的語言與設定鈕也貼著棋盤右緣 */
+    placeHud() {
       const mr = this.main.getBoundingClientRect(), br = this.board.getBoundingClientRect();
       if (!br.width) return;
-      const hh = Math.max(26, Math.round(tile));
+      const hh = 36;
+      const top = Math.round(br.top - 46);
       const ms = this.main.style;
       ms.setProperty('--hud-h', hh + 'px');
-      ms.setProperty('--hud-x', Math.round(br.left - mr.left) + 'px'); ms.setProperty('--hud-y', Math.round(br.top - mr.top) + 'px'); ms.setProperty('--hud-w', Math.round(br.width) + 'px');
+      ms.setProperty('--hud-x', Math.round(br.left - mr.left) + 'px'); ms.setProperty('--hud-y', Math.round(top - mr.top) + 'px'); ms.setProperty('--hud-w', Math.round(br.width) + 'px');
       const de = document.documentElement.style;
-      de.setProperty('--hud-h', hh + 'px'); de.setProperty('--hud-top', Math.round(br.top) + 'px'); de.setProperty('--hud-r', Math.round(root.innerWidth - br.right) + 'px');
+      de.setProperty('--hud-h', hh + 'px'); de.setProperty('--hud-top', top + 'px'); de.setProperty('--hud-r', Math.round(root.innerWidth - br.right) + 'px');
       document.body.classList.add('in-game');
     }
 

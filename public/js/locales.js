@@ -72,7 +72,7 @@
   L('help.arrows', '方向鍵', 'Arrows');
   L('help.placeBomb', '放炸彈 ', 'Bomb ');
   L('help.space', '空白鍵', 'Space');
-  L('help.touch', '平板與手機：左下角搖桿移動、右下角粉紅按鈕放炸彈（設定裡可以換左右手）。', 'Tablet and phone: use the joystick at the bottom left to move and the pink button at the bottom right to drop bombs (you can swap sides in Settings).');
+  L('help.touch', '平板與手機：左下角方向鍵移動、右下角粉紅按鈕放炸彈（設定裡可以換左右手）。', 'Tablet and phone: use the direction buttons at the bottom left to move and the pink button at the bottom right to drop bombs (you can swap sides in Settings).');
   L('help.blast', '炸彈怎麼炸', 'How Bombs Blast');
   L('help.s1', '放下炸彈約 3 秒後爆炸，往上下左右噴出火焰，長度就是你的「火力」。', 'A bomb explodes about 3 seconds after you place it, shooting flames up, down, left and right. The flame length is your "Fire".');
   L('help.s2', '火焰被硬牆擋住；碰到軟磚會把它炸掉，並且在那裡停下。', 'Flames stop at hard walls. They blow up a soft brick and stop right there.');
@@ -230,7 +230,11 @@
   L('game.ping', '連線延遲', 'Connection latency');
   L('game.mapInfo', '地圖資訊', 'Map info');
   L('game.mapTitle', '地圖：{th}／{lay}', 'Map: {th} / {lay}');
-  L('game.stick', '移動搖桿', 'Move joystick');
+  L('game.direction.U', '向上', 'Move up');
+  L('game.direction.D', '向下', 'Move down');
+  L('game.direction.L', '向左', 'Move left');
+  L('game.direction.R', '向右', 'Move right');
+  L('game.stick', '移動方向鍵', 'Move direction buttons');
   L('game.rotate', '請橫向遊玩', 'Please rotate to landscape');
   L('home.tutorial', '新手教學', 'Tutorial');
   L('home.tutorialDesc', '7 個小關卡，一步步學會玩', '7 short missions that teach you step by step');
@@ -257,7 +261,7 @@
   L('pause.toMissions', '回關卡列表', 'Mission list');
   L('mission.1.title', '學會移動', 'Learn to move');
   L('mission.1.goal', '走到 3 個道具上把它們撿起來，撿到就會變強。', 'Walk onto all 3 items to pick them up — each one makes you stronger.');
-  L('mission.1.hint', '手機用左下搖桿，電腦用方向鍵或 WASD。火力、炸彈數、速度三種道具，走過去就會自動撿。', 'Use the joystick on a phone, or arrow keys / WASD on a computer. Fire, bombs and speed items are picked up automatically.');
+  L('mission.1.hint', '手機用左下方向鍵，電腦用方向鍵或 WASD。火力、炸彈數、速度三種道具，走過去就會自動撿。', 'Use the direction buttons on a phone, or arrow keys / WASD on a computer. Fire, bombs and speed items are picked up automatically.');
   L('mission.2.title', '炸開磚塊', 'Blast the bricks');
   L('mission.2.goal', '放一顆炸彈炸開磚牆，走到對面把道具撿起來。', 'Bomb a hole in the brick wall and grab the item on the other side.');
   L('mission.2.hint', '站在磚牆旁放炸彈（手機按右下炸彈鍵，電腦按空白鍵），然後馬上走開，3 秒後會爆炸。', 'Stand next to the wall and drop a bomb (bomb button on phones, Space on a computer), then walk away. It blows after 3 seconds.');
@@ -343,7 +347,7 @@
   L('settings.auto', '自動', 'Auto');
   L('settings.show', '顯示', 'Show');
   L('settings.hide', '隱藏', 'Hide');
-  L('settings.stick', '搖桿位置', 'Joystick side');
+  L('settings.stick', '方向鍵位置', 'Direction button side');
   L('settings.left', '左手邊', 'Left');
   L('settings.touchScale', '操作鈕大小', 'Control size');
   L('settings.touchOpacity', '操作鈕透明度', 'Control opacity');
@@ -649,7 +653,7 @@
     "help.arrows": "方向键",
     "help.placeBomb": "放炸弹 ",
     "help.space": "空白键",
-    "help.touch": "平板与手机：左下角摇杆移动、右下角粉红按钮放炸弹（设定里可以换左右手）。",
+    "help.touch": "平板与手机：左下角方向键移动、右下角粉红按钮放炸弹（设定里可以换左右手）。",
     "help.blast": "炸弹怎么炸",
     "help.s1": "放下炸弹约 3 秒后爆炸，往上下左右喷出火焰，长度就是你的「火力」。",
     "help.s2": "火焰被硬墙挡住；碰到软砖会把它炸掉，并且在那里停下。",
@@ -811,7 +815,11 @@
     "game.ping": "连线延迟",
     "game.mapInfo": "地图资讯",
     "game.mapTitle": "地图：{th}／{lay}",
-    "game.stick": "移动摇杆",
+    "game.direction.U": "向上",
+    "game.direction.D": "向下",
+    "game.direction.L": "向左",
+    "game.direction.R": "向右",
+    "game.stick": "移动方向键",
     "game.rotate": "请横向游玩",
     "home.tutorial": "新手教学",
     "home.tutorialDesc": "7 个小关卡，一步步学会玩",
@@ -838,7 +846,7 @@
     "pause.toMissions": "回关卡列表",
     "mission.1.title": "学会移动",
     "mission.1.goal": "走到 3 个道具上把它们捡起来，捡到就会变强。",
-    "mission.1.hint": "手机用左下摇杆，电脑用方向键或 WASD。火力、炸弹数、速度三种道具，走过去就会自动捡。",
+    "mission.1.hint": "手机用左下方向键，电脑用方向键或 WASD。火力、炸弹数、速度三种道具，走过去就会自动捡。",
     "mission.2.title": "炸开砖块",
     "mission.2.goal": "放一颗炸弹炸开砖墙，走到对面把道具捡起来。",
     "mission.2.hint": "站在砖墙旁放炸弹（手机按右下炸弹键，电脑按空白键），然后马上走开，3 秒后会爆炸。",
@@ -920,7 +928,7 @@
     "settings.auto": "自动",
     "settings.show": "显示",
     "settings.hide": "隐藏",
-    "settings.stick": "摇杆位置",
+    "settings.stick": "方向键位置",
     "settings.left": "左手边",
     "settings.touchScale": "操作钮大小",
     "settings.touchOpacity": "操作钮透明度",
