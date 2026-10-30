@@ -21,7 +21,8 @@
     nickname: '',
     animal: 'cat',
     solo: Object.assign({}, SOLO_DEFAULTS),
-    stats: {}              /* { solo: {play, win}, online: {play, win} } */
+    stats: {},             /* { solo: {play, win}, online: {play, win} } */
+    missions: {}           /* 新手教學各關的星星 { [關卡編號]: 1～3 }（不屬於「設定」，重設設定不會清掉） */
   }, SETTING_DEFAULTS);
 
   function load() {
@@ -31,6 +32,7 @@
     data.solo = Object.assign({}, SOLO_DEFAULTS, (raw && raw.solo) || {});
     if (!Array.isArray(data.solo.levels) || !data.solo.levels.length) data.solo.levels = SOLO_DEFAULTS.levels.slice();
     data.stats = Object.assign({}, (raw && raw.stats) || {});
+    data.missions = Object.assign({}, (raw && raw.missions) || {});
     if (!raw || !raw.animal) {
       const ids = ['cat', 'dog', 'bunny', 'bear', 'panda', 'fox', 'frog', 'penguin', 'chick'];
       data.animal = ids[Math.floor(Math.random() * ids.length)];

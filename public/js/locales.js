@@ -232,6 +232,50 @@
   L('game.mapTitle', '地圖：{th}／{lay}', 'Map: {th} / {lay}');
   L('game.stick', '移動搖桿', 'Move joystick');
   L('game.rotate', '請橫向遊玩', 'Please rotate to landscape');
+  L('home.tutorial', '新手教學', 'Tutorial');
+  L('home.tutorialDesc', '7 個小關卡，一步步學會玩', '7 short missions that teach you step by step');
+  L('mission.title', '新手教學', 'Tutorial');
+  L('mission.level', '第 {n} 關', 'Mission {n}');
+  L('mission.locked', '先過上一關', 'Clear the previous mission first');
+  L('mission.stars', '{n} 顆星', '{n} of 3 stars');
+  L('mission.goal', '目標', 'Goal');
+  L('mission.hint', '提示', 'Tip');
+  L('mission.win', '過關！', 'Mission clear!');
+  L('mission.allDone', '全部過關，你學會了！', 'All missions clear — you got it!');
+  L('mission.next', '下一關', 'Next mission');
+  L('mission.retry', '再試一次', 'Try again');
+  L('mission.back', '回關卡列表', 'Mission list');
+  L('mission.fail.dead', '被炸到了，再試一次！', 'You got blasted — try again!');
+  L('mission.fail.time', '時間到，再試一次！', 'Time\'s up — try again!');
+  L('mission.progress.items', '道具 {n}/{max}', 'Items {n}/{max}');
+  L('mission.progress.bricks', '磚塊 {n}/{max}', 'Bricks {n}/{max}');
+  L('mission.progress.booms', '躲開爆炸 {n}/{max}', 'Dodged {n}/{max}');
+  L('mission.progress.foe', '電腦 {n}/{max}', 'Opponent {n}/{max}');
+  L('mission.progress.kick', '步驟 {n}/{max}', 'Steps {n}/{max}');
+  L('mission.progress.terrain', '機關 {n}/{max}', 'Terrain {n}/{max}');
+  L('mission.progress.survive', '存活 {n}/{max} 秒', 'Survived {n}/{max} s');
+  L('pause.toMissions', '回關卡列表', 'Mission list');
+  L('mission.1.title', '學會移動', 'Learn to move');
+  L('mission.1.goal', '走到 3 個道具上把它們撿起來，撿到就會變強。', 'Walk onto all 3 items to pick them up — each one makes you stronger.');
+  L('mission.1.hint', '手機用左下搖桿，電腦用方向鍵或 WASD。火力、炸彈數、速度三種道具，走過去就會自動撿。', 'Use the joystick on a phone, or arrow keys / WASD on a computer. Fire, bombs and speed items are picked up automatically.');
+  L('mission.2.title', '炸開磚塊', 'Blast the bricks');
+  L('mission.2.goal', '放一顆炸彈炸開磚牆，走到對面把道具撿起來。', 'Bomb a hole in the brick wall and grab the item on the other side.');
+  L('mission.2.hint', '站在磚牆旁放炸彈（手機按右下炸彈鍵，電腦按空白鍵），然後馬上走開，3 秒後會爆炸。', 'Stand next to the wall and drop a bomb (bomb button on phones, Space on a computer), then walk away. It blows after 3 seconds.');
+  L('mission.3.title', '躲開爆炸', 'Dodge the blast');
+  L('mission.3.goal', '放兩顆炸彈，每一顆都要在爆炸前躲到火線外面。', 'Drop two bombs and get out of the blast line before each one goes off.');
+  L('mission.3.hint', '火線是十字形的：轉個彎、躲到硬牆柱後面就安全。炸彈 3 秒後爆炸。', 'The blast is a cross shape: turn a corner or hide behind a pillar to be safe. Bombs blow after 3 seconds.');
+  L('mission.4.title', '擊倒電腦', 'Take down the bot');
+  L('mission.4.goal', '用炸彈炸倒場上的電腦對手，而且自己不要被炸到。', 'Blow up the computer opponent without getting caught in a blast yourself.');
+  L('mission.4.hint', '躲在磚塊後面放炸彈、放完馬上離開，讓電腦走進火線。', 'Hide behind bricks, drop a bomb, then leave right away so the bot walks into the fire.');
+  L('mission.5.title', '踢炸彈與護盾', 'Kick and shield');
+  L('mission.5.goal', '撿起踢炸彈與護盾，再把一顆炸彈踢出去。', 'Pick up the kick and shield items, then kick a bomb away.');
+  L('mission.5.hint', '放下炸彈後先走開，再朝炸彈走過去就會把它踢飛。護盾能擋一次爆炸。', 'Drop a bomb, step away, then walk into it to kick it. A shield blocks one explosion.');
+  L('mission.6.title', '地圖機關', 'Map hazards');
+  L('mission.6.goal', '依序踩過緩速格、輸送帶和草叢各一次。', 'Step on a slow tile, the conveyor and the grass once each.');
+  L('mission.6.hint', '緩速格讓你變慢，輸送帶會推著你繞圈，躲在草叢裡別人看不到你。', 'Slow tiles slow you down, the conveyor carries you around, and grass hides you from everyone.');
+  L('mission.7.title', '空襲求生', 'Air-raid survival');
+  L('mission.7.goal', '空襲開始後存活 30 秒；途中撿道具可以多拿星星。', 'Survive 30 seconds of air raids. Grab items along the way for extra stars.');
+  L('mission.7.hint', '炸彈會從天上掉下來，3 秒後橫掃整排；看到炸彈就快離開那一排和那一欄。護盾和加速很有用。', 'Bombs drop from the sky and sweep a whole row and column after 3 seconds — get off that row and column. Shields and speed help.');
   L('game.bomb', '放炸彈', 'Place bomb');
   L('game.ready', '準備！', 'Get ready!');
   L('game.cpu', '電腦', 'CPU');
@@ -769,6 +813,50 @@
     "game.mapTitle": "地图：{th}／{lay}",
     "game.stick": "移动摇杆",
     "game.rotate": "请横向游玩",
+    "home.tutorial": "新手教学",
+    "home.tutorialDesc": "7 个小关卡，一步步学会玩",
+    "mission.title": "新手教学",
+    "mission.level": "第 {n} 关",
+    "mission.locked": "先过上一关",
+    "mission.stars": "{n} 颗星",
+    "mission.goal": "目标",
+    "mission.hint": "提示",
+    "mission.win": "过关！",
+    "mission.allDone": "全部过关，你学会了！",
+    "mission.next": "下一关",
+    "mission.retry": "再试一次",
+    "mission.back": "回关卡列表",
+    "mission.fail.dead": "被炸到了，再试一次！",
+    "mission.fail.time": "时间到，再试一次！",
+    "mission.progress.items": "道具 {n}/{max}",
+    "mission.progress.bricks": "砖块 {n}/{max}",
+    "mission.progress.booms": "躲开爆炸 {n}/{max}",
+    "mission.progress.foe": "电脑 {n}/{max}",
+    "mission.progress.kick": "步骤 {n}/{max}",
+    "mission.progress.terrain": "机关 {n}/{max}",
+    "mission.progress.survive": "存活 {n}/{max} 秒",
+    "pause.toMissions": "回关卡列表",
+    "mission.1.title": "学会移动",
+    "mission.1.goal": "走到 3 个道具上把它们捡起来，捡到就会变强。",
+    "mission.1.hint": "手机用左下摇杆，电脑用方向键或 WASD。火力、炸弹数、速度三种道具，走过去就会自动捡。",
+    "mission.2.title": "炸开砖块",
+    "mission.2.goal": "放一颗炸弹炸开砖墙，走到对面把道具捡起来。",
+    "mission.2.hint": "站在砖墙旁放炸弹（手机按右下炸弹键，电脑按空白键），然后马上走开，3 秒后会爆炸。",
+    "mission.3.title": "躲开爆炸",
+    "mission.3.goal": "放两颗炸弹，每一颗都要在爆炸前躲到火线外面。",
+    "mission.3.hint": "火线是十字形的：转个弯、躲到硬墙柱后面就安全。炸弹 3 秒后爆炸。",
+    "mission.4.title": "击倒电脑",
+    "mission.4.goal": "用炸弹炸倒场上的电脑对手，而且自己不要被炸到。",
+    "mission.4.hint": "躲在砖块后面放炸弹、放完马上离开，让电脑走进火线。",
+    "mission.5.title": "踢炸弹与护盾",
+    "mission.5.goal": "捡起踢炸弹与护盾，再把一颗炸弹踢出去。",
+    "mission.5.hint": "放下炸弹后先走开，再朝炸弹走过去就会把它踢飞。护盾能挡一次爆炸。",
+    "mission.6.title": "地图机关",
+    "mission.6.goal": "依序踩过缓速格、输送带和草丛各一次。",
+    "mission.6.hint": "缓速格让你变慢，输送带会推着你绕圈，躲在草丛里别人看不到你。",
+    "mission.7.title": "空袭求生",
+    "mission.7.goal": "空袭开始后存活 30 秒；途中捡道具可以多拿星星。",
+    "mission.7.hint": "炸弹会从天上掉下来，3 秒后横扫整排；看到炸弹就快离开那一排和那一列。护盾和加速很有用。",
     "game.bomb": "放炸弹",
     "game.ready": "准备！",
     "game.cpu": "电脑",
