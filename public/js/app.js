@@ -81,6 +81,7 @@
         h('p', { class: 'hero-sub' }, tr('home.sub')),
         h('div', { class: 'hero-cast' }, cast.slice(0, 4), h('img', { class: 'hero-bomb', alt: '', src: Art.svgUrl(Art.bombSVG()) }), cast.slice(4))),
       h('nav', { class: 'home-menu', 'aria-label': tr('home.menu') },
+        btn(tr('home.tutorial'), { cls: 'btn-mint btn-lg btn-block', icon: 'flag', iconSize: 28, onClick: () => go('missions') }),
         btn(tr('home.solo'), { cls: 'btn-pink btn-lg btn-block', icon: 'robot', iconSize: 28, onClick: () => go('solo') }),
         btn(tr('home.online'), { cls: 'btn-sky btn-lg btn-block', icon: 'user', iconSize: 28, onClick: () => go('lobby') }),
         btn(tr('home.help'), { cls: 'btn-sun btn-lg btn-block', icon: 'help', iconSize: 28, onClick: () => go('help') }),
@@ -287,6 +288,51 @@
       h('div', { class: 'sticky-cta' }, btn(tr('solo.start'), { cls: 'btn-pink btn-lg btn-block', icon: 'play', iconSize: 26, onClick: () => App.startSolo() }))));
   };
 
+  /* ---------- 新手教學：關卡列表（前一關拿到星星才解鎖下一關）、開局、結果 ---------- */
+  App.screens.missions = function () {
+    const M = root.Missions, stars = App.store.missions || {};
+    const starText = n => '★'.repeat(n) + '☆'.repeat(3 - n);
+    const cards = M.MISSIONS.map(m => {
+      const locked = !M.unlocked(m.id, stars), n = stars[m.id] | 0;
+      const card = h('button', { type: 'button', class: 'card mission-card' + (locked ? ' locked' : '') + (n ? ' done' : ''), disabled: locked,
+        'aria-label': tr('mission.level', { n: m.id }) + ' ' + tr('mission.' + m.id + '.title') + (locked ? '，' + tr('mission.locked') : '，' + tr('mission.stars', { n })) },
+        h('span', { class: 'mission-no', 'aria-hidden': 'true' }, String(m.id)),
+        h('span', { class: 'mission-txt' }, h('b', null, tr('mission.' + m.id + '.title')), h('small', null, locked ? tr('mission.locked') : tr('mission.' + m.id + '.goal'))),
+        h('span', { class: 'mission-stars', 'aria-hidden': 'true' }, starText(n)));
+      if (!locked) card.addEventListener('click', () => { root.Sound.sfx('click'); App.startMission(m.id); });
+      return card;
+    });
+    return screenBox('', h('div', { class: 'wrap' },
+      topbar(tr('mission.title'), () => go('home')),
+      h('p', { class: 'muted' }, tr('home.tutorialDesc')),
+      h('div', { class: 'mission-grid' }, cards)));
+  };
+  App.startMission = function (id) {
+    const run = root.Missions.create(id, { animal: App.store.animal, name: myName(), foeName: Art.ANIMALS.bear.name, AI });
+    if (!run) { go('missions'); return; }
+    App.onlineGame = false;
+    go('game', { kind: 'solo', state: run.state, brains: run.brains, info: R.startInfo(run.state), mission: run });
+  };
+  App.missionResult = function (run, r) {
+    const M = root.Missions, id = run.id, win = r.status === 'win';
+    if (win && r.stars > (App.store.missions[id] | 0)) { App.store.missions[id] = r.stars; save(); }     /* 只存一次，重建彈窗（切換語言）不會重複 */
+    const next = M.MISSIONS.find(m => m.id === id + 1);
+    const spec = () => ({
+      title: null, aria: tr('mission.title'),
+      content: h('div', { class: 'big-result' },
+        h('div', { class: 'head' }, win ? tr('mission.win') : tr('mission.fail.' + (r.reason || 'dead'))),
+        win ? h('div', { class: 'mission-stars big', 'aria-label': tr('mission.stars', { n: r.stars }) }, '★'.repeat(r.stars) + '☆'.repeat(3 - r.stars)) : null,
+        win && !next ? h('p', { class: 'muted' }, tr('mission.allDone')) : null),
+      actions: [
+        btn(tr('mission.back'), { cls: 'btn-ghost', onClick: () => { m.close(true); go('missions'); } }),
+        btn(tr('mission.retry'), { cls: 'btn-sun', onClick: () => { m.close(true); App.startMission(id); } }),
+        win && next ? btn(tr('mission.next'), { cls: 'btn-pink', onClick: () => { m.close(true); App.startMission(next.id); } }) : null
+      ].filter(Boolean)
+    });
+    const m = modal(Object.assign({ dismissible: false, cls: 'dialog-sm', rebuild: spec }, spec()));
+    return m;
+  };
+
   /* ---------- 單機開局 ---------- */
   App.startSolo = function () {
     const st = App.store, so = st.solo;
@@ -304,13 +350,14 @@
   /* ---------- 對戰畫面 ---------- */
   App.screens.game = function (p) {
     const solo = p.kind === 'solo';
+    App.mission = p.mission ? { id: p.mission.id } : null;
     const gs = new root.GameScreen({
       kind: p.kind, info: p.info, slot: solo ? 0 : p.slot, settings: App.store,
-      state: p.state, brains: p.brains,
+      state: p.state, brains: p.brains, mission: p.mission || null, onMissionEnd: r => App.missionResult(p.mission, r),
       send: msg => root.Net.send(msg),
       chat: solo ? null : { send: t => root.Net.send({ type: 'chat', text: t }), list: () => App.chatLog, sub: fn => { App.chatSubs.add(fn); return () => App.chatSubs.delete(fn); } },
       onEsc: () => App.openMenu(),
-      onResult: (result, players) => App.showResult({ result, players: players.map(q => ({ slot: q.slot, name: q.name, animal: q.animal, kind: q.kind, level: q.level, kills: q.kills, alive: q.alive })), slot: 0, kind: 'solo' })
+      onResult: (result, players) => p.mission ? null : App.showResult({ result, players: players.map(q => ({ slot: q.slot, name: q.name, animal: q.animal, kind: q.kind, level: q.level, kills: q.kills, alive: q.alive })), slot: 0, kind: 'solo' })
     });
     App.game = gs;
     return gs.root;
@@ -324,6 +371,7 @@
       content: h('p', { class: 'dialog-text' }, online ? tr('pause.textOnline') : tr('pause.text')),
       actions: online
         ? [btn(tr('pause.leave'), { cls: 'btn-pink', onClick: () => { m.close(true); App.confirmLeave(); } }), btn(tr('pause.resume'), { cls: 'btn-mint', onClick: () => m.close() })]
+        : App.mission ? [btn(tr('pause.toMissions'), { cls: 'btn-ghost', onClick: () => { m.close(true); go('missions'); } }), btn(tr('pause.restart'), { cls: 'btn-sun', onClick: () => { m.close(true); App.startMission(App.mission.id); } }), btn(tr('pause.resume'), { cls: 'btn-mint', onClick: () => m.close() })]
         : [btn(tr('pause.toRoom'), { cls: 'btn-ghost', onClick: () => { m.close(true); go('solo'); } }), btn(tr('pause.restart'), { cls: 'btn-sun', onClick: () => { m.close(true); App.startSolo(); } }), btn(tr('pause.resume'), { cls: 'btn-mint', onClick: () => m.close() })]
     });
     const m = modal(Object.assign({ cls: 'dialog-sm', rebuild: spec }, spec()));

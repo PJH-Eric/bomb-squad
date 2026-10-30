@@ -69,6 +69,7 @@
       this.acc = 0; this.last = 0; this.ff = false;
       this.hudSig = ''; this.sumSig = ''; this.hudAt = 0;
       this.unread = 0; this.resultAt = 0; this.resultDone = false;
+      this.mission = cfg.mission || null; this.missionEnd = null;      /* 新手教學：關卡物件（update 判斷過關）與結束狀態 */
       if (this.kind === 'solo') {
         this.state = cfg.state; this.view = cfg.state;
         this.inputs = {};
@@ -78,7 +79,7 @@
       }
       this.build();
       this.bind();
-      if (root.GameAnalytics && this.slot != null) {
+      if (root.GameAnalytics && this.slot != null && !this.mission) {
         const levels = this.view.players.filter(p => p.kind === 'ai').map(p => p.level);
         root.GameAnalytics.start({
           mode: this.kind, players: this.view.players.length,
@@ -139,6 +140,7 @@
         h('div', { class: 'hud-c' }, this.timerEl, this.chipsEl),
         h('div', { class: 'hud-r' }, this.pingEl));
       this.main = h('div', { class: 'game-main' }, this.board, this.hud);
+      if (this.mission) this.buildMissionBar();
       this.ghost = h('div', { class: 'ghost-msg', hidden: true });
       this.main.appendChild(this.ghost);
       this.touchEl = null;
@@ -160,6 +162,34 @@
       return h('div', { class: 'map-info', 'aria-label': tr('game.mapInfo'), title: tr('game.mapTitle', { th: th.name, lay: layout }) }, th.name + '・' + layout);
     }
 
+    /* ----- 新手教學 ----- */
+    /** 畫面下方的任務列：目標、進度，開局前幾秒多顯示提示 */
+    buildMissionBar() {
+      this.mTitle = h('b', { class: 'mission-bar-title' }); this.mGoal = h('span', { class: 'mission-bar-goal' });
+      this.mProg = h('span', { class: 'mission-bar-prog' }); this.mHint = h('div', { class: 'mission-bar-hint' });
+      this.missionEl = h('div', { class: 'mission-bar', role: 'status' }, h('div', { class: 'mission-bar-row' }, this.mTitle, this.mGoal, this.mProg), this.mHint);
+      this.main.appendChild(this.missionEl);
+      this.paintMission(null);
+    }
+    paintMission(r) {
+      if (!this.mission) return;
+      const id = this.mission.id;
+      this.mTitle.textContent = tr('mission.level', { n: id }) + '・' + tr('mission.' + id + '.title');
+      this.mGoal.textContent = tr('mission.' + id + '.goal'); this.mHint.textContent = tr('mission.hint') + '：' + tr('mission.' + id + '.hint');
+      if (r && r.progress) this.mProg.textContent = tr('mission.progress.' + r.progress.k, { n: r.progress.n, max: r.progress.max });
+    }
+    /** 每個畫面格呼叫一次：判斷過關或失敗；結束後停住畫面，稍等一下再顯示結果（讓玩家看到最後一幕） */
+    tickMission(evs) {
+      const s = this.state, r = this.mission.update(s, evs);
+      this.lastMission = r;
+      this.paintMission(r);
+      this.missionEl.classList.toggle('show-hint', s.phase !== 'play' || s.time < 4);
+      if (r.status === 'play' || this.missionEnd) return;
+      this.missionEnd = r;
+      if (root.Sound) root.Sound.sfx(r.status === 'win' ? 'win' : 'lose');
+      setTimeout(() => { if (this.alive && this.cfg.onMissionEnd) this.cfg.onMissionEnd(r); }, r.status === 'win' ? 700 : 1200);
+    }
+
     /** 切換語言：對戰畫面不重建（不然會重開一局），只把文字與標籤換成新語言 */
     relang() {
       const online = this.kind === 'online';
@@ -175,6 +205,7 @@
       this.toggle.setAttribute('aria-label', tr('game.openSide')); this.toggle.setAttribute('title', tr('game.sideTitle'));
       if (this.pingEl) this.pingEl.setAttribute('aria-label', tr('game.ping'));
       this.rotateEl.querySelector('p').textContent = tr('game.rotate');
+      if (this.mission) this.paintMission(this.lastMission || null);
       if (this.stick) this.stick.setAttribute('aria-label', tr('game.stick'));
       if (this.bombBtn) this.bombBtn.setAttribute('aria-label', tr('game.bomb'));
       const mapEl = this.buildMapInfo(); this.mapEl.replaceWith(mapEl); this.mapEl = mapEl;
@@ -404,6 +435,7 @@
     stepSolo(dt) {
       const s = this.state;
       if (root.UI.modalOpen()) return;                 /* 開著彈窗（設定、選單）就暫停 */
+      if (this.missionEnd) return;                     /* 教學關已經過關或失敗：畫面停住，等結果彈窗 */
       const me = this.slot != null ? s.players.find(p => p.slot === this.slot) : null;
       const dead = me && !me.alive && s.phase === 'play';
       this.acc += dt * (this.ff && dead ? 3 : 1);
@@ -426,6 +458,7 @@
       const a = Math.max(0, Math.min(1, this.acc / R.DT));
       for (const p of s.players) { p.rx = p.px + (p.x - p.px) * a; p.ry = p.py + (p.y - p.py) * a; }
       if (evs.length) this.handleEvents(evs);
+      if (this.mission) { this.tickMission(evs); return; }
       if (s.phase === 'over' && !this.resultDone) {
         this.resultAt += dt;
         if (s.endHold <= 0 || this.resultAt > 2.5) { this.resultDone = true; this.cfg.onResult && this.cfg.onResult(s.result, s.players); }
