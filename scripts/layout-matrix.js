@@ -68,7 +68,9 @@ function check(name, n, d) {
   const f = [];
   if (!d || d.error) return ['量測失敗 ' + (d && d.error || '沒有輸出')];
   const landscape = d.vw > d.vh, phone = Math.min(d.vw, d.vh) < 560;
-  if (d.canvas && d.hud && d.hud.b + 4 > d.canvas.t) f.push('上方資訊欄沒有與棋盤保留間距');
+  const wallHud = phone && landscape;
+  const hudLimit = d.canvas ? d.canvas.t + (wallHud ? d.tile : -4) : 0;
+  if (d.hud && d.hud.b + (wallHud ? 2 : 0) > hudLimit) f.push('資訊欄超出手機外牆或其他裝置的獨立資訊列');
   if (d.sw > d.vw + 1) f.push(`頁面橫向捲動 ${d.sw}>${d.vw}`);
   if (d.sh > d.vh + 1) f.push(`頁面垂直捲動 ${d.sh}>${d.vh}`);
   const cv = d.canvas;
@@ -87,7 +89,7 @@ function check(name, n, d) {
     d.chips.forEach((o, j) => { if (j > i && overlap(c, o, 1)) f.push(`頭像 ${i + 1} 與 ${j + 1} 重疊`); });
   });
   if (d.chipsClip) f.push('頭像列被切掉（內容比容器寬）');
-  for (const k of names) { const p = parts[k]; if (p.t < d.hud.t - 1 || p.b > d.hud.b + 1 || p.b + 4 > cv.t) f.push(`資訊欄「${k}」超出獨立資訊列或蓋到棋盤`); if (p.r > d.vw + 0.5 || p.l < -0.5) f.push(`資訊欄「${k}」超出畫面左右`); }
+  for (const k of names) { const p = parts[k]; if (p.t < d.hud.t - 1 || p.b > d.hud.b + 1 || p.b + (wallHud ? 2 : 0) > hudLimit) f.push(`資訊欄「${k}」超出資訊列或蓋到可玩格`); if (p.r > d.vw + 0.5 || p.l < -0.5) f.push(`資訊欄「${k}」超出畫面左右`); }
   /* 手機直向 */
   if (phone && !landscape) { if (!d.rotate) f.push('手機直向沒有遮罩'); return f; }
   if (d.rotate) f.push('不該出現轉向遮罩');

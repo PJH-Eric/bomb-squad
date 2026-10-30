@@ -265,16 +265,17 @@ body.calm *, body.calm *::before, body.calm *::after { animation: none !importan
 .side-chat { display: flex; flex-direction: column; min-height: 0; flex: 1 1 0; margin-top: auto; }
 .side-chat .chat-log { max-height: none; flex: 1; min-height: 70px; }
 .game { --stick: 150px; --knob: 64px; --bomb: 100px; }   /* 控制鈕大小由 game.js 依裝置設定（見 touchlayout.js） */
-.game-main { position: relative; flex: 1 1 auto; min-width: 0; display: flex; align-items: center; justify-content: center; padding: calc(58px + var(--safe-t)) calc(8px + var(--safe-r) + var(--gut, 0px)) calc(8px + var(--safe-b) + var(--gut-b, 0px)) calc(8px + var(--safe-l) + var(--gut, 0px)); }
+.game-main { position: relative; flex: 1 1 auto; min-width: 0; display: flex; align-items: center; justify-content: center; padding: calc(8px + var(--safe-t) + var(--hud-space, 50px)) calc(8px + var(--safe-r) + var(--gut, 0px)) calc(8px + var(--safe-b) + var(--gut-b, 0px)) calc(8px + var(--safe-l) + var(--gut, 0px)); }
 .board { position: relative; border-radius: 14px; overflow: hidden; box-shadow: 0 0 0 5px #fff, 0 12px 30px rgba(60, 30, 100, .3); line-height: 0; }
 .board canvas { display: block; touch-action: none; }
-/* 資訊欄：放在棋盤上方保留區（位置、寬度、高度由 game.js 的 placeHud 設成 --hud-x／--hud-y／--hud-w／--hud-h）。左：側欄開關與選單／暫停；中：計時與玩家頭像；右：線上延遲，再右邊是全域的語言與設定鈕 */
+/* 資訊欄：手機橫向放在外牆內，其他版面使用上方保留區（位置、寬度、高度由 game.js 的 placeHud 設成 --hud-x／--hud-y／--hud-w／--hud-h）。左：側欄開關與選單／暫停；中：計時與玩家頭像；右：線上延遲，再右邊是全域的語言與設定鈕 */
 .hud { position: absolute; z-index: 15; left: var(--hud-x, 0); top: var(--hud-y, 0); width: var(--hud-w, 100%); height: var(--hud-h, 32px); display: flex; align-items: center; gap: 6px; padding: 0 4px; box-sizing: border-box; pointer-events: none; }
 .hud-l, .hud-r { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
 .hud-r { margin-left: auto; padding-right: calc(var(--hud-h, 32px) * 2 + 10px); }       /* 右邊讓出語言鈕與設定鈕 */
 .hud-c { flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 6px; }
 .hud .icon-btn { width: calc(var(--hud-h, 32px) - 4px); height: calc(var(--hud-h, 32px) - 4px); pointer-events: auto; box-shadow: 0 2px 0 #cdbfe6; }
 .hud .icon-btn svg { width: 62%; height: 62%; }
+.wall-hud .ping { min-height: 0; padding: 1px 6px; font-size: calc(var(--hud-h) * .36); line-height: 1; box-shadow: 0 2px 0 #6a49d4; }
 .hud-timer { background: #fff; border-radius: 999px; padding: 0 12px; line-height: calc(var(--hud-h, 32px) - 6px); font-weight: 900; font-size: calc(var(--hud-h, 32px) * .5); box-shadow: 0 2px 0 var(--line); min-width: 4.2em; text-align: center; font-variant-numeric: tabular-nums; flex: 0 0 auto; }
 .hud-timer.low { background: #ffe1e1; color: var(--red-d); animation: pulse .8s infinite; }
 .hud-chips { display: flex; gap: 3px; flex-wrap: nowrap; justify-content: center; min-width: 0; }

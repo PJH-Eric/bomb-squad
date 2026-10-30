@@ -133,7 +133,7 @@
       this.toggle = h('button', { type: 'button', class: 'icon-btn side-toggle', 'aria-label': tr('game.openSide'), title: tr('game.sideTitle'), onClick: () => this.setSide(true) },
         h('span', { html: Art.icon('list', 22) }), this.badge);
 
-      /* 上方資訊欄：保留獨立空間，不蓋棋盤（位置與大小由 layout() 依棋盤算）。左：側欄開關、選單／暫停；中：計時與玩家頭像；右：線上延遲（右上角另有全域的語言與設定鈕） */
+      /* 上方資訊欄：手機橫向放在外牆內，其他版面保留獨立空間（位置與大小由 layout() 依棋盤算）。左：側欄開關、選單／暫停；中：計時與玩家頭像；右：線上延遲（右上角另有全域的語言與設定鈕） */
       this.pingEl = online ? h('div', { class: 'ping', role: 'status', 'aria-label': tr('game.ping') }, '-- ms') : null;
       this.hud = h('div', { class: 'hud' },
         h('div', { class: 'hud-l' }, this.toggle, this.exitBtn),
@@ -380,6 +380,9 @@
       this.touchEl && this.touchEl.classList.toggle('flip', this.settings.stickSide === 'right');
       /* 控制鈕大小與位置依裝置（手機／平板 × 直放／橫放）決定，見 touchlayout.js */
       const TL = root.TouchLayout;
+      const wallHud = TL.deviceClass(root.innerWidth, root.innerHeight).key === 'phone-l';
+      this.main.classList.toggle('wall-hud', wallHud);
+      this.main.style.setProperty('--hud-space', wallHud ? '0px' : '50px');
       this.main.style.setProperty('--gut', '0px'); this.main.style.setProperty('--gut-b', '0px');
       const cs = getComputedStyle(this.main);
       const pad = (a) => parseFloat(cs[a]) || 0;
@@ -399,17 +402,19 @@
       this.touchPlan = plan;
       const availW = baseW - 2 * plan.gutter, availH = baseH - plan.bottom;
       if (availW < 40 || availH < 40) return;
-      this.rend.fit(availW, availH, this.view.w, this.view.h);
+      const fit = this.rend.fit(availW, availH, this.view.w, this.view.h);
       this.rend.dirty = true;
-      this.placeHud();
+      this.placeHud(fit.tile);
     }
 
-    /** 把資訊欄放在棋盤上方保留區；右上角的語言與設定鈕也貼著棋盤右緣 */
-    placeHud() {
+    /** 手機橫向資訊欄限制在最上方外牆內；其他版面沿用獨立資訊列。 */
+    placeHud(tile) {
       const mr = this.main.getBoundingClientRect(), br = this.board.getBoundingClientRect();
       if (!br.width) return;
-      const hh = 36;
-      const top = Math.round(br.top - 46);
+      const wallHud = root.TouchLayout.deviceClass(root.innerWidth, root.innerHeight).key === 'phone-l';
+      /* 外牆內留出陰影空間，不讓按鈕或陰影侵入第一列可玩格。 */
+      const hh = wallHud ? Math.floor(tile) - 4 : 36;
+      const top = wallHud ? br.top + 1 : Math.round(br.top - 46);
       const ms = this.main.style;
       ms.setProperty('--hud-h', hh + 'px');
       ms.setProperty('--hud-x', Math.round(br.left - mr.left) + 'px'); ms.setProperty('--hud-y', Math.round(top - mr.top) + 'px'); ms.setProperty('--hud-w', Math.round(br.width) + 'px');

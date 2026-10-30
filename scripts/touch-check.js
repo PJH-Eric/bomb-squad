@@ -48,9 +48,9 @@ function pageHtml() {
               const on = function (c) { return stick.querySelector('.direction-key.' + c).classList.contains('on'); };
               const R = stick.getBoundingClientRect().width / 2 * 0.8;
               const hud = g.hud.getBoundingClientRect(), board = g.board.getBoundingClientRect();
-              t('資訊欄與棋盤之間保留至少 4px，不蓋到棋盤', hud.bottom + 4 <= board.top);
+              const tile = board.height / g.view.h;
+              t('手機資訊欄完全位於上方外牆，保留陰影空間、不蓋可玩格 ' + JSON.stringify({hud: [hud.top, hud.bottom], board: board.top, tile: tile}), hud.top >= board.top && hud.bottom + 2 <= board.top + tile);
               t('移動區只有四個獨立按鈕，沒有搖桿中心球', stick.querySelectorAll('button.direction-key').length === 4 && !stick.querySelector('.knob'));
-
 
               ev(stick, 'pointerdown', 1, R, 0);
               t('方向鍵按下 → 方向 R', g.stickDir === 'R');
