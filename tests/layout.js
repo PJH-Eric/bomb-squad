@@ -279,20 +279,20 @@ test('裝置分類：短邊 < 560 是手機，其餘是平板；橫放看寬 > �
   assert.strictEqual(TouchLayout.deviceClass(820, 1180).key, 'tablet-p');
   assert.strictEqual(TouchLayout.deviceClass(1180, 820).key, 'tablet-l');
 });
-test('橫放控制鈕大小依螢幕高度等比例：搖桿 32%（120～172px）、炸彈鈕 23%（86～116px）；手機 844×390 約 125／90px，平板 1180×820 取上限 172／116px', () => {
+test('橫放控制鈕大小依螢幕高度等比例：方向區 32%（156～172px）、炸彈鈕 23%（86～116px）；手機 844×390 約 156／90px，平板 1180×820 取上限 172／116px', () => {
   const ph = TouchLayout.sizes(844, 390), tb = TouchLayout.sizes(1180, 820);
-  assert.strictEqual(ph.stick, Math.round(390 * 0.32)); assert.strictEqual(ph.bomb, Math.round(390 * 0.23));
-  assert(ph.stick >= 120 && ph.bomb >= 86 && ph.stick <= 172 && ph.bomb <= 116);
+  assert.strictEqual(ph.stick, 156); assert.strictEqual(ph.bomb, Math.round(390 * 0.23));
+  assert(ph.stick >= 156 && ph.bomb >= 86 && ph.stick <= 172 && ph.bomb <= 116);
   assert.strictEqual(tb.stick, 172); assert.strictEqual(tb.bomb, 116);
-  assert.strictEqual(TouchLayout.sizes(667, 375).stick, 120, '小手機取下限 120px');
+  assert.strictEqual(TouchLayout.sizes(667, 375).stick, 156, '小手機方向鍵至少 48px，另留 6px 間距');
   assert.strictEqual(TouchLayout.sizes(667, 375).bomb, 86, '小手機炸彈鈕取下限 86px');
   for (const s of [ph, tb]) assert(s.knob < s.stick * 0.6 && s.knob >= s.stick * 0.38, '搖桿球與底盤比例不對');
 });
-test('設定的大小倍率（0.8～1.3）直接乘在預設尺寸上，可以超出搖桿 120～172px、炸彈鈕 86～116px 的上下限；不合法的倍率會夾回範圍', () => {
+test('大小倍率保留縮放，方向區至少 156px，炸彈鈕仍可低於預設下限；不合法的倍率會夾回範圍', () => {
   const base = TouchLayout.sizes(1180, 820, 1);
   assert.strictEqual(TouchLayout.sizes(1180, 820, 1.3).stick, Math.round(172 * 1.3));
   assert(TouchLayout.sizes(1180, 820, 1.3).stick > TouchLayout.MAX_STICK && TouchLayout.sizes(1180, 820, 1.3).bomb > TouchLayout.MAX_BOMB, '放大後要能超出上限');
-  assert(TouchLayout.sizes(667, 375, 0.8).stick < TouchLayout.MIN_STICK, '縮小後要能低於下限');
+  assert.strictEqual(TouchLayout.sizes(667, 375, 0.8).stick, 156, '縮小後方向鍵仍至少 48px');
   assert.strictEqual(TouchLayout.sizes(1180, 820, 5).stick, TouchLayout.sizes(1180, 820, 1.3).stick);
   assert.strictEqual(TouchLayout.sizes(1180, 820, 0).stick, TouchLayout.sizes(1180, 820, 0.8).stick);
   assert.deepStrictEqual(TouchLayout.sizes(1180, 820, NaN), base); assert.deepStrictEqual(TouchLayout.sizes(1180, 820), base);
@@ -358,7 +358,7 @@ test('平板直放：維持 bottom 模式，按搖桿大小留出底部空間，
 });
 test('plan 不修改傳入的資料，尺寸物件是複本', () => {
   const a = TouchLayout.sizes(390, 844); a.stick = 1;
-  assert.strictEqual(TouchLayout.sizes(390, 844).stick, 150);
+  assert.strictEqual(TouchLayout.sizes(390, 844).stick, 156);
 });
 test('game.js／style.css 用的是 touchlayout 的變數，沒有殘留寫死的搖桿尺寸', () => {
   const css = fs.readFileSync(path.join(__dirname, '../public/css/style.css'), 'utf8');

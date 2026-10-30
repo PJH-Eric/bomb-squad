@@ -4,7 +4,7 @@
  *   手機橫放：固定 overlay，搖桿與放炸彈鍵半透明疊在棋盤上（不縮小、不留位置），棋盤用整個可用區。
  *   平板橫放：bars，操作區放在棋盤上下的留白；留白不夠時最多蓋到最下方外牆圈，不蓋可玩格。
  *   平板直放：bottom，地圖在上、控制鈕在底部。
- * 搖桿與放炸彈鍵的大小依螢幕高度等比例，再乘上設定裡的倍率（scale，可超出上下限）。
+ * 方向區與放炸彈鍵依螢幕高度及設定倍率縮放；方向區至少 156px，確保每鍵至少 48px 並保留間距。
  */
 (function (root) {
   'use strict';
@@ -13,7 +13,7 @@
   const GAP = 12;         /* 平板直放時控制鈕與地圖之間的空隙 */
   const EDGE = { 'phone-l': 20, 'tablet-l': 32, 'tablet-p': 32, 'phone-p': 20 };   /* 控制鈕離螢幕邊緣（不含安全區）；平板加大，避開系統手勢 */
   const STICK_RATIO = 0.32, BOMB_RATIO = 0.23;     /* 橫放：直徑 = 螢幕高度 × 比例，再套上下限 */
-  const MIN_STICK = 120, MAX_STICK = 172, MIN_BOMB = 86, MAX_BOMB = 116;
+  const MIN_STICK = 156, MAX_STICK = 172, MIN_BOMB = 86, MAX_BOMB = 116;
   const KNOB_RATIO = 0.42;                          /* 中心鈕直徑 / 搖桿直徑 */
   const SCALE_MIN = 0.8, SCALE_MAX = 1.3, OPACITY_MIN = 0.2, OPACITY_MAX = 1;
   const OPACITY_IDLE = 0.45, OPACITY_DOWN = 0.8;    /* 預設透明度：平時、按住 */
@@ -34,7 +34,7 @@
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   function cleanScale(v) { v = Number(v); return Number.isFinite(v) ? clamp(v, SCALE_MIN, SCALE_MAX) : 1; }
 
-  /** 控制鈕大小（CSS 像素，直徑）；scale 是設定頁的倍率，直接乘上去，所以可以超出預設的上下限 */
+  /** 控制區大小（CSS 像素）；方向鍵至少 48px，三列按鍵加兩段 6px 間距，控制區至少 156px。 */
   function sizes(vw, vh, scale) {
     const dc = deviceClass(vw, vh), k = cleanScale(scale);
     let s;
@@ -42,7 +42,7 @@
       s = { stick: clamp(Math.round(vh * STICK_RATIO), MIN_STICK, MAX_STICK), bomb: clamp(Math.round(vh * BOMB_RATIO), MIN_BOMB, MAX_BOMB) };
       s.knob = Math.round(s.stick * KNOB_RATIO);
     } else s = Object.assign({}, PORTRAIT[dc.key]);
-    return { stick: Math.round(s.stick * k), bomb: Math.round(s.bomb * k), knob: Math.round(s.knob * k) };
+    return { stick: Math.max(MIN_STICK, Math.round(s.stick * k)), bomb: Math.round(s.bomb * k), knob: Math.round(s.knob * k) };
   }
 
   /**
