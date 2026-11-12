@@ -11,8 +11,8 @@
   function L(k, z, e) { zh[k] = z; en[k] = e; }
 
   /* ---------- 通用 ---------- */
-  L('meta.title', "炸彈小隊｜免費線上多人炸彈對戰", 'Bomb Squad');
-  L('meta.desc', "免費線上炸彈對戰，放炸彈炸開磚塊、拾取道具，在連鎖爆炸中閃躲求生。單機挑戰不同難度電腦，或建立多人房間邀朋友較勁，支援觀戰與邀請連結，免下載，手機平板可玩。", 'A cute bomber game: play solo against the computer or online with room codes, spectators and invite links. Drop bombs, blast bricks, grab items and be the last squad leader standing!');
+  L('meta.title', "炸彈小隊｜免費線上炸彈人遊戲・2–8 人對戰", 'Bomb Squad | Free Online Bomber Game for 2–8 Players');
+  L('meta.desc', "炸彈小隊是免費免下載的炸彈人遊戲：放炸彈、炸磚塊、撿道具，在連鎖爆炸中生存到最後！單機挑戰五段 AI，或邀朋友加入 2–8 人線上對戰，支援觀戰與邀請連結，手機、平板與電腦都能玩。", 'Play Bomb Squad free in your browser. Blast bricks, collect power-ups and survive chain explosions. Challenge five AI levels or invite friends to 2–8 player online battles with spectator mode. No download required.');
   L('lang.switchTo', '切換成 English', 'Switch to Traditional Chinese');
   L('lang.label', '語言', 'Language');
   L('lang.zh', '繁體中文', '繁體中文');
@@ -600,8 +600,8 @@
 // 由繁體中文介面字典轉換；動態參數（暱稱、分數等）維持原值。
 (function (root) {
   var hans = {
-    "meta.title": "炸弹小队｜免费线上多人炸弹对战",
-    "meta.desc": "免费线上炸弹对战，放炸弹炸开砖块、拾取道具，在连锁爆炸中闪躲求生。单机挑战不同难度电脑，或建立多人房间邀朋友较劲，支援观战与邀请连结，免下载，手机平板可玩。",
+    "meta.title": "炸弹小队｜免费在线炸弹人游戏・2–8 人对战",
+    "meta.desc": "炸弹小队是免费免下载的炸弹人游戏：放炸弹、炸砖块、捡道具，在连锁爆炸中生存到最后！单机挑战五档 AI，或邀朋友加入 2–8 人在线对战，支持观战与邀请链接，手机、平板与电脑都能玩。",
     "lang.switchTo": "切换成 English",
     "lang.label": "语言",
     "lang.zh": "繁体中文",

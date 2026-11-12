@@ -61,6 +61,11 @@ function rawGet(port, p) {
   const port = server.address().port;
 
   console.log('\n靜態檔');
+  for (const image of ['seo.webp', 'cover.webp']) {
+    const response = await fetch('http://127.0.0.1:' + port + '/assets/images/' + image);
+    ok(response.ok && response.headers.get('content-type') === 'image/webp', image + ' 使用正確的圖片 MIME');
+    await response.arrayBuffer();
+  }
   ok(/ 400 /.test(await rawGet(port, '/index.html%00.js')), '網址含 %00 回 400');
   ok(/ 200 /.test(await rawGet(port, '/health')), '送過 %00 之後伺服器還活著');
   ok(/ 403 /.test(await rawGet(port, '/../server.js')), '../ 跳出 public 回 403');

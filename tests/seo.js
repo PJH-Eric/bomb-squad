@@ -12,6 +12,15 @@ const root = path.join(__dirname, '..');
 const cfg = JSON.parse(fs.readFileSync(path.join(root, 'seo.config.json'), 'utf8'));
 const source = fs.readFileSync(path.join(root, 'public/index.html'), 'utf8');
 validate(cfg, 'G-PG79WZK8QY');
+assert.equal(cfg.ogImage, cfg.siteUrl + 'assets/images/seo.webp', '分享圖應使用含標題的獨立 SEO 圖');
+const seoImage = fs.readFileSync(path.join(root, 'public/assets/images/seo.webp'));
+const coverImage = fs.readFileSync(path.join(root, 'public/assets/images/cover.webp'));
+assert.ok(!seoImage.equals(coverImage), '無文字 cover 與 SEO 圖必須分開製作');
+for (const image of [seoImage, coverImage]) {
+  assert.equal(image.toString('ascii', 0, 4), 'RIFF');
+  assert.equal(image.toString('ascii', 8, 12), 'WEBP');
+  assert.ok(image.length < 250000, '正式圖片應適合分享與縮圖載入');
+}
 assert.ok(source.includes('<!--SEO:HEAD-->'));
 assert.ok(source.includes('js/analytics.js'));
 const dicts = {};
@@ -62,6 +71,7 @@ try {
   assert.throws(() => inject(temp, {}), /SEO:HEAD/);
   assert.throws(() => validate({ ...cfg, siteUrl: cfg.siteUrl.slice(0, -1) }, 'G-TEST'), /siteUrl/);
   assert.throws(() => validate(cfg, 'bad'), /GA_MEASUREMENT_ID/);
+  assert.throws(() => validate({ ...cfg, ogImage: cfg.siteUrl + 'unrelated.webp' }, 'G-TEST'), /ogImage/);
 } finally {
   fs.rmSync(temp, { recursive: true, force: true });
 }
