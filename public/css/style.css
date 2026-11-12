@@ -726,3 +726,14 @@ body.in-game .language-controls > .gear svg, body.in-game .language-controls > .
 .mission-bar-hint { display: none; margin-top: 3px; font-weight: 700; color: var(--ink2); }
 .mission-bar.show-hint .mission-bar-hint { display: block; }
 .mission-bar.show-hint .mission-bar-goal { white-space: normal; }
+
+/* ---------- 大廳聊天室：套用炸彈小隊配色 ---------- */
+body .lc-root {
+  --lc-accent: var(--sun); --lc-accent-ink: #17122b;
+  --lc-panel-bg: var(--card); --lc-panel-solid: var(--card);
+  --lc-ink: var(--ink); --lc-muted: var(--ink2); --lc-line: var(--line);
+  --lc-field-bg: var(--paper); --lc-sys-bg: rgba(139, 92, 255, .14); --lc-name: var(--grape);
+  --lc-font: var(--font); --lc-radius: var(--r); --lc-z: 95;
+}
+body .lc-bubble, body .lc-panel { border: 3px solid #17122b; box-shadow: 0 4px 0 #17122b; }
+body .lc-send, body .lc-join { border: 2px solid #17122b; }

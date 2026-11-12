@@ -52,6 +52,7 @@
     if (!fn) throw new Error('unknown screen: ' + name);
     const el = fn(params || {});
     if (el) { el.setAttribute('data-screen', name); App.el.appendChild(el); }
+    if (App.lobbyChat) App.lobbyChat.refresh();
     /* 「← 回遊戲大廳」只在首頁出現，對戰與其他畫面不擋操作 */
     const lobbyLink = document.getElementById('lobby-home-link');
     if (lobbyLink) lobbyLink.hidden = name !== 'home';
@@ -438,6 +439,8 @@
       const vibSw = toggle({ label: tr('settings.vibrate'), value: st.vibrate, onChange: v => { st.vibrate = v; save(); if (v && navigator.vibrate) try { navigator.vibrate(40); } catch (e) { /* 忽略 */ } } });
       const calmSw = toggle({ label: tr('settings.calm'), value: st.reduceMotion, onChange: v => { st.reduceMotion = v; save(); applySettings(); } });
       const assistSw = toggle({ label: tr('settings.assist'), value: st.colorAssist, onChange: v => { st.colorAssist = v; save(); } });
+      const lc = App.lobbyChat;
+      const chatSw = lc ? toggle({ label: lc.text('set'), value: lc.isEnabled(), onChange: v => lc.setEnabled(v) }) : null;
       const touchSeg = seg({ label: tr('settings.touch'), options: [{ v: 'auto', label: tr('settings.auto') }, { v: 'on', label: tr('settings.show') }, { v: 'off', label: tr('settings.hide') }], value: st.touchMode, onChange: v => { st.touchMode = v; save(); App.game && App.game.layout(); } });
       const sideSeg = seg({ label: tr('settings.stick'), options: [{ v: 'left', label: tr('settings.left') }, { v: 'right', label: tr('settings.right') }], value: st.stickSide, onChange: v => { st.stickSide = v; save(); App.game && App.game.layout(); } });
       const scaleSeg = seg({ label: tr('settings.touchScale'), cls: 'small', options: [0.8, 0.9, 1, 1.1, 1.2, 1.3].map(v => ({ v, label: '×' + v })), value: st.touchScale, onChange: v => { st.touchScale = v; save(); App.game && App.game.layout(); } });
@@ -451,10 +454,11 @@
         f(tr('settings.touchScale'), scaleSeg), f(tr('settings.touchOpacity'), opacitySeg),
         navigator.vibrate ? f(tr('settings.vibrate'), vibSw) : null,
         f(tr('settings.calm'), calmSw), f(tr('settings.assist'), assistSw),
+        lc ? f(lc.text('set'), chatSw, lc.text('setSub')) : null,
         h('p', { class: 'muted small' }, tr('settings.assistNote')));
       return {
         title: tr('settings.title'), content: body,
-        actions: [btn(tr('settings.reset'), { cls: 'btn-ghost', onClick: () => { root.Store.resetSettings(st); applySettings(); App.game && App.game.layout(); m.close(true); App.settingsOpen = false; toast(tr('settings.resetDone')); App.openSettings(); } }), btn(tr('common.done'), { cls: 'btn-mint', onClick: () => m.close() })]
+        actions: [btn(tr('settings.reset'), { cls: 'btn-ghost', onClick: () => { root.Store.resetSettings(st); if (App.lobbyChat) App.lobbyChat.setEnabled(true); applySettings(); App.game && App.game.layout(); m.close(true); App.settingsOpen = false; toast(tr('settings.resetDone')); App.openSettings(); } }), btn(tr('common.done'), { cls: 'btn-mint', onClick: () => m.close() })]
       };
     };
     const m = modal(Object.assign({ cls: 'dialog-lg', rebuild: spec, onClose: () => { App.settingsOpen = false; } }, spec()));
