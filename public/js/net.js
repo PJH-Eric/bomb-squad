@@ -69,10 +69,18 @@
     }
     if (ws && (ws.readyState === 0 || ws.readyState === 1)) return;
     setStatus('connecting');
-    const ok = await wake(cfg.serverUrl, my);
+    let base;
+    try {
+      base = await (root.GameBackend?.select(cfg.serverUrl) ?? cfg.serverUrl);
+    } catch {
+      if (wantOpen && my === gen) { setStatus('offline'); scheduleRetry(); }
+      return;
+    }
+    if (!wantOpen || my !== gen) return;
+    const ok = await wake(base, my);
     if (!wantOpen || my !== gen) return;
     if (!ok) { setStatus('offline'); scheduleRetry(); return; }
-    connect(cfg.serverUrl);
+    connect(base);
   }
 
   function connect(base) {

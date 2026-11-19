@@ -49,7 +49,8 @@
     const p = new URLSearchParams();
     p.set('room', App.room.id); p.set('invite', tok);
     if (root.Config && root.Config.source === 'query' && root.Config.serverUrl) p.set('server', root.Config.serverUrl);
-    return u.toString() + '?' + p.toString();
+    const address = u.toString() + '?' + p.toString();
+    return root.GameBackend?.pinInvite(address) ?? address;
   }
   /** 只拿掉邀請參數；?server= 要留著，不然重新整理就連不到同一台伺服器 */
   function clearInviteUrl() {
