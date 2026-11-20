@@ -392,11 +392,15 @@ test('程式、說明裡不再有舊的大圖 17×15 尺寸，也沒有寫死的
     assert(!/w <= 15/.test(text), path.basename(f) + ' 還有寫死的 w <= 15');
   }
 });
-test('index.html 有載入 mappick.js，且每支 script 都存在', () => {
+test('index.html 有載入 mappick.js 與共用路由，且本機腳本都存在', () => {
   const html = fs.readFileSync(path.join(__dirname, '../public/index.html'), 'utf8');
   const srcs = [...html.matchAll(/<script src="([^"?]+)/g)].map(m => m[1]);
+  const sharedRouter = '/game-lobby/backend-routing.js';
   assert(srcs.includes('js/mappick.js'));
-  for (const s of srcs) assert(fs.existsSync(path.join(__dirname, '../public', s)), s + ' 不存在');
+  assert(srcs.includes(sharedRouter));
+  for (const src of srcs.filter(src => src !== sharedRouter)) {
+    assert(fs.existsSync(path.join(__dirname, '../public', src)), src + ' 不存在');
+  }
 });
 
 console.log('\n' + passed + ' 項通過' + (failed.length ? '，' + failed.length + ' 項失敗：\n  - ' + failed.join('\n  - ') : ''));
