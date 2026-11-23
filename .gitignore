@@ -26,3 +26,7 @@ shots/
 *.tsbuildinfo
 /tmp/
 /temp/
+
+/cloudflare/node_modules/
+
+/cloudflare/dist/
