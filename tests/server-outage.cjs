@@ -82,8 +82,9 @@ for (const language of ['zh-Hant', 'zh-Hans', 'en']) {
   assert.doesNotMatch(text, /Render|quota|reset|重置|額度|额度|\{date\}/i, 'Non-Render hosting must not claim a monthly quota reset');
   assert.equal(text, local.api.copy(new Date(2027, 0, 1), language)[1], 'Generic outage advice is independent of the calendar');
 }
-assert.match(local.api.copy(new Date(2026, 9, 31), 'zh-Hans')[1], /单机版/);
-assert.match(local.api.copy(new Date(2026, 9, 31), 'zh-Hant')[1], /單機版/);
+assert.deepEqual(Array.from(local.api.copy(new Date(2026, 9, 31), 'zh-Hant').slice(0, 2)), ['目前伺服器過載休息中', '歡迎贊助升級']);
+assert.deepEqual(Array.from(local.api.copy(new Date(2026, 9, 31), 'zh-Hans').slice(0, 2)), ['目前服务器过载休息中', '欢迎赞助升级']);
+assert.deepEqual(Array.from(local.api.copy(new Date(2026, 9, 31), 'en').slice(0, 2)), ['The server is overloaded and resting', 'Sponsorships to help us upgrade are welcome']);
 const html = fs.readFileSync(path.join(__dirname, '../public/index.html'), 'utf8');
 assert.match(html, /js\/server-outage\.js/);
 assert.match(html, /css\/server-outage\.css/);
