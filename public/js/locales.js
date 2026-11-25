@@ -469,7 +469,7 @@
   L('invite.goSpec', '進去觀戰', 'Watch');
   L('invite.goPlay', '加入遊戲', 'Join game');
   L('online.noServer', '還沒設定線上伺服器', 'No online server yet');
-  L('online.noServerText', '這個網頁沒有設定 server URL。部署時請把 GAME_SERVER_URL 設成後端的 https 網址（詳見 README），現在只能玩單機。', 'This page has no server URL set. When deploying, set GAME_SERVER_URL to the backend https address (see the README). Only solo play is available for now.');
+  L('online.noServerText', '目前連不上遊戲伺服器，只能玩單機。', 'The game server is unavailable right now. Only solo play is available.');
   L('online.playSolo', '改玩單機', 'Play solo');
   L('online.myProfile', '我的暱稱與角色', 'My name & character');
   L('create.title', '建立房間', 'Create Room');
@@ -1047,7 +1047,7 @@
     "invite.goSpec": "进去观战",
     "invite.goPlay": "加入游戏",
     "online.noServer": "还没设定线上伺服器",
-    "online.noServerText": "这个网页没有设定 server URL。部署时请把 GAME_SERVER_URL 设成后端的 https 网址（详见 README），现在只能玩单机。",
+    "online.noServerText": "目前连不上游戏服务器，只能玩单机。",
     "online.playSolo": "改玩单机",
     "online.myProfile": "我的暱称与角色",
     "create.title": "建立房间",
