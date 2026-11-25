@@ -35,5 +35,7 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: public
+      - name: 等待 Pages artifact 完成索引
+        run: sleep 10
       - id: deployment
         uses: actions/deploy-pages@v4
